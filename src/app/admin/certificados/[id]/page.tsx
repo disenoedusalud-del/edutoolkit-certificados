@@ -1,0 +1,17 @@
+import CertificateDetail from "@/components/CertificateDetail";
+
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default async function Page({ params }: PageProps) {
+  const { id } = await params;
+  return (
+    <main className="min-h-screen bg-slate-50 p-8">
+      <CertificateDetail id={id} />
+    </main>
+  );
+}
+
