@@ -5,12 +5,6 @@ import type { Certificate } from "@/types/Certificate";
 // GET /api/certificates
 export async function GET(request: Request) {
   try {
-    // Si en el futuro quieres usar query params, los leemos aquí,
-    // pero por ahora no los usamos para evitar problemas de tipos.
-    // const { searchParams } = new URL(request.url);
-    // const limit = parseInt(searchParams.get("limit") || "100");
-
-    // Traemos todos los certificados
     const snapshot = await adminDb.collection("certificates").get();
 
     const data = snapshot.docs.map((d) => ({
@@ -21,8 +15,14 @@ export async function GET(request: Request) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching certificates:", error);
+
     return NextResponse.json(
-      { error: "Error al obtener certificados" },
+      {
+        error: "Error al obtener certificados",
+        // 👇 Agregamos detalle para depurar
+        details:
+          error instanceof Error ? error.message : JSON.stringify(error),
+      },
       { status: 500 }
     );
   }
@@ -53,12 +53,13 @@ export async function POST(request: Request) {
       marketingConsent = false,
     } = body;
 
-    // Validar campos requeridos con mensajes específicos
     const missingFields: string[] = [];
     if (!fullName || !fullName.trim()) missingFields.push("Nombre completo");
-    if (!courseName || !courseName.trim()) missingFields.push("Nombre del curso");
+    if (!courseName || !courseName.trim())
+      missingFields.push("Nombre del curso");
     if (!courseId || !courseId.trim()) missingFields.push("ID del curso");
-    if (!courseType || !courseType.trim()) missingFields.push("Tipo de curso");
+    if (!courseType || !courseType.trim())
+      missingFields.push("Tipo de curso");
     if (!year) missingFields.push("Año");
 
     if (missingFields.length > 0) {
@@ -68,7 +69,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Si el courseId termina en -01, -02, etc., calcular el siguiente número secuencial
     let finalCourseId = courseId.trim();
     const courseIdPattern = /^(.+)-(\d{4})-(\d+)$/;
     const match = finalCourseId.match(courseIdPattern);
@@ -77,9 +77,7 @@ export async function POST(request: Request) {
       const [, courseCode, courseYear, currentNumber] = match;
       const courseYearNum = parseInt(courseYear);
 
-      // Si el año coincide, buscar el siguiente número secuencial
       if (courseYearNum === year) {
-        // Buscar todos los certificados que empiecen con el mismo código y año
         const prefix = `${courseCode}-${year}-`;
         const certificatesSnapshot = await adminDb
           .collection("certificates")
@@ -87,11 +85,14 @@ export async function POST(request: Request) {
           .where("courseId", "<", prefix + "\uf8ff")
           .get();
 
-        // Extraer números secuenciales existentes
-        const escapedCourseCode = courseCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const escapedCourseCode = courseCode.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+
         const existingNumbers = certificatesSnapshot.docs
           .map((doc) => {
-            const data = doc.data();
+            const data = doc.data() as any;
             const certCourseId = data.courseId || "";
             const certMatch = certCourseId.match(
               new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`)
@@ -100,8 +101,8 @@ export async function POST(request: Request) {
           })
           .filter((num) => num > 0);
 
-        // Encontrar el siguiente número disponible
-        const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+        const maxNumber =
+          existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
         const nextNumber = maxNumber + 1;
         finalCourseId = `${courseCode}-${year}-${nextNumber
           .toString()
@@ -141,7 +142,11 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating certificate:", error);
     return NextResponse.json(
-      { error: "Error al crear el certificado" },
+      {
+        error: "Error al crear el certificado",
+        details:
+          error instanceof Error ? error.message : JSON.stringify(error),
+      },
       { status: 500 }
     );
   }
