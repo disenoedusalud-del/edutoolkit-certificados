@@ -1,24 +1,23 @@
 import { adminDb } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
-import { Certificate } from "@/types/Certificate";
+import type { Certificate } from "@/types/Certificate";
 
+// GET /api/certificates
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "100");
-    const orderBy = searchParams.get("orderBy") || "createdAt";
-    const orderDirection = searchParams.get("orderDirection") || "desc";
+    // Si en el futuro quieres usar query params, los leemos aquí,
+    // pero por ahora no los usamos para evitar problemas de tipos.
+    // const { searchParams } = new URL(request.url);
+    // const limit = parseInt(searchParams.get("limit") || "100");
 
-    let query = adminDb.collection("certificates");
+    // Traemos todos los certificados
+    const snapshot = await adminDb.collection("certificates").get();
 
-    // Ordenar
-    if (orderBy) {
-      query = query.orderBy(orderBy, orderDirection as "asc" | "desc");
-    }
+    const data = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
 
-    // Limitar resultados
-    const snapshot = await query.limit(limit).get();
-    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error fetching certificates:", error);
@@ -29,6 +28,7 @@ export async function GET(request: Request) {
   }
 }
 
+// POST /api/certificates
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -72,11 +72,11 @@ export async function POST(request: Request) {
     let finalCourseId = courseId.trim();
     const courseIdPattern = /^(.+)-(\d{4})-(\d+)$/;
     const match = finalCourseId.match(courseIdPattern);
-    
+
     if (match) {
       const [, courseCode, courseYear, currentNumber] = match;
       const courseYearNum = parseInt(courseYear);
-      
+
       // Si el año coincide, buscar el siguiente número secuencial
       if (courseYearNum === year) {
         // Buscar todos los certificados que empiecen con el mismo código y año
@@ -86,22 +86,26 @@ export async function POST(request: Request) {
           .where("courseId", ">=", prefix)
           .where("courseId", "<", prefix + "\uf8ff")
           .get();
-        
+
         // Extraer números secuenciales existentes
         const escapedCourseCode = courseCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const existingNumbers = certificatesSnapshot.docs
           .map((doc) => {
             const data = doc.data();
             const certCourseId = data.courseId || "";
-            const certMatch = certCourseId.match(new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`));
+            const certMatch = certCourseId.match(
+              new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`)
+            );
             return certMatch ? parseInt(certMatch[1]) : 0;
           })
           .filter((num) => num > 0);
-        
+
         // Encontrar el siguiente número disponible
         const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
         const nextNumber = maxNumber + 1;
-        finalCourseId = `${courseCode}-${year}-${nextNumber.toString().padStart(2, "0")}`;
+        finalCourseId = `${courseCode}-${year}-${nextNumber
+          .toString()
+          .padStart(2, "0")}`;
       }
     }
 
@@ -142,4 +146,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
