@@ -1,60 +1,69 @@
-import { adminDb } from "@/lib/firebaseAdmin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+import { adminDb } from "@/lib/firebaseAdmin";
+
+export async function GET(request: NextRequest) {
   try {
+    // 1) Leer parámetros de la URL
     const { searchParams } = new URL(request.url);
     const courseCode = searchParams.get("courseCode");
     const year = searchParams.get("year");
 
+    // 2) Validar que existan
     if (!courseCode || !year) {
       return NextResponse.json(
-        { error: "Se requieren courseCode y year" },
+        {
+          error: "Missing courseCode or year",
+          nextSequence: 1,
+          formattedId: null,
+        },
         { status: 400 }
       );
     }
 
-    const yearNum = parseInt(year);
-    if (isNaN(yearNum)) {
-      return NextResponse.json(
-        { error: "El año debe ser un número válido" },
-        { status: 400 }
-      );
-    }
-
-    // Buscar todos los certificados que empiecen con el mismo código y año
-    const prefix = `${courseCode}-${year}-`;
-    const certificatesSnapshot = await adminDb
+    // 3) Buscar el último certificado con ese curso y año
+    const snapshot = await adminDb
       .collection("certificates")
-      .where("courseId", ">=", prefix)
-      .where("courseId", "<", prefix + "\uf8ff")
+      .where("courseId", ">=", `${courseCode}-${year}-`)
+      .where("courseId", "<=", `${courseCode}-${year}-\uf8ff`)
+      .orderBy("courseId", "desc")
+      .limit(1)
       .get();
 
-    // Extraer números secuenciales existentes
-    const existingNumbers = certificatesSnapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        const certCourseId = data.courseId || "";
-        const match = certCourseId.match(new RegExp(`^${courseCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-${year}-(\\d+)$`));
-        return match ? parseInt(match[1]) : 0;
-      })
-      .filter((num) => num > 0);
+    if (snapshot.empty) {
+      // No hay certificados aún → empezamos en 1
+      return NextResponse.json({
+        nextSequence: 1,
+        formattedId: `${courseCode}-${year}-01`,
+      });
+    }
 
-    // Encontrar el siguiente número disponible
-    const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    const nextNumber = maxNumber + 1;
+    const lastDoc = snapshot.docs[0];
+    const lastData = lastDoc.data();
+
+    // courseId esperado: "LM-2025-03"
+    const lastCourseId = (lastData.courseId as string) || "";
+    const parts = lastCourseId.split("-");
+    const lastSeqStr = parts[2] || "0";
+    const lastSeq = parseInt(lastSeqStr, 10) || 0;
+    const nextSequence = lastSeq + 1;
+
+    const formattedSequence = String(nextSequence).padStart(2, "0");
+    const formattedId = `${courseCode}-${year}-${formattedSequence}`;
 
     return NextResponse.json({
-      nextSequence: nextNumber,
-      formattedId: `${courseCode}-${year}-${nextNumber.toString().padStart(2, "0")}`,
+      nextSequence,
+      formattedId,
     });
   } catch (error: any) {
-    console.error("Error calculating next sequence:", error);
-    // Si hay error, retornar 1 como default
-    return NextResponse.json({
-      nextSequence: 1,
-      formattedId: `${searchParams.get("courseCode")}-${searchParams.get("year")}-01`,
-    });
+    console.error("[NEXT-SEQUENCE] Error:", error);
+    return NextResponse.json(
+      {
+        error: "Error calculating next sequence",
+        details: error?.message || String(error),
+      },
+      { status: 500 }
+    );
   }
 }
 
