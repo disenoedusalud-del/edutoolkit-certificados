@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebaseAdmin";
 
-const COOKIE_NAME = "edutoolkit_session";
-
 export async function POST(request: Request) {
   try {
     const { idToken } = await request.json();
@@ -22,12 +20,14 @@ export async function POST(request: Request) {
     // Puedes usar algunos campos si quieres (uid, email, etc.)
     console.log("[AUTH] Usuario autenticado:", decoded.uid, decoded.email);
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     // 7 días de sesión
     const maxAge = 7 * 24 * 60 * 60;
 
-    cookieStore.set(COOKIE_NAME, idToken, {
+    cookieStore.set({
+      name: "session",
+      value: idToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -47,8 +47,10 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   try {
-    const cookieStore = cookies();
-    cookieStore.set(COOKIE_NAME, "", {
+    const cookieStore = await cookies();
+    cookieStore.set({
+      name: "session",
+      value: "",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

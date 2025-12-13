@@ -6,175 +6,110 @@ import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
 
-type Mode = "login" | "register";
-
 export default function LoginPage() {
-  const [mode, setMode] = useState<Mode>("login");
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter();
-
-  const handleSubmit = async (e: FormEvent) => {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
+    setErrorMsg(null);
     setLoading(true);
 
     try {
-      // 1) Si estamos en modo "register", primero pedimos al backend crear la cuenta
-      if (mode === "register") {
-        const res = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          throw new Error(
-            data?.error ??
-              "No se pudo crear la cuenta. Verifica que el correo esté autorizado.",
-          );
-        }
-      }
-
-      // 2) Iniciar sesión con Firebase Auth (igual que antes)
+      // 1) Login en Firebase
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const idToken = await cred.user.getIdToken();
 
-      const resLogin = await fetch("/api/login", {
+      // 2) Llamar a la API /api/login para crear la session cookie
+      const res = await fetch("/api/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ idToken }),
       });
 
-      const dataLogin = await resLogin.json().catch(() => null);
-
-      if (!resLogin.ok) {
-        throw new Error(
-          dataLogin?.error ?? "No se pudo crear la sesión de administrador",
-        );
+      if (!res.ok) {
+        throw new Error("Error en el login del servidor");
       }
 
-      // 3) Redirigir al panel
+      // 3) Redirigir al panel admin
       router.push("/admin/certificados");
-      router.refresh();
-    } catch (err: any) {
-      console.error("[LOGIN]", err);
-      setError(err?.message ?? "Ocurrió un error al procesar la solicitud");
+    } catch (err: unknown) {
+      console.error("[LOGIN] Error:", err);
+
+      // Manejo específico según código de Firebase Auth
+      const error = err as { code?: string };
+      if (error?.code === "auth/invalid-credential") {
+        setErrorMsg("Correo o contraseña incorrectos.");
+      } else if (error?.code === "auth/user-not-found") {
+        setErrorMsg("No existe una cuenta con este correo.");
+      } else if (error?.code === "auth/invalid-email") {
+        setErrorMsg("El formato del correo no es válido.");
+      } else if (error?.code === "auth/wrong-password") {
+        setErrorMsg("Contraseña incorrecta.");
+      } else {
+        setErrorMsg("No se pudo iniciar sesión. Intente de nuevo.");
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const title = mode === "login" ? "Iniciar sesión" : "Crear cuenta";
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100">
-      <div className="w-full max-w-md space-y-6 rounded-xl bg-white p-6 shadow-md">
-        <div className="space-y-1 text-center">
-          <h1 className="text-lg font-semibold text-slate-800">
-            {title} · Panel de certificados
-          </h1>
-          <p className="text-xs text-slate-500">
-            Solo personal autorizado de EduSalud puede acceder.
-          </p>
-        </div>
-
-        {/* Toggle Login / Registro */}
-        <div className="flex rounded-md border bg-slate-50 text-xs">
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className={`flex-1 px-3 py-2 border-r ${
-              mode === "login"
-                ? "bg-white font-semibold text-slate-800"
-                : "text-slate-500 hover:bg-slate-100"
-            }`}
-          >
-            Iniciar sesión
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("register")}
-            className={`flex-1 px-3 py-2 ${
-              mode === "register"
-                ? "bg-white font-semibold text-slate-800"
-                : "text-slate-500 hover:bg-slate-100"
-            }`}
-          >
-            Crear cuenta
-          </button>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow">
+        <h1 className="mb-6 text-center text-xl font-semibold">
+          Iniciar sesión
+        </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-700">
-              Correo
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Correo institucional
             </label>
             <input
               type="email"
-              required
+              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="correo@unah.edu.hn"
+              required
+              autoComplete="email"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-700">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
               Contraseña
             </label>
             <input
               type="password"
-              required
-              minLength={6}
+              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="••••••••"
+              required
+              autoComplete="current-password"
             />
-            {mode === "register" && (
-              <p className="mt-1 text-[11px] text-slate-500">
-                La contraseña debe tener al menos 6 caracteres.
-              </p>
-            )}
           </div>
 
-          {error && (
-            <p className="rounded-md border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
-              {error}
+          {errorMsg && (
+            <p className="text-sm text-red-600">
+              {errorMsg}
             </p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            {loading
-              ? mode === "login"
-                ? "Ingresando..."
-                : "Creando cuenta..."
-              : mode === "login"
-              ? "Entrar"
-              : "Crear cuenta y entrar"}
+            {loading ? "Iniciando sesión..." : "Ingresar"}
           </button>
         </form>
-
-        {mode === "register" && (
-          <p className="text-center text-[11px] text-slate-500">
-            Solo se crearán cuentas para correos previamente autorizados por
-            coordinación.
-          </p>
-        )}
       </div>
     </div>
   );
 }
-
-

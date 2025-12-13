@@ -1,74 +1,69 @@
 // src/app/api/login/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { adminAuth } from "@/lib/firebaseAdmin";
+import { getAdminRoleForEmail } from "@/lib/adminRoles";
 
-const COOKIE_NAME = "edutoolkit_session";
-// 5 días en milisegundos
-const SESSION_EXPIRES_IN = 60 * 60 * 24 * 5 * 1000;
+const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 5; // 5 días en segundos
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { idToken } = await request.json();
+    const body = await req.json().catch(() => null);
+    const idToken = body?.idToken as string | undefined;
 
     if (!idToken) {
       return NextResponse.json(
-        { error: "Falta idToken en el cuerpo de la petición" },
-        { status: 400 }
+        { ok: false, error: "MISSING_TOKEN" },
+        { status: 400 },
       );
     }
 
-    // 1) Verificar el token del cliente (Firebase Auth en el navegador)
     const decoded = await adminAuth.verifyIdToken(idToken);
-
-    // 2) Leer lista de correos permitidos desde las variables de entorno
-    const allowedRaw = process.env.ALLOWED_ADMIN_EMAILS || "";
-    const allowedEmails = allowedRaw
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
-
-    const userEmail = decoded.email?.toLowerCase();
-
-    // Si no hay email o no está en la lista, bloquear
-    if (!userEmail || !allowedEmails.includes(userEmail)) {
-      console.warn(
-        "[LOGIN] Intento de acceso con correo no autorizado:",
-        userEmail
-      );
+    if (!decoded?.uid) {
       return NextResponse.json(
-        { error: "Este correo no tiene permisos para acceder al panel." },
-        { status: 403 }
+        { ok: false, error: "INVALID_TOKEN" },
+        { status: 401 },
       );
     }
 
-    // 3) Crear cookie de sesión con Firebase Admin
+    const email = decoded.email;
+    if (!email) {
+      return NextResponse.json(
+        { ok: false, error: "NO_EMAIL" },
+        { status: 400 },
+      );
+    }
+
+    // Obtener rol (super_admin, admin, editor, viewer) o null
+    const role = await getAdminRoleForEmail(email);
+
+    if (!role) {
+      return NextResponse.json(
+        { ok: false, error: "NO_PERMISSIONS" },
+        { status: 403 },
+      );
+    }
+
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_EXPIRES_IN,
+      expiresIn: SESSION_EXPIRES_IN_SECONDS,
     });
 
-    const response = NextResponse.json({ success: true });
-
-    response.cookies.set({
-      name: COOKIE_NAME,
+    const cookieStore = await cookies();
+    cookieStore.set({
+      name: "session",
       value: sessionCookie,
-      maxAge: SESSION_EXPIRES_IN / 1000, // en segundos
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
       path: "/",
+      maxAge: SESSION_EXPIRES_IN_SECONDS,
     });
 
-    return response;
-  } catch (error: any) {
-    console.error("[LOGIN][POST] Error creando sesión:", error);
+    return NextResponse.json({ ok: true, role, email });
+  } catch (err) {
+    console.error("[API /login] error:", err);
     return NextResponse.json(
-      {
-        error: "No se pudo crear la sesión",
-        details: error?.message ?? String(error),
-      },
-      { status: 401 }
+      { ok: false, error: "SERVER_ERROR" },
+      { status: 500 },
     );
   }
 }
-
-
