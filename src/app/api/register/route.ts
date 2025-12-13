@@ -20,20 +20,29 @@ export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
+    // 🔹 SOLO validamos correo + contraseña
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Correo y contraseña son obligatorios" },
-        { status: 400 },
+        { error: "Correo y contraseña son obligatorios." },
+        { status: 400 }
       );
     }
 
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "La contraseña debe tener al menos 6 caracteres." },
+        { status: 400 }
+      );
+    }
+
+    // Verificar si el correo está autorizado (env var o lo que tenga configurado)
     if (!isAllowedEmail(email)) {
       return NextResponse.json(
         {
           error:
             "Este correo no está autorizado. Solicite acceso al departamento de comunicaciones.",
         },
-        { status: 403 },
+        { status: 403 }
       );
     }
 
@@ -46,7 +55,7 @@ export async function POST(req: NextRequest) {
             error:
               "Ya existe una cuenta con este correo. Use 'Iniciar sesión' o pida restablecer contraseña.",
           },
-          { status: 409 },
+          { status: 409 }
         );
       }
     } catch (err: any) {
@@ -54,8 +63,8 @@ export async function POST(req: NextRequest) {
       if (err?.code !== "auth/user-not-found") {
         console.error("[REGISTER] Error comprobando usuario:", err);
         return NextResponse.json(
-          { error: "Error interno al verificar el usuario" },
-          { status: 500 },
+          { error: "Error interno al verificar el usuario." },
+          { status: 500 }
         );
       }
     }
@@ -73,10 +82,10 @@ export async function POST(req: NextRequest) {
     console.error("[REGISTER] Error:", error);
     return NextResponse.json(
       {
-        error: "No se pudo crear la cuenta",
+        error: "No se pudo crear la cuenta.",
         details: error?.message ?? String(error),
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
