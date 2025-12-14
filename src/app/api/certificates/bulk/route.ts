@@ -1,21 +1,46 @@
 import { adminDb } from "@/lib/firebaseAdmin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { validateStringArray, validationErrorResponse } from "@/lib/validation";
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
+    // 1. Rate limiting (operaciones masivas son más pesadas)
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.HEAVY);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar permisos (ADMIN o superior para operaciones masivas)
+    await requireRole("ADMIN");
+
+    // 3. Validar entrada
     const body = await request.json();
     const { ids, deliveryStatus } = body;
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json(
-        { error: "Se requiere un array de IDs" },
-        { status: 400 }
-      );
+    // Validar array de IDs
+    const idsValidation = validateStringArray(ids, "ids");
+    if (!idsValidation.valid) {
+      return validationErrorResponse(idsValidation.errors);
     }
 
-    if (!deliveryStatus) {
+    // Validar deliveryStatus
+    const validStatuses = [
+      "en_archivo",
+      "listo_para_entrega",
+      "entregado",
+      "digital_enviado",
+      "anulado",
+    ];
+    if (!deliveryStatus || !validStatuses.includes(deliveryStatus)) {
       return NextResponse.json(
-        { error: "Se requiere un estado de entrega" },
+        {
+          error: "Error de validación",
+          details: [
+            `Estado de entrega inválido. Debe ser uno de: ${validStatuses.join(", ")}`,
+          ],
+        },
         { status: 400 }
       );
     }
@@ -32,12 +57,34 @@ export async function PUT(request: Request) {
 
     await batch.commit();
 
-    return NextResponse.json({
-      success: true,
-      message: `${updates.length} certificado(s) actualizado(s)`,
-      updated: updates.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `${updates.length} certificado(s) actualizado(s)`,
+        updated: updates.length,
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para realizar operaciones masivas" },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error updating certificates:", error);
     return NextResponse.json(
       { error: "Error al actualizar los certificados" },
@@ -46,16 +93,25 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
+    // 1. Rate limiting (operaciones masivas son más pesadas)
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.HEAVY);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar permisos (MASTER_ADMIN puede eliminar masivamente)
+    await requireRole("MASTER_ADMIN");
+
+    // 3. Validar entrada
     const body = await request.json();
     const { ids } = body;
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json(
-        { error: "Se requiere un array de IDs" },
-        { status: 400 }
-      );
+    // Validar array de IDs
+    const idsValidation = validateStringArray(ids, "ids");
+    if (!idsValidation.valid) {
+      return validationErrorResponse(idsValidation.errors);
     }
 
     const batch = adminDb.batch();
@@ -66,12 +122,34 @@ export async function DELETE(request: Request) {
 
     await batch.commit();
 
-    return NextResponse.json({
-      success: true,
-      message: `${ids.length} certificado(s) eliminado(s)`,
-      deleted: ids.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: `${ids.length} certificado(s) eliminado(s)`,
+        deleted: ids.length,
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para eliminar certificados" },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error deleting certificates:", error);
     return NextResponse.json(
       { error: "Error al eliminar los certificados" },

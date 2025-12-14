@@ -1,134 +1,197 @@
 // src/app/api/admin-users/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { AdminRole, AdminUser, isMasterAdmin } from "@/lib/adminRoles";
+import { adminDb } from "@/lib/firebaseAdmin";
+import { requireRole } from "@/lib/auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { validateEmail } from "@/lib/validation";
+import type { UserRole } from "@/lib/auth";
 
-/**
- * Obtiene el correo del usuario autenticado a partir
- * de la cookie de sesión de Firebase.
- */
-async function getCurrentUserEmail(): Promise<string | null> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session")?.value;
-
-  if (!sessionCookie) return null;
-
+// GET /api/admin-users - Listar todos los usuarios admin
+export async function GET(request: NextRequest) {
   try {
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
-    return decoded.email ?? null;
-  } catch (error) {
-    console.error("[ADMIN-USERS] Error verificando sessionCookie:", error);
-    return null;
-  }
-}
-
-/**
- * GET /api/admin-users
- * Solo MASTER:
- *  - Lista todos los usuarios administradores guardados en Firestore
- */
-export async function GET() {
-  try {
-    const email = await getCurrentUserEmail();
-
-    if (!email || !isMasterAdmin(email)) {
-      return NextResponse.json(
-        { error: "No autorizado (solo MASTER_ADMIN)" },
-        { status: 403 },
-      );
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    const snapshot = await adminDb.collection("adminUsers").get();
+    // 2. Solo MASTER_ADMIN puede ver la lista
+    await requireRole("MASTER_ADMIN");
 
-    const users: AdminUser[] = snapshot.docs.map((doc) => {
+    // 3. Obtener usuarios
+    const snapshot = await adminDb.collection("adminUsers").get();
+    const users = snapshot.docs.map((doc) => {
       const data = doc.data();
+      
       return {
-        email: data.email,
-        role: data.role as AdminRole,
-        updatedAt: data.updatedAt,
-        updatedBy: data.updatedBy,
+        id: doc.id,
+        email: data.email || doc.id, // El email se guarda en el documento
+        role: data.role as UserRole,
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
       };
     });
 
-    return NextResponse.json(users);
-  } catch (error: any) {
-    console.error("[ADMIN-USERS][GET] Error:", error);
-    return NextResponse.json(
-      {
-        error: "Error al obtener usuarios administradores",
-        details: error?.message ?? String(error),
+    return NextResponse.json(users, {
+      headers: {
+        "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
       },
-      { status: 500 },
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "Solo MASTER_ADMIN puede ver esta lista" },
+          { status: 403 }
+        );
+      }
+    }
+    return NextResponse.json(
+      { error: "Error al obtener usuarios" },
+      { status: 500 }
     );
   }
 }
 
-/**
- * POST /api/admin-users
- * Solo MASTER:
- *  - Crea o actualiza un usuario admin con rol ADMIN o LECTOR
- * Body JSON: { email: string, role: "ADMIN" | "LECTOR" }
- */
-export async function POST(req: NextRequest) {
+// POST /api/admin-users - Crear o actualizar usuario admin
+export async function POST(request: NextRequest) {
   try {
-    const currentEmail = await getCurrentUserEmail();
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
 
-    if (!currentEmail || !isMasterAdmin(currentEmail)) {
+    // 2. Solo MASTER_ADMIN puede crear/actualizar usuarios
+    await requireRole("MASTER_ADMIN");
+
+    // 3. Validar entrada
+    const body = await request.json();
+    const { email, role } = body;
+
+    if (!email || typeof email !== "string") {
       return NextResponse.json(
-        { error: "No autorizado (solo MASTER_ADMIN)" },
-        { status: 403 },
+        { error: "El email es requerido" },
+        { status: 400 }
       );
     }
 
-    const { email, role } = await req.json();
-
-    if (!email || !role) {
+    if (!validateEmail(email)) {
       return NextResponse.json(
-        { error: "Correo y rol son obligatorios" },
-        { status: 400 },
+        { error: "El formato del email no es válido" },
+        { status: 400 }
       );
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const normalizedRole = String(role).toUpperCase() as AdminRole;
-
-    if (!["ADMIN", "LECTOR"].includes(normalizedRole)) {
+    const validRoles: UserRole[] = ["VIEWER", "EDITOR", "ADMIN"];
+    if (!role || !validRoles.includes(role)) {
       return NextResponse.json(
-        { error: "Rol inválido. Use ADMIN o LECTOR." },
-        { status: 400 },
+        { error: `El rol debe ser uno de: ${validRoles.join(", ")}` },
+        { status: 400 }
       );
     }
 
-    const now = new Date().toISOString();
+    // Normalizar email para usar como ID del documento
+    const normalizedEmail = email.toLowerCase().trim();
+    const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
 
-    const docRef = adminDb
-      .collection("adminUsers")
-      .doc(normalizedEmail.replace(/[.#$/[\]]/g, "_"));
+    // Verificar si ya existe para preservar createdAt
+    const existingDoc = await adminDb.collection("adminUsers").doc(docId).get();
+    const existingData = existingDoc.exists ? existingDoc.data() : null;
 
-    await docRef.set(
+    // Guardar en Firestore
+    await adminDb.collection("adminUsers").doc(docId).set(
       {
         email: normalizedEmail,
-        role: normalizedRole,
-        updatedAt: now,
-        updatedBy: currentEmail,
+        role,
+        updatedAt: new Date().toISOString(),
+        createdAt: existingData?.createdAt || new Date().toISOString(),
       },
-      { merge: true },
+      { merge: true }
     );
 
-    return NextResponse.json({
-      success: true,
-      email: normalizedEmail,
-      role: normalizedRole,
-    });
-  } catch (error: any) {
-    console.error("[ADMIN-USERS][POST] Error:", error);
     return NextResponse.json(
+      { success: true, email: normalizedEmail, role },
       {
-        error: "No se pudo guardar el usuario administrador",
-        details: error?.message ?? String(error),
-      },
-      { status: 500 },
+        status: existingDoc.exists ? 200 : 201,
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "Solo MASTER_ADMIN puede gestionar usuarios" },
+          { status: 403 }
+        );
+      }
+    }
+    return NextResponse.json(
+      { error: "Error al guardar usuario" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/admin-users - Eliminar usuario admin
+export async function DELETE(request: NextRequest) {
+  try {
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Solo MASTER_ADMIN puede eliminar usuarios
+    await requireRole("MASTER_ADMIN");
+
+    // 3. Obtener email del query
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get("email");
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "El email es requerido" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
+
+    await adminDb.collection("adminUsers").doc(docId).delete();
+
+    return NextResponse.json(
+      { success: true, message: "Usuario eliminado" },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "Solo MASTER_ADMIN puede eliminar usuarios" },
+          { status: 403 }
+        );
+      }
+    }
+    return NextResponse.json(
+      { error: "Error al eliminar usuario" },
+      { status: 500 }
     );
   }
 }

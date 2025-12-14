@@ -36,8 +36,8 @@ export default function CertificateForm({
     courseName: certificate?.courseName || "",
     courseId: certificate?.courseId || "",
     courseType: certificate?.courseType || "",
-    year: certificate?.year || new Date().getFullYear(),
-    origin: certificate?.origin || "nuevo",
+    year: certificate?.year || new Date().getFullYear(), // Se obtendrá del curso seleccionado
+    origin: certificate?.origin || "nuevo", // Se obtendrá del curso seleccionado
     email: certificate?.email || "",
     phone: certificate?.phone || "",
     contactSource: certificate?.contactSource || "ninguno",
@@ -76,9 +76,13 @@ export default function CertificateForm({
             (c: Course) => c.name === certificate.courseName || c.id === certificate.courseId?.split("-")[0]
           );
           if (matchingCourse) {
+            // Usar el año del curso si está disponible, sino usar el año del certificado
+            const courseYear = matchingCourse.year || certificate.year || new Date().getFullYear();
             setFormData((prev) => ({
               ...prev,
               selectedCourseId: matchingCourse.id,
+              year: courseYear, // Actualizar el año con el año del curso
+              origin: matchingCourse.origin || certificate.origin || "nuevo", // Actualizar el origen con el origen del curso
             }));
           }
         }
@@ -120,38 +124,47 @@ export default function CertificateForm({
 
     // Si hay cursos cargados, buscar y actualizar los demás campos
     if (courses.length > 0) {
-      const selectedCourse = courses.find((c) => c.id === courseId);
+        const selectedCourse = courses.find((c) => c.id === courseId);
       if (selectedCourse) {
+        // Usar el año del curso en lugar del año del formulario
+        const courseYear = selectedCourse.year || new Date().getFullYear();
         // Generar courseId automáticamente con el siguiente número secuencial
-        const autoCourseId = await generateCourseId(selectedCourse.id, formData.year);
+        const autoCourseId = await generateCourseId(selectedCourse.id, courseYear);
         setFormData((prev) => ({
           ...prev,
           selectedCourseId: courseId,
           courseName: selectedCourse.name,
           courseId: autoCourseId,
           courseType: selectedCourse.courseType || "Curso", // Usar el courseType del curso
+          year: courseYear, // Usar el año del curso
+          origin: selectedCourse.origin || "nuevo", // Usar el origen del curso
         }));
       }
     }
   };
 
-  // Actualizar courseId y courseType cuando cambia el año o el curso
+  // Actualizar courseId y courseType cuando cambia el curso
+  // El año ahora viene del curso, no del formulario
   useEffect(() => {
     const updateCourseId = async () => {
-      if (formData.selectedCourseId && formData.year) {
+      if (formData.selectedCourseId) {
         const selectedCourse = courses.find((c) => c.id === formData.selectedCourseId);
         if (selectedCourse) {
-          const autoCourseId = await generateCourseId(selectedCourse.id, formData.year);
+          // Usar el año del curso
+          const courseYear = selectedCourse.year || new Date().getFullYear();
+          const autoCourseId = await generateCourseId(selectedCourse.id, courseYear);
           setFormData((prev) => ({
             ...prev,
             courseId: autoCourseId,
             courseType: selectedCourse.courseType || prev.courseType || "Curso",
+            year: courseYear, // Actualizar el año del formulario con el año del curso
+            origin: selectedCourse.origin || "nuevo", // Actualizar el origen del formulario con el origen del curso
           }));
         }
       }
     };
     updateCourseId();
-  }, [formData.year, formData.selectedCourseId, courses]);
+  }, [formData.selectedCourseId, courses]);
 
   const handleCourseCreated = async (newCourseId?: string) => {
     // Recargar cursos después de crear uno nuevo
@@ -263,12 +276,19 @@ export default function CertificateForm({
       let finalCourseId = formData.courseId.trim();
       let finalCourseName = formData.courseName.trim();
       let finalCourseType = formData.courseType.trim();
+      let finalYear = formData.year;
+      
+      let finalOrigin = formData.origin;
       
       if (formData.selectedCourseId && (!finalCourseId || !finalCourseName || !finalCourseType)) {
         const selectedCourse = courses.find((c) => c.id === formData.selectedCourseId);
         if (selectedCourse) {
+          // Usar el año del curso
+          finalYear = selectedCourse.year || new Date().getFullYear();
+          // Usar el origen del curso
+          finalOrigin = selectedCourse.origin || "nuevo";
           if (!finalCourseId) {
-            finalCourseId = await generateCourseId(selectedCourse.id, formData.year);
+            finalCourseId = await generateCourseId(selectedCourse.id, finalYear);
           }
           if (!finalCourseName) {
             finalCourseName = selectedCourse.name;
@@ -297,8 +317,8 @@ export default function CertificateForm({
         courseName: finalCourseName,
         courseId: finalCourseId,
         courseType: finalCourseType,
-        year: formData.year,
-        origin: formData.origin,
+        year: finalYear,
+        origin: finalOrigin,
         // Solo enviar campos de entrega si se está editando un certificado existente
         deliveryDate: certificate ? processOptionalField(formData.deliveryDate) : null,
         email: processOptionalField(formData.email),
@@ -372,8 +392,54 @@ export default function CertificateForm({
     }
   };
 
+  // Obtener el curso seleccionado para mostrar en el encabezado
+  const selectedCourse = formData.selectedCourseId 
+    ? courses.find((c) => c.id === formData.selectedCourseId)
+    : null;
+
+  // Construir el texto del encabezado
+  const getHeaderText = () => {
+    if (selectedCourse) {
+      const parts = [
+        selectedCourse.name, 
+        selectedCourse.year?.toString() || new Date().getFullYear().toString()
+      ];
+      
+      if (selectedCourse.edition) {
+        parts.push(`Edición ${selectedCourse.edition}`);
+      }
+      
+      return parts.join(" ");
+    }
+    
+    // Si no hay curso seleccionado pero hay un certificado, intentar mostrar info del certificado
+    if (certificate && certificate.courseName) {
+      const parts = [certificate.courseName];
+      if (certificate.year) {
+        parts.push(certificate.year.toString());
+      }
+      return parts.join(" ");
+    }
+    
+    return "Nuevo Certificado";
+  };
+
   return (
     <>
+      {/* Encabezado con información del curso */}
+      {(selectedCourse || (certificate && certificate.courseName)) && (
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 mb-6 shadow-lg">
+          <h2 className="text-xl font-bold">
+            {getHeaderText()}
+          </h2>
+          {certificate && (
+            <p className="text-blue-100 text-sm mt-1">
+              Editando certificado: {certificate.fullName}
+            </p>
+          )}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -535,52 +601,6 @@ export default function CertificateForm({
                   )}
                 </div>
               )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Año <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                required
-                value={formData.year}
-                onChange={(e) => {
-                  setFormData({ ...formData, year: parseInt(e.target.value) });
-                  if (fieldErrors.year) {
-                    setFieldErrors((prev) => {
-                      const newErrors = { ...prev };
-                      delete newErrors.year;
-                      return newErrors;
-                    });
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  fieldErrors.year
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-slate-300"
-                }`}
-              />
-              {fieldErrors.year && (
-                <p className="text-red-600 text-xs mt-1">{fieldErrors.year}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Origen
-              </label>
-              <select
-                value={formData.origin}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    origin: e.target.value as "historico" | "nuevo",
-                  })
-                }
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="nuevo">Nuevo</option>
-                <option value="historico">Histórico</option>
-              </select>
             </div>
           </div>
         </div>

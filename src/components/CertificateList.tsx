@@ -78,9 +78,20 @@ export default function CertificateList() {
       setLoading(true);
       const res = await fetch("/api/certificates");
       const data = await res.json();
-      setCerts(data);
+      
+      // Asegurar que siempre sea un array
+      if (Array.isArray(data)) {
+        setCerts(data);
+      } else if (data.error) {
+        console.error("Error from API:", data.error);
+        setCerts([]); // Establecer array vacío en caso de error
+      } else {
+        console.warn("Unexpected data format:", data);
+        setCerts([]); // Establecer array vacío si el formato no es el esperado
+      }
     } catch (error) {
       console.error("Error loading certificates:", error);
+      setCerts([]); // Establecer array vacío en caso de error de red
     } finally {
       setLoading(false);
     }
@@ -92,6 +103,11 @@ export default function CertificateList() {
 
   // Filtrar y ordenar certificados
   const filteredCerts = useMemo(() => {
+    // Asegurar que certs sea un array
+    if (!Array.isArray(certs)) {
+      return [];
+    }
+    
     let filtered = certs.filter((cert) => {
       // Búsqueda por nombre, curso, código del curso (tag) o ID del certificado
       const searchLower = searchTerm.toLowerCase();
@@ -214,6 +230,9 @@ export default function CertificateList() {
 
   // Obtener años únicos para el filtro
   const uniqueYears = useMemo(() => {
+    if (!Array.isArray(certs)) {
+      return [];
+    }
     const years = Array.from(new Set(certs.map((c) => c.year))).sort(
       (a, b) => b - a
     );
@@ -1137,7 +1156,7 @@ export default function CertificateList() {
                     </label>
                     <div className="flex gap-2">
                       <a
-                        href={`https://drive.google.com/file/d/${quickViewCert.driveFileId}/view`}
+                        href={quickViewCert.driveWebViewLink || `https://drive.google.com/file/d/${quickViewCert.driveFileId}/view`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"

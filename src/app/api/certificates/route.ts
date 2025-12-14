@@ -1,10 +1,23 @@
 import { adminDb } from "@/lib/firebaseAdmin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type { Certificate } from "@/types/Certificate";
+import { requireRole } from "@/lib/auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { validateCertificate, validationErrorResponse } from "@/lib/validation";
 
 // GET /api/certificates
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar autenticación (VIEWER puede leer)
+    await requireRole("VIEWER");
+
+    // 3. Obtener certificados
     const snapshot = await adminDb.collection("certificates").get();
 
     const data = snapshot.docs.map((d) => ({
@@ -12,14 +25,32 @@ export async function GET(request: Request) {
       ...d.data(),
     }));
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+      },
+    });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para realizar esta acción" },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error fetching certificates:", error);
 
     return NextResponse.json(
       {
         error: "Error al obtener certificados",
-        // 👇 Agregamos detalle para depurar
         details:
           error instanceof Error ? error.message : JSON.stringify(error),
       },
@@ -29,9 +60,25 @@ export async function GET(request: Request) {
 }
 
 // POST /api/certificates
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar permisos (EDITOR o superior puede crear)
+    await requireRole("EDITOR");
+
+    // 3. Validar entrada
     const body = await request.json();
+    const validation = validateCertificate(body);
+    
+    if (!validation.valid) {
+      return validationErrorResponse(validation.errors);
+    }
+
     const {
       fullName,
       courseName,
@@ -52,22 +99,6 @@ export async function POST(request: Request) {
       whatsappSent = false,
       marketingConsent = false,
     } = body;
-
-    const missingFields: string[] = [];
-    if (!fullName || !fullName.trim()) missingFields.push("Nombre completo");
-    if (!courseName || !courseName.trim())
-      missingFields.push("Nombre del curso");
-    if (!courseId || !courseId.trim()) missingFields.push("ID del curso");
-    if (!courseType || !courseType.trim())
-      missingFields.push("Tipo de curso");
-    if (!year) missingFields.push("Año");
-
-    if (missingFields.length > 0) {
-      return NextResponse.json(
-        { error: `Faltan campos requeridos: ${missingFields.join(", ")}` },
-        { status: 400 }
-      );
-    }
 
     let finalCourseId = courseId.trim();
     const courseIdPattern = /^(.+)-(\d{4})-(\d+)$/;
@@ -111,14 +142,14 @@ export async function POST(request: Request) {
     }
 
     const certificateData: Omit<Certificate, "id"> = {
-      fullName,
-      courseName,
+      fullName: fullName.trim(),
+      courseName: courseName.trim(),
       courseId: finalCourseId,
-      courseType,
-      year,
+      courseType: courseType.trim(),
+      year: Number(year),
       origin,
-      email,
-      phone,
+      email: email ? email.trim().toLowerCase() : null,
+      phone: phone ? phone.trim() : null,
       contactSource,
       driveFileId,
       deliveryStatus,
@@ -126,9 +157,9 @@ export async function POST(request: Request) {
       deliveredTo,
       physicalLocation,
       folioCode,
-      emailSent,
-      whatsappSent,
-      marketingConsent,
+      emailSent: Boolean(emailSent),
+      whatsappSent: Boolean(whatsappSent),
+      marketingConsent: Boolean(marketingConsent),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -137,9 +168,29 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { id: docRef.id, ...certificateData },
-      { status: 201 }
+      {
+        status: 201,
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
     );
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para crear certificados" },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error creating certificate:", error);
     return NextResponse.json(
       {

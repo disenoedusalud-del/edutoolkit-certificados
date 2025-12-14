@@ -14,6 +14,7 @@ export interface Certificate {
   contactSource: "ninguno" | "inscripcion" | "retiro_presencial";
 
   driveFileId: string | null;
+  driveWebViewLink?: string | null;
 
   deliveryStatus:
     | "en_archivo"

@@ -1,69 +1,129 @@
 // src/app/api/login/route.ts
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { adminAuth } from "@/lib/firebaseAdmin";
-import { getAdminRoleForEmail } from "@/lib/adminRoles";
+import { NextRequest, NextResponse } from "next/server";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 
-const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 5; // 5 días en segundos
+const COOKIE_NAME = "edutoolkit_session";
+// 5 días en segundos (para createSessionCookie)
+const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 5;
 
-export async function POST(req: Request) {
+/**
+ * Verifica si un email está autorizado para acceder al panel
+ * Verifica en:
+ * 1. Colección adminUsers en Firestore
+ * 2. MASTER_ADMIN_EMAILS (variable de entorno)
+ * 3. ALLOWED_ADMIN_EMAILS (variable de entorno, fallback)
+ */
+async function isAuthorizedEmail(email: string): Promise<boolean> {
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // 1. Verificar en adminUsers (Firestore)
+  const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
+  const userDoc = await adminDb.collection("adminUsers").doc(docId).get();
+  
+  if (userDoc.exists) {
+    return true; // El usuario está en la lista de adminUsers
+  }
+  
+  // 2. Verificar en MASTER_ADMIN_EMAILS
+  const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  if (masterEmails.includes(normalizedEmail)) {
+    return true;
+  }
+  
+  // 3. Verificar en ALLOWED_ADMIN_EMAILS (fallback para compatibilidad)
+  const allowedRaw = process.env.ALLOWED_ADMIN_EMAILS || "";
+  const allowed = allowedRaw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  return allowed.includes(normalizedEmail);
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
-    const idToken = body?.idToken as string | undefined;
+    // 1. Rate limiting estricto para login (prevenir fuerza bruta)
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.AUTH);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Validar entrada
+    const { idToken } = await request.json();
 
     if (!idToken) {
       return NextResponse.json(
-        { ok: false, error: "MISSING_TOKEN" },
-        { status: 400 },
+        { error: "Falta idToken en el cuerpo de la petición" },
+        { status: 400 }
       );
     }
 
+    // 3. Verificar el token del cliente (Firebase Auth en el navegador)
     const decoded = await adminAuth.verifyIdToken(idToken);
-    if (!decoded?.uid) {
+
+    const userEmail = decoded.email?.toLowerCase();
+
+    if (!userEmail) {
       return NextResponse.json(
-        { ok: false, error: "INVALID_TOKEN" },
-        { status: 401 },
+        { error: "No se pudo obtener el correo del usuario" },
+        { status: 400 }
       );
     }
 
-    const email = decoded.email;
-    if (!email) {
+    // 4. Verificar si el email está autorizado (misma lógica que registro)
+    const isAuthorized = await isAuthorizedEmail(userEmail);
+
+    if (!isAuthorized) {
+      console.warn(
+        "[LOGIN] Intento de acceso con correo no autorizado:",
+        userEmail
+      );
       return NextResponse.json(
-        { ok: false, error: "NO_EMAIL" },
-        { status: 400 },
+        { error: "Este correo no tiene permisos para acceder al panel. Contacta a un administrador para que te agregue a la lista de usuarios permitidos." },
+        { status: 403 }
       );
     }
 
-    // Obtener rol (super_admin, admin, editor, viewer) o null
-    const role = await getAdminRoleForEmail(email);
-
-    if (!role) {
-      return NextResponse.json(
-        { ok: false, error: "NO_PERMISSIONS" },
-        { status: 403 },
-      );
-    }
-
+    // 3) Crear cookie de sesión con Firebase Admin
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn: SESSION_EXPIRES_IN_SECONDS,
     });
 
-    const cookieStore = await cookies();
-    cookieStore.set({
-      name: "session",
+    const response = NextResponse.json(
+      { success: true },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
+
+    response.cookies.set({
+      name: COOKIE_NAME,
       value: sessionCookie,
+      maxAge: SESSION_EXPIRES_IN_SECONDS,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       path: "/",
-      maxAge: SESSION_EXPIRES_IN_SECONDS,
     });
 
-    return NextResponse.json({ ok: true, role, email });
-  } catch (err) {
-    console.error("[API /login] error:", err);
+    return response;
+  } catch (error: any) {
+    console.error("[LOGIN][POST] Error creando sesión:", error);
     return NextResponse.json(
-      { ok: false, error: "SERVER_ERROR" },
-      { status: 500 },
+      {
+        error: "No se pudo crear la sesión",
+        details: error?.message ?? String(error),
+      },
+      { status: 401 }
     );
   }
 }
+
+

@@ -5,7 +5,7 @@ import { Course } from "@/types/Course";
 import CourseModal from "@/components/CourseModal";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "@/components/LoadingSpinner";
-import { Pencil, Archive, Plus, CheckCircle, XCircle, ArrowLeft } from "phosphor-react";
+import { Pencil, Archive, Plus, CheckCircle, XCircle, ArrowLeft, Trash } from "phosphor-react";
 import Link from "next/link";
 
 export default function CoursesPage() {
@@ -14,16 +14,19 @@ export default function CoursesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const loadCourses = async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/courses");
       const data = await res.json();
-      setCourses(data);
+      // Asegurar que siempre sea un array
+      setCourses(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error loading courses:", error);
       toast.error("Error al cargar los cursos");
+      setCourses([]); // Asegurar que sea un array vacío en caso de error
     } finally {
       setLoading(false);
     }
@@ -31,12 +34,27 @@ export default function CoursesPage() {
 
   useEffect(() => {
     loadCourses();
+    loadUserRole();
   }, []);
 
-  const filteredCourses = courses.filter((course) => {
-    if (filter === "all") return true;
-    return course.status === filter;
-  });
+  const loadUserRole = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setUserRole(data.role || null);
+      }
+    } catch (error) {
+      console.error("Error loading user role:", error);
+    }
+  };
+
+  const filteredCourses = Array.isArray(courses)
+    ? courses.filter((course) => {
+        if (filter === "all") return true;
+        return course.status === filter;
+      })
+    : [];
 
   const handleEdit = (course: Course) => {
     setEditingCourse(course);
@@ -88,6 +106,60 @@ export default function CoursesPage() {
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error al restaurar el curso");
+    }
+  };
+
+  const handleDelete = async (course: Course) => {
+    try {
+      // Obtener conteo de certificados
+      const courseRes = await fetch(`/api/courses/${course.id}?includeCertificateCount=true`);
+      let certificateCount = 0;
+      
+      if (courseRes.ok) {
+        const courseData = await courseRes.json();
+        certificateCount = courseData.certificateCount || 0;
+      }
+
+      // Mostrar advertencia
+      const message = certificateCount > 0
+        ? `¿Estás seguro de ELIMINAR el curso "${course.name}"?\n\n⚠️ ADVERTENCIA: Se eliminarán ${certificateCount} certificado(s) asociado(s) a este curso. Esta acción NO se puede deshacer.`
+        : `¿Estás seguro de ELIMINAR el curso "${course.name}"?\n\nEsta acción NO se puede deshacer.`;
+
+      if (!confirm(message)) {
+        return;
+      }
+
+      // Confirmación adicional si hay certificados
+      if (certificateCount > 0) {
+        const secondConfirm = confirm(
+          `ÚLTIMA CONFIRMACIÓN:\n\nSe eliminarán ${certificateCount} certificado(s) permanentemente.\n\n¿Estás completamente seguro?`
+        );
+        if (!secondConfirm) {
+          return;
+        }
+      }
+
+      const response = await fetch(`/api/courses/${course.id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const deletedCount = data.deletedCertificates || 0;
+        
+        if (deletedCount > 0) {
+          toast.success(`Curso eliminado. ${deletedCount} certificado(s) también fueron eliminados.`);
+        } else {
+          toast.success("Curso eliminado correctamente");
+        }
+        await loadCourses();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Error al eliminar el curso");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al eliminar el curso");
     }
   };
 
@@ -148,7 +220,7 @@ export default function CoursesPage() {
               : "bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
-          Todos ({courses.length})
+          Todos ({Array.isArray(courses) ? courses.length : 0})
         </button>
         <button
           onClick={() => setFilter("active")}
@@ -158,7 +230,7 @@ export default function CoursesPage() {
               : "bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
-          Activos ({courses.filter((c) => c.status === "active").length})
+          Activos ({Array.isArray(courses) ? courses.filter((c) => c.status === "active").length : 0})
         </button>
         <button
           onClick={() => setFilter("archived")}
@@ -168,7 +240,7 @@ export default function CoursesPage() {
               : "bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
-          Archivados ({courses.filter((c) => c.status === "archived").length})
+          Archivados ({Array.isArray(courses) ? courses.filter((c) => c.status === "archived").length : 0})
         </button>
       </div>
 
@@ -252,6 +324,15 @@ export default function CoursesPage() {
                           title="Restaurar curso"
                         >
                           <CheckCircle size={18} weight="bold" />
+                        </button>
+                      )}
+                      {userRole === "MASTER_ADMIN" && (
+                        <button
+                          onClick={() => handleDelete(course)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar curso permanentemente"
+                        >
+                          <Trash size={18} weight="bold" />
                         </button>
                       )}
                     </div>

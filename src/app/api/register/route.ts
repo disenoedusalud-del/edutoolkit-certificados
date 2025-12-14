@@ -1,48 +1,65 @@
 // src/app/api/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebaseAdmin";
+import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
 /**
- * Lee la lista de correos permitidos desde ALLOWED_ADMIN_EMAILS
- * Formato: "correo1@unah.edu.hn,correo2@unah.edu.hn"
+ * Verifica si un email está autorizado para crear cuenta
+ * Verifica en:
+ * 1. Colección adminUsers en Firestore
+ * 2. MASTER_ADMIN_EMAILS (variable de entorno)
+ * 3. ALLOWED_ADMIN_EMAILS (variable de entorno, fallback)
  */
-function isAllowedEmail(email: string): boolean {
-  const raw = process.env.ALLOWED_ADMIN_EMAILS || "";
-  const allowed = raw
+async function isAllowedEmail(email: string): Promise<boolean> {
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // 1. Verificar en adminUsers (Firestore)
+  const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
+  const userDoc = await adminDb.collection("adminUsers").doc(docId).get();
+  
+  if (userDoc.exists) {
+    return true; // El usuario está en la lista de adminUsers
+  }
+  
+  // 2. Verificar en MASTER_ADMIN_EMAILS
+  const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-
-  return allowed.includes(email.toLowerCase());
+  
+  if (masterEmails.includes(normalizedEmail)) {
+    return true;
+  }
+  
+  // 3. Verificar en ALLOWED_ADMIN_EMAILS (fallback para compatibilidad)
+  const allowedRaw = process.env.ALLOWED_ADMIN_EMAILS || "";
+  const allowed = allowedRaw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  return allowed.includes(normalizedEmail);
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
 
-    // 🔹 SOLO validamos correo + contraseña
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Correo y contraseña son obligatorios." },
-        { status: 400 }
+        { error: "Correo y contraseña son obligatorios" },
+        { status: 400 },
       );
     }
 
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: "La contraseña debe tener al menos 6 caracteres." },
-        { status: 400 }
-      );
-    }
-
-    // Verificar si el correo está autorizado (env var o lo que tenga configurado)
-    if (!isAllowedEmail(email)) {
+    const isAllowed = await isAllowedEmail(email);
+    
+    if (!isAllowed) {
       return NextResponse.json(
         {
           error:
-            "Este correo no está autorizado. Solicite acceso al departamento de comunicaciones.",
+            "Este correo no está autorizado. Contacta a un administrador para que te agregue a la lista de usuarios permitidos.",
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -55,7 +72,7 @@ export async function POST(req: NextRequest) {
             error:
               "Ya existe una cuenta con este correo. Use 'Iniciar sesión' o pida restablecer contraseña.",
           },
-          { status: 409 }
+          { status: 409 },
         );
       }
     } catch (err: any) {
@@ -63,8 +80,8 @@ export async function POST(req: NextRequest) {
       if (err?.code !== "auth/user-not-found") {
         console.error("[REGISTER] Error comprobando usuario:", err);
         return NextResponse.json(
-          { error: "Error interno al verificar el usuario." },
-          { status: 500 }
+          { error: "Error interno al verificar el usuario" },
+          { status: 500 },
         );
       }
     }
@@ -82,10 +99,10 @@ export async function POST(req: NextRequest) {
     console.error("[REGISTER] Error:", error);
     return NextResponse.json(
       {
-        error: "No se pudo crear la cuenta.",
+        error: "No se pudo crear la cuenta",
         details: error?.message ?? String(error),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

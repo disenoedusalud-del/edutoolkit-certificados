@@ -1,12 +1,24 @@
 import { adminDb } from "@/lib/firebaseAdmin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Course } from "@/types/Course";
+import { requireRole } from "@/lib/auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar autenticación (VIEWER puede leer)
+    await requireRole("VIEWER");
+
+    // 3. Obtener curso
     const { id } = await params;
     const doc = await adminDb.collection("courses").doc(id).get();
 
@@ -17,9 +29,50 @@ export async function GET(
       );
     }
 
-    const data = { id: doc.id, ...doc.data() };
-    return NextResponse.json(data);
+    // 4. Contar certificados asociados (si se solicita)
+    const { searchParams } = new URL(request.url);
+    const includeCertificateCount = searchParams.get("includeCertificateCount") === "true";
+
+    let certificateCount = 0;
+    if (includeCertificateCount) {
+      const certificatesSnapshot = await adminDb
+        .collection("certificates")
+        .get();
+      
+      certificateCount = certificatesSnapshot.docs.filter((certDoc) => {
+        const certData = certDoc.data();
+        const certCourseId = certData.courseId || "";
+        return certCourseId.startsWith(id + "-");
+      }).length;
+    }
+
+    const data = { 
+      id: doc.id, 
+      ...doc.data(),
+      ...(includeCertificateCount && { certificateCount })
+    };
+    
+    return NextResponse.json(data, {
+      headers: {
+        "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+      },
+    });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para realizar esta acción" },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error fetching course:", error);
     return NextResponse.json(
       { error: "Error al obtener el curso" },
@@ -29,13 +82,23 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar permisos (ADMIN o superior puede editar cursos)
+    await requireRole("ADMIN");
+
+    // 3. Obtener datos
     const { id: oldId } = await params;
     const body = await request.json();
-    const { name, courseType, edition, status, newId } = body;
+    const { name, courseType, year, edition, origin, status, newId } = body;
 
     // Verificar que el curso existe
     const oldDoc = await adminDb.collection("courses").doc(oldId).get();
@@ -78,7 +141,9 @@ export async function PUT(
         id: newId,
         name: name || oldDoc.data()?.name,
         courseType: courseType || oldDoc.data()?.courseType || "Curso",
+        year: year !== undefined ? parseInt(year.toString()) : (oldDoc.data()?.year || new Date().getFullYear()),
         edition: edition !== undefined ? (edition ? parseInt(edition.toString()) : null) : (oldDoc.data()?.edition || null),
+        origin: origin !== undefined ? origin : (oldDoc.data()?.origin || "nuevo"),
         status: status || oldDoc.data()?.status || "active",
         createdAt: oldDoc.data()?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -90,9 +155,13 @@ export async function PUT(
       // Eliminar el documento antiguo
       await adminDb.collection("courses").doc(oldId).delete();
 
-      return NextResponse.json(courseData);
+      return NextResponse.json(courseData, {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      });
     } else {
-      // Solo actualizar nombre, tipo y/o estado
+      // Solo actualizar nombre, tipo, año, origen y/o estado
       if (name !== undefined) {
         updateData.name = name.trim();
       }
@@ -106,8 +175,20 @@ export async function PUT(
         }
         updateData.courseType = courseType as Course["courseType"];
       }
+      if (year !== undefined) {
+        updateData.year = parseInt(year.toString());
+      }
       if (edition !== undefined) {
         updateData.edition = edition ? parseInt(edition.toString()) : null;
+      }
+      if (origin !== undefined) {
+        if (origin !== "historico" && origin !== "nuevo") {
+          return NextResponse.json(
+            { error: "El origen debe ser 'historico' o 'nuevo'" },
+            { status: 400 }
+          );
+        }
+        updateData.origin = origin as Course["origin"];
       }
       if (status !== undefined) {
         if (status !== "active" && status !== "archived") {
@@ -124,9 +205,28 @@ export async function PUT(
       const updatedDoc = await adminDb.collection("courses").doc(oldId).get();
       const data = { id: updatedDoc.id, ...updatedDoc.data() };
 
-      return NextResponse.json(data);
+      return NextResponse.json(data, {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      });
     }
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para editar cursos" },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error updating course:", error);
     return NextResponse.json(
       { error: "Error al actualizar el curso" },
@@ -136,10 +236,20 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // 1. Rate limiting
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    // 2. Verificar permisos (MASTER_ADMIN puede eliminar cursos)
+    await requireRole("MASTER_ADMIN");
+
+    // 3. Obtener curso
     const { id } = await params;
     const doc = await adminDb.collection("courses").doc(id).get();
 
@@ -150,17 +260,71 @@ export async function DELETE(
       );
     }
 
-    // En lugar de eliminar, archivar el curso
-    await adminDb.collection("courses").doc(id).update({
-      status: "archived",
-      updatedAt: new Date().toISOString(),
+    // 4. Contar certificados asociados al curso
+    // El courseId de los certificados tiene formato "CODIGO-AÑO-NUMERO" (ej: "LM-2025-01")
+    // Buscamos todos los certificados que empiecen con el código del curso
+    const certificatesSnapshot = await adminDb
+      .collection("certificates")
+      .get();
+
+    const associatedCertificates = certificatesSnapshot.docs.filter((certDoc) => {
+      const certData = certDoc.data();
+      const certCourseId = certData.courseId || "";
+      // Verificar si el courseId del certificado empieza con el código del curso
+      return certCourseId.startsWith(id + "-");
     });
 
-    return NextResponse.json({ success: true, message: "Curso archivado" });
+    const certificateCount = associatedCertificates.length;
+
+    // 5. Eliminar todos los certificados asociados
+    if (certificateCount > 0) {
+      console.log(`[DELETE-COURSE] Eliminando ${certificateCount} certificados asociados al curso ${id}`);
+      
+      const batch = adminDb.batch();
+      associatedCertificates.forEach((certDoc) => {
+        batch.delete(certDoc.ref);
+      });
+      await batch.commit();
+      
+      console.log(`[DELETE-COURSE] ✅ ${certificateCount} certificados eliminados`);
+    }
+
+    // 6. Eliminar el curso
+    await adminDb.collection("courses").doc(id).delete();
+
+    console.log(`[DELETE-COURSE] ✅ Curso ${id} eliminado`);
+
+    return NextResponse.json(
+      { 
+        success: true, 
+        message: "Curso eliminado correctamente",
+        deletedCertificates: certificateCount
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para eliminar cursos. Solo MASTER_ADMIN puede eliminar cursos." },
+          { status: 403 }
+        );
+      }
+    }
+
     console.error("Error deleting course:", error);
     return NextResponse.json(
-      { error: "Error al archivar el curso" },
+      { error: "Error al eliminar el curso" },
       { status: 500 }
     );
   }

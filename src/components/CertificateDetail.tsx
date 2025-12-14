@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Certificate } from "@/types/Certificate";
 import Link from "next/link";
 import CertificateForm from "./CertificateForm";
-import { Check, X, Trash, Copy, ArrowLeft } from "phosphor-react";
+import { Check, X, Trash, Copy, ArrowLeft, Upload, File } from "phosphor-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
@@ -18,6 +18,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
   const loadCertificate = async () => {
@@ -380,41 +381,101 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                 </p>
               </div>
             </div>
-            {certificate.driveFileId ? (
+            <div>
+              <label className="text-xs text-slate-500 uppercase mb-2 block">
+                Archivo en Google Drive
+              </label>
+              {certificate.driveFileId ? (
+                <>
+                  <div className="flex gap-2 mb-2">
+                    <a
+                      href={certificate.driveWebViewLink || `https://drive.google.com/file/d/${certificate.driveFileId}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors flex items-center gap-1"
+                    >
+                      <File size={14} weight="bold" />
+                      Ver en Drive
+                    </a>
+                    <a
+                      href={`https://drive.google.com/uc?export=download&id=${certificate.driveFileId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300 transition-colors"
+                    >
+                      Descargar
+                    </a>
+                  </div>
+                  <p className="text-slate-500 text-xs mt-1 font-mono break-all mb-2">
+                    ID: {certificate.driveFileId}
+                  </p>
+                </>
+              ) : (
+                <p className="text-slate-400 text-xs mb-2">No hay archivo asociado</p>
+              )}
               <div>
-                <label className="text-xs text-slate-500 uppercase mb-2 block">
-                  Archivo en Google Drive
+                <label
+                  htmlFor={`file-upload-${id}`}
+                  className={`px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors inline-flex items-center gap-1 cursor-pointer ${
+                    uploading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <Upload size={14} weight="bold" />
+                  {uploading ? "Subiendo..." : certificate.driveFileId ? "Reemplazar PDF" : "Subir PDF"}
                 </label>
-                <div className="flex gap-2">
-                  <a
-                    href={`https://drive.google.com/file/d/${certificate.driveFileId}/view`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-                  >
-                    Ver en Drive
-                  </a>
-                  <a
-                    href={`https://drive.google.com/uc?export=download&id=${certificate.driveFileId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300 transition-colors"
-                  >
-                    Descargar
-                  </a>
-                </div>
-                <p className="text-slate-500 text-xs mt-1 font-mono break-all">
-                  ID: {certificate.driveFileId}
+                <input
+                  id={`file-upload-${id}`}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    if (file.type !== "application/pdf") {
+                      toast.error("El archivo debe ser un PDF");
+                      return;
+                    }
+
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error("El archivo es demasiado grande. Máximo 10MB");
+                      return;
+                    }
+
+                    setUploading(true);
+                    try {
+                      const formData = new FormData();
+                      formData.append("file", file);
+
+                      const response = await fetch(`/api/certificates/${id}/upload`, {
+                        method: "POST",
+                        body: formData,
+                      });
+
+                      const data = await response.json();
+
+                      if (response.ok && data.ok !== false) {
+                        toast.success("PDF subido exitosamente a Google Drive");
+                        await loadCertificate(); // Recargar el certificado
+                      } else {
+                        toast.error(data.error || "Error al subir el archivo");
+                      }
+                    } catch (err) {
+                      console.error("Error uploading file:", err);
+                      toast.error("Error al subir el archivo");
+                    } finally {
+                      setUploading(false);
+                      // Limpiar el input
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                <p className="text-slate-400 text-xs mt-1">
+                  Solo archivos PDF, máximo 10MB
                 </p>
               </div>
-            ) : (
-              <div>
-                <label className="text-xs text-slate-500 uppercase mb-2 block">
-                  Archivo en Google Drive
-                </label>
-                <p className="text-slate-400 text-xs">No hay archivo asociado</p>
-              </div>
-            )}
+            </div>
             {certificate.createdAt && (
               <div>
                 <label className="text-xs text-slate-500 uppercase">Fecha de Creación</label>

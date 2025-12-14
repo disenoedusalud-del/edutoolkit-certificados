@@ -23,7 +23,9 @@ export default function CourseModal({
     name: course?.name || "",
     id: course?.id || "",
     courseType: course?.courseType || "Curso",
+    year: course?.year || new Date().getFullYear(),
     edition: course?.edition || null,
+    origin: course?.origin || "nuevo",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -34,7 +36,9 @@ export default function CourseModal({
         name: course.name,
         id: course.id,
         courseType: course.courseType || "Curso",
+        year: course.year || new Date().getFullYear(),
         edition: course.edition || null,
+        origin: course.origin || "nuevo",
       });
     } else {
       // Modo creación: limpiar formulario
@@ -42,7 +46,9 @@ export default function CourseModal({
         name: "",
         id: "",
         courseType: "Curso",
+        year: new Date().getFullYear(),
         edition: null,
+        origin: "nuevo",
       });
     }
     setError(null);
@@ -92,7 +98,9 @@ export default function CourseModal({
       const payload: any = {
         name: formData.name.trim(),
         courseType: formData.courseType,
+        year: formData.year,
         edition: formData.edition || null,
+        origin: formData.origin,
       };
 
       // Si es un curso nuevo, incluir id
@@ -262,6 +270,27 @@ export default function CourseModal({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
+              Año <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              required
+              min="2000"
+              max={new Date().getFullYear() + 1}
+              value={formData.year}
+              onChange={(e) => {
+                setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() });
+              }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Ej: 2025"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Año del curso. Se usará para generar los IDs de los certificados.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
               Edición (opcional)
             </label>
             <input
@@ -277,6 +306,26 @@ export default function CourseModal({
             />
             <p className="text-xs text-slate-500 mt-1">
               Número de edición del curso (opcional). Ej: 1 para primera edición, 2 para segunda, etc.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Origen <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={formData.origin}
+              onChange={(e) => {
+                setFormData({ ...formData, origin: e.target.value as "historico" | "nuevo" });
+              }}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="nuevo">Nuevo</option>
+              <option value="historico">Histórico</option>
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              Indica si el curso es nuevo o histórico. Los certificados heredarán este origen.
             </p>
           </div>
 
