@@ -61,6 +61,9 @@ function getAdmin(): App {
     const clientEmail = sa.client_email || sa.clientEmail;
     const privateKey = normalizePrivateKey(sa.private_key || sa.privateKey || "");
 
+    // ✅ LOG CLAVE: confirma qué Service Account está usando Vercel
+    console.log("[FIREBASE-ADMIN] sa email:", clientEmail);
+
     const pkLooksOk =
       privateKey.includes("-----BEGIN PRIVATE KEY-----") &&
       privateKey.includes("-----END PRIVATE KEY-----");
@@ -94,6 +97,9 @@ function getAdmin(): App {
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
   const privateKey = normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY || "");
+
+  // ✅ LOG CLAVE también en fallback
+  console.log("[FIREBASE-ADMIN] sa email:", clientEmail);
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(
