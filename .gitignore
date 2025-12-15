@@ -42,3 +42,7 @@ next-env.d.ts
 
 .vercel
 .env*.local
+service-account.json
+b64.txt
+service-account.json
+b64.txt
