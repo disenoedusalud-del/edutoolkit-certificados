@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 
+export const runtime = "nodejs";
+
+
 const COOKIE_NAME = "edutoolkit_session";
 // 5 días en segundos (para createSessionCookie)
 const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 5;
