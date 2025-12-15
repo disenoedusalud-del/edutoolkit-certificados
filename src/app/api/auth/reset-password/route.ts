@@ -4,6 +4,8 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 import { validateEmail } from "@/lib/validation";
 import { sendPasswordResetEmail } from "@/lib/email";
+export const runtime = "nodejs";
+
 
 /**
  * Verifica si un email está autorizado (misma lógica que login/register)

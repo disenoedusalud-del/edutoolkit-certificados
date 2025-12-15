@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 import { validateEmail } from "@/lib/validation";
 import type { UserRole } from "@/lib/auth";
+export const runtime = "nodejs";
 
 // GET /api/admin-users - Listar todos los usuarios admin
 export async function GET(request: NextRequest) {

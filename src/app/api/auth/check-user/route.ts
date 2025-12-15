@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 
+export const runtime = "nodejs";
+
 /**
  * Endpoint para verificar si un usuario existe en Firebase Auth
  * Útil para distinguir entre "usuario no existe" y "contraseña incorrecta"

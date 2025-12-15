@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 
+export const runtime = "nodejs";
+
+
 /**
  * Verifica si un email está autorizado para crear cuenta
  * Verifica en:
