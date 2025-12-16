@@ -6,6 +6,28 @@ Este documento lista todas las variables de entorno necesarias para el deploy en
 
 Configuración del Service Account de Firebase Admin para autenticación y acceso a Firestore.
 
+### Opción A: Base64 (RECOMENDADO) ⭐
+
+**Usa esta opción para evitar problemas con formato de claves privadas:**
+
+```
+FIREBASE_ADMIN_SA_BASE64=[JSON completo del Service Account en base64]
+```
+
+**Cómo obtener el base64:**
+1. Toma el JSON completo del Service Account de Firebase
+2. Conviértelo a base64 (puedes usar herramientas online o comandos)
+3. Pega el valor completo en Vercel
+
+**Ventajas:**
+- Evita problemas con saltos de línea y comillas
+- Más fácil de configurar
+- El código normaliza automáticamente el formato
+
+### Opción B: Variables Individuales (Fallback)
+
+Si prefieres usar variables individuales:
+
 ```
 FIREBASE_ADMIN_PROJECT_ID=tu-project-id
 FIREBASE_ADMIN_CLIENT_EMAIL=tu-service-account@tu-project.iam.gserviceaccount.com
@@ -13,6 +35,8 @@ FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE K
 ```
 
 **Nota:** El `FIREBASE_ADMIN_PRIVATE_KEY` debe incluir los `\n` literales (no saltos de línea reales). Copia el JSON completo del Service Account y extrae el `private_key` tal cual.
+
+**⚠️ Importante:** El código intentará usar `FIREBASE_ADMIN_SA_BASE64` primero. Si no está configurada, usará las variables individuales como fallback.
 
 ---
 
@@ -152,10 +176,17 @@ Las cookies de sesión se configuran automáticamente con:
 
 ## 🐛 Troubleshooting
 
-### Error: "FIREBASE_ADMIN_PRIVATE_KEY no está configurado"
+### Error: "FIREBASE_ADMIN_SA_BASE64 inválido" o "FIREBASE_ADMIN_PRIVATE_KEY no está configurado"
 
+**Si usas FIREBASE_ADMIN_SA_BASE64:**
+- Verifica que el base64 esté completo y bien formateado
+- Asegúrate de que el JSON original sea válido
+- Revisa los logs para ver qué campo específico falta
+
+**Si usas variables individuales:**
 - Verifica que el `FIREBASE_ADMIN_PRIVATE_KEY` tenga los `\n` literales (no saltos de línea reales).
 - Copia el valor exacto del JSON del Service Account.
+- Verifica que `FIREBASE_ADMIN_PROJECT_ID` y `FIREBASE_ADMIN_CLIENT_EMAIL` estén configurados.
 
 ### Error: "APPS_SCRIPT_UPLOAD_TOKEN no está configurado"
 
@@ -186,7 +217,7 @@ Las cookies de sesión se configuran automáticamente con:
 
 | Categoría | Variables | Requeridas |
 |-----------|-----------|------------|
-| Firebase Admin | `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` | ✅ Sí |
+| Firebase Admin | `FIREBASE_ADMIN_SA_BASE64` (recomendado) **O** `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` | ✅ Sí (una opción) |
 | Firebase Client | `NEXT_PUBLIC_FIREBASE_*` (7 variables) | ✅ Sí |
 | Autenticación | `MASTER_ADMIN_EMAILS`, `ALLOWED_ADMIN_EMAILS` | ✅ Sí |
 | EmailJS | `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY` | ✅ Sí |
