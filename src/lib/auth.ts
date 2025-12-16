@@ -32,7 +32,15 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     }
 
     // Obtener el rol del usuario desde Firestore
-    const docId = decoded.email.toLowerCase().replace(/[.#$/[\]]/g, "_");
+    const userEmail = decoded.email.toLowerCase();
+    const docId = userEmail.replace(/[.#$/[\]]/g, "_");
+    
+    console.log("[AUTH][getCurrentUser] Buscando usuario:", {
+      email: decoded.email,
+      normalizedEmail: userEmail,
+      docId: docId,
+    });
+    
     const userDoc = await adminDb
       .collection("adminUsers")
       .doc(docId)
@@ -43,15 +51,28 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     if (userDoc.exists) {
       const userData = userDoc.data();
       role = (userData?.role as UserRole) || "VIEWER";
+      console.log("[AUTH][getCurrentUser] Usuario encontrado en Firestore:", {
+        docId,
+        email: userData?.email,
+        role: userData?.role,
+        roleAsignado: role,
+      });
     } else {
+      console.log("[AUTH][getCurrentUser] Usuario NO encontrado en Firestore, verificando MASTER_ADMIN_EMAILS");
       // Si no existe en adminUsers, verificar si es MASTER_ADMIN desde env
       const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
         .split(",")
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
       
-      if (masterEmails.includes(decoded.email.toLowerCase())) {
+      console.log("[AUTH][getCurrentUser] MASTER_ADMIN_EMAILS:", masterEmails);
+      console.log("[AUTH][getCurrentUser] ¿Es MASTER_ADMIN?:", masterEmails.includes(userEmail));
+      
+      if (masterEmails.includes(userEmail)) {
         role = "MASTER_ADMIN";
+        console.log("[AUTH][getCurrentUser] ✅ Rol asignado: MASTER_ADMIN (desde env)");
+      } else {
+        console.log("[AUTH][getCurrentUser] ⚠️ Usuario no encontrado, usando rol por defecto: VIEWER");
       }
     }
 
