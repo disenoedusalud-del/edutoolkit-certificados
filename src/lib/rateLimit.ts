@@ -14,10 +14,15 @@ const requestCounts = new Map<string, { count: number; resetTime: number }>();
  */
 function cleanExpiredEntries() {
   const now = Date.now();
+  let deleted = 0;
   for (const [key, value] of requestCounts.entries()) {
     if (now > value.resetTime) {
       requestCounts.delete(key);
+      deleted++;
     }
+  }
+  if (deleted > 0) {
+    console.log(`[RATE-LIMIT] Limpiadas ${deleted} entradas expiradas`);
   }
 }
 
@@ -53,9 +58,9 @@ export async function rateLimit(
 ): Promise<{ success: boolean; remaining: number; resetTime: number }> {
   const { maxRequests, windowMs } = config;
   
-  // Limpiar entradas expiradas periódicamente
-  if (Math.random() < 0.1) {
-    // 10% de probabilidad de limpiar (para no hacerlo en cada request)
+  // Limpiar entradas expiradas más agresivamente
+  // Limpiar siempre si hay más de 100 entradas o con 20% de probabilidad
+  if (requestCounts.size > 100 || Math.random() < 0.2) {
     cleanExpiredEntries();
   }
 
@@ -64,6 +69,11 @@ export async function rateLimit(
   const key = `rate_limit:${clientIP}`;
   
   const current = requestCounts.get(key);
+
+  // Si la entrada existe pero está expirada, eliminarla y crear una nueva
+  if (current && now > current.resetTime) {
+    requestCounts.delete(key);
+  }
 
   if (!current || now > current.resetTime) {
     // Primera request o ventana expirada
@@ -81,6 +91,8 @@ export async function rateLimit(
 
   if (current.count >= maxRequests) {
     // Límite excedido
+    const resetSeconds = Math.ceil((current.resetTime - now) / 1000);
+    console.warn(`[RATE-LIMIT] Límite excedido para IP ${clientIP}. Reset en ${resetSeconds}s`);
     return {
       success: false,
       remaining: 0,
@@ -124,10 +136,10 @@ export function rateLimitResponse(resetTime: number): NextResponse {
  * Configuraciones predefinidas de rate limiting
  */
 export const RATE_LIMITS = {
-  // Límites estrictos para autenticación
-  // 10 intentos cada 15 minutos - balance entre seguridad y usabilidad
+  // Límites para autenticación
+  // 20 intentos cada 15 minutos - más permisivo para evitar bloqueos accidentales
   AUTH: {
-    maxRequests: 10,
+    maxRequests: 20,
     windowMs: 15 * 60 * 1000, // 15 minutos
   },
   // Límites normales para APIs
@@ -141,4 +153,25 @@ export const RATE_LIMITS = {
     windowMs: 60 * 1000, // 1 minuto
   },
 } as const;
+
+/**
+ * Resetea el rate limit para una IP específica (útil para debugging)
+ * Solo debe usarse en desarrollo o por MASTER_ADMIN
+ */
+export function resetRateLimitForIP(ip: string): boolean {
+  const key = `rate_limit:${ip}`;
+  const existed = requestCounts.has(key);
+  requestCounts.delete(key);
+  return existed;
+}
+
+/**
+ * Resetea todos los rate limits (útil para debugging)
+ * Solo debe usarse en desarrollo
+ */
+export function resetAllRateLimits(): number {
+  const count = requestCounts.size;
+  requestCounts.clear();
+  return count;
+}
 

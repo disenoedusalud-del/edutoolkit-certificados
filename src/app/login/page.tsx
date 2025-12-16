@@ -54,6 +54,14 @@ export default function LoginPage() {
       const dataLogin = await resLogin.json().catch(() => null);
 
       if (!resLogin.ok) {
+        // Manejo especial para rate limiting (429)
+        if (resLogin.status === 429) {
+          const retryAfter = dataLogin?.retryAfter || 0;
+          const minutes = Math.ceil(retryAfter / 60);
+          throw new Error(
+            `Demasiadas solicitudes. Intenta de nuevo en ${minutes} minuto${minutes !== 1 ? 's' : ''}. Si eres MASTER_ADMIN, contacta al administrador para resetear el rate limit.`
+          );
+        }
         throw new Error(
           dataLogin?.error ?? "No se pudo crear la sesión de administrador",
         );

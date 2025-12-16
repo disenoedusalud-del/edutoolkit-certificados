@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
-import { ChartBar, Plus, BookOpen, ArrowLeft, Shield } from "phosphor-react";
+import { ChartBar, Plus, BookOpen, ArrowLeft, Shield, Refresh } from "phosphor-react";
 import Link from "next/link";
 
 function AdminRolesButton() {
@@ -38,6 +38,37 @@ function AdminRolesButton() {
   );
 }
 
+function RateLimitDebugButton() {
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.role) {
+          setUserRole(data.role);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || userRole !== "MASTER_ADMIN") {
+    return null;
+  }
+
+  return (
+    <Link
+      href="/admin/debug/rate-limit"
+      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
+    >
+      <Refresh size={18} weight="bold" />
+      Debug Rate Limit
+    </Link>
+  );
+}
+
 export default function Page() {
   const [showForm, setShowForm] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -51,6 +82,7 @@ export default function Page() {
         {!showForm && (
           <div className="flex gap-2">
             <AdminRolesButton />
+            <RateLimitDebugButton />
             <Link
               href="/admin/cursos"
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"

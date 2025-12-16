@@ -145,18 +145,43 @@ export async function POST(request: NextRequest) {
 // DELETE /api/admin-users - Eliminar usuario admin
 export async function DELETE(request: NextRequest) {
   try {
+    console.log("[DELETE-USER] Iniciando eliminación de usuario...");
+    
     // 1. Rate limiting
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
     if (!rateLimitResult.success) {
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    // 2. Solo MASTER_ADMIN puede eliminar usuarios
-    await requireRole("MASTER_ADMIN");
+    // 2. Verificar autenticación y rol ANTES de obtener el email
+    let currentUser;
+    try {
+      currentUser = await requireRole("MASTER_ADMIN");
+      console.log("[DELETE-USER] ✅ Usuario autenticado como:", {
+        email: currentUser.email,
+        role: currentUser.role,
+      });
+    } catch (authError) {
+      console.error("[DELETE-USER] ❌ Error de autenticación/autorización:", authError);
+      if (authError instanceof Error) {
+        if (authError.message === "UNAUTHORIZED") {
+          return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+        }
+        if (authError.message === "FORBIDDEN") {
+          return NextResponse.json(
+            { error: "Solo MASTER_ADMIN puede eliminar usuarios" },
+            { status: 403 }
+          );
+        }
+      }
+      throw authError;
+    }
 
     // 3. Obtener email del query
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email");
+
+    console.log("[DELETE-USER] Email recibido del query:", email);
 
     if (!email) {
       return NextResponse.json(
@@ -168,7 +193,68 @@ export async function DELETE(request: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim();
     const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
 
-    await adminDb.collection("adminUsers").doc(docId).delete();
+    console.log("[DELETE-USER] Normalización:", {
+      original: email,
+      normalized: normalizedEmail,
+      docId: docId,
+    });
+
+    // Prevenir eliminar usuarios que están en MASTER_ADMIN_EMAILS
+    const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    
+    if (masterEmails.includes(normalizedEmail)) {
+      console.log("[DELETE-USER] ⚠️ Intento de eliminar usuario MASTER_ADMIN:", normalizedEmail);
+      return NextResponse.json(
+        { 
+          error: "No se puede eliminar un usuario que está en MASTER_ADMIN_EMAILS. Remueve el email de la variable de entorno primero." 
+        },
+        { status: 403 }
+      );
+    }
+
+    // Prevenir que un usuario se elimine a sí mismo
+    if (currentUser.email.toLowerCase() === normalizedEmail) {
+      console.log("[DELETE-USER] ⚠️ Intento de auto-eliminación:", normalizedEmail);
+      return NextResponse.json(
+        { error: "No puedes eliminar tu propio usuario" },
+        { status: 403 }
+      );
+    }
+
+    // Verificar si el documento existe antes de eliminar
+    const docRef = adminDb.collection("adminUsers").doc(docId);
+    const docSnapshot = await docRef.get();
+    
+    if (!docSnapshot.exists) {
+      console.log("[DELETE-USER] ⚠️ El documento no existe en Firestore:", docId);
+      
+      // Verificar si está en ALLOWED_ADMIN_EMAILS
+      const allowedEmails = (process.env.ALLOWED_ADMIN_EMAILS || "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+      
+      if (allowedEmails.includes(normalizedEmail)) {
+        return NextResponse.json(
+          { 
+            error: "Este usuario no está en Firestore, pero está en ALLOWED_ADMIN_EMAILS. Remueve el email de la variable de entorno primero." 
+          },
+          { status: 400 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: "El usuario no existe en la base de datos" },
+        { status: 404 }
+      );
+    }
+
+    console.log("[DELETE-USER] Eliminando documento:", docId);
+    await docRef.delete();
+    console.log("[DELETE-USER] ✅ Usuario eliminado correctamente");
 
     return NextResponse.json(
       { success: true, message: "Usuario eliminado" },
@@ -179,6 +265,7 @@ export async function DELETE(request: NextRequest) {
       }
     );
   } catch (error) {
+    console.error("[DELETE-USER] ❌ Error inesperado:", error);
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -191,7 +278,10 @@ export async function DELETE(request: NextRequest) {
       }
     }
     return NextResponse.json(
-      { error: "Error al eliminar usuario" },
+      { 
+        error: "Error al eliminar usuario",
+        details: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

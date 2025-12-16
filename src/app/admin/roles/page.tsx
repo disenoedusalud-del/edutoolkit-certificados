@@ -91,6 +91,7 @@ export default function AdminRolesPage() {
     }
 
     try {
+      console.log("[DELETE] Intentando eliminar usuario:", email);
       const res = await fetch(
         `/api/admin-users?email=${encodeURIComponent(email)}`,
         {
@@ -98,9 +99,13 @@ export default function AdminRolesPage() {
         }
       );
 
+      const data = await res.json();
+      console.log("[DELETE] Respuesta del servidor:", { status: res.status, data });
+
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al eliminar usuario");
+        const errorMsg = data.error || data.details || "Error al eliminar usuario";
+        console.error("[DELETE] Error:", errorMsg);
+        throw new Error(errorMsg);
       }
 
       toast.success("Usuario eliminado correctamente");
