@@ -2,6 +2,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,9 @@ interface AdminLayoutProps {
 }
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("session");
+  const user = await getCurrentUser();
 
-  if (!sessionCookie?.value) {
+  if (!user) {
     redirect("/login");
   }
 
