@@ -1,14 +1,31 @@
 // src/app/api/debug/my-ip/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
+
+/**
+ * Rate limiting MUY permisivo para endpoints de debug
+ * 50 requests por minuto - suficiente para uso normal pero difícil de alcanzar
+ * Esto evita que te quedes bloqueado en los endpoints de debug
+ */
+const DEBUG_RATE_LIMIT = {
+  maxRequests: 50,
+  windowMs: 60 * 1000, // 1 minuto
+};
 
 /**
  * Endpoint para obtener la IP del usuario actual (solo MASTER_ADMIN)
  */
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting muy permisivo (50 req/min) para evitar bloqueos en este endpoint
+    const rateLimitResult = await rateLimit(request, DEBUG_RATE_LIMIT);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
     // Solo MASTER_ADMIN puede ver su IP
     const user = await getCurrentUser();
     
@@ -33,14 +50,21 @@ export async function GET(request: NextRequest) {
     
     const clientIP = forwarded?.split(",")[0].trim() || realIP || cfIP || "unknown";
 
-    return NextResponse.json({
-      ip: clientIP,
-      headers: {
-        "x-forwarded-for": forwarded || null,
-        "x-real-ip": realIP || null,
-        "cf-connecting-ip": cfIP || null,
+    return NextResponse.json(
+      {
+        ip: clientIP,
+        headers: {
+          "x-forwarded-for": forwarded || null,
+          "x-real-ip": realIP || null,
+          "cf-connecting-ip": cfIP || null,
+        },
       },
-    });
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
   } catch (error) {
     console.error("[MY-IP] Error:", error);
     return NextResponse.json(

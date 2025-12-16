@@ -43,6 +43,59 @@ La página de **Debug de Rate Limit** (`/admin/debug/rate-limit`) es una herrami
 
 ---
 
+## ⚠️ ¿No te quedarás atrapado? (Pregunta frecuente)
+
+**Pregunta común**: "Si me bloqueo por rate limiting, ¿cómo puedo acceder a esta página para desbloquearme?"
+
+**Respuesta**: **NO te quedarás atrapado** por las siguientes razones:
+
+### 1. **La página HTML es estática**
+- La página `/admin/debug/rate-limit` es una página HTML estática de Next.js
+- **NO tiene rate limiting** - puedes acceder a ella siempre que estés autenticado
+- Incluso si estás bloqueado en otros endpoints, puedes cargar esta página
+
+### 2. **Los endpoints de debug tienen rate limiting MUY permisivo**
+Los endpoints de debug (`/api/debug/reset-rate-limit` y `/api/debug/my-ip`) tienen un rate limiting **muy permisivo**:
+- **50 requests por minuto** (vs 100 requests/minuto en endpoints normales)
+- Es prácticamente imposible alcanzar este límite en uso normal
+- Solo se activaría si alguien intenta abusar del sistema intencionalmente
+
+### 3. **Flujo de desbloqueo**
+
+**Escenario: Te bloqueas en endpoints normales**
+```
+1. Haces 101 requests a /api/certificates → Te bloquean (límite: 100/min)
+2. ✅ Puedes acceder a /admin/debug/rate-limit (página HTML estática)
+3. ✅ La página carga y llama a /api/debug/my-ip (50 req/min - muy permisivo)
+4. ✅ Haces clic en "Resetear mi IP" → Llama a /api/debug/reset-rate-limit (50 req/min)
+5. ✅ Te desbloqueas y puedes usar /api/certificates de nuevo
+```
+
+**Escenario: Te bloqueas en endpoints de debug (muy improbable)**
+```
+1. Haces 51 requests a /api/debug/my-ip en 1 minuto → Te bloqueas (límite: 50/min)
+2. ⚠️ No puedes usar /api/debug/my-ip por 1 minuto
+3. ✅ PERO puedes esperar 1 minuto y volver a intentar
+4. ✅ O puedes usar directamente /api/debug/reset-rate-limit (endpoint diferente)
+```
+
+### 4. **Protección contra abuso**
+
+Aunque los endpoints de debug tienen rate limiting permisivo, **sí tienen protección**:
+- **50 requests/minuto** es suficiente para uso normal (cargar la página, resetear IPs)
+- Pero evita que alguien abuse del sistema haciendo miles de requests
+- Si alguien intenta abusar, se bloqueará temporalmente, pero puede esperar 1 minuto
+
+### Conclusión
+
+**No te quedarás atrapado** porque:
+- ✅ La página HTML siempre es accesible
+- ✅ Los endpoints de debug tienen límites muy altos (50 req/min)
+- ✅ Es prácticamente imposible alcanzar esos límites en uso normal
+- ✅ Si te bloqueas en un endpoint de debug, solo esperas 1 minuto
+
+---
+
 ## ¿Cuándo usar esta página?
 
 ### ✅ Casos en los que SÍ debes usarla:
@@ -295,18 +348,26 @@ El sistema toma la primera IP de `x-forwarded-for` (la IP original del cliente).
 
 ### Límites configurados
 
-El sistema tiene tres tipos de límites:
+El sistema tiene cuatro tipos de límites:
 
 | Tipo | Solicitudes | Ventana de tiempo | Uso |
 |------|-------------|-------------------|-----|
 | **AUTH** | 20 | 15 minutos | Login, reset password |
 | **API** | 100 | 1 minuto | Endpoints normales |
 | **HEAVY** | 10 | 1 minuto | Operaciones pesadas |
+| **DEBUG** | 50 | 1 minuto | Endpoints de debug (muy permisivo) |
 
 **Ejemplo práctico**:
 - Puedes hacer **100 requests** a `/api/certificates` en **1 minuto**
 - Si haces el request #101, te bloquean por 1 minuto
 - Después de 1 minuto, el bloqueo expira automáticamente
+
+**Límites de debug (especiales)**:
+- Los endpoints de debug (`/api/debug/reset-rate-limit` y `/api/debug/my-ip`) tienen un límite **muy permisivo**: **50 requests por minuto**
+- Esto es suficiente para uso normal (cargar la página, resetear IPs varias veces)
+- Es prácticamente imposible alcanzar este límite en uso normal
+- Solo se activaría si alguien intenta abusar del sistema intencionalmente
+- **Importante**: Esto evita que te quedes atrapado si te bloqueas en otros endpoints
 
 ### Flujo de reset
 
@@ -315,12 +376,16 @@ Cuando haces clic en "Resetear mi IP":
 ```
 1. Frontend: onClick → handleResetMyIP()
 2. Frontend: POST /api/debug/reset-rate-limit (sin IP)
-3. Backend: Detecta IP desde headers
-4. Backend: Llama resetRateLimitForIP(ip)
-5. Backend: requestCounts.delete(`rate_limit:${ip}`)
-6. Backend: Responde { success: true, message: "..." }
-7. Frontend: Muestra toast de éxito
+3. Backend: Verifica rate limiting (50 req/min - muy permisivo) ✅
+4. Backend: Verifica que seas MASTER_ADMIN
+5. Backend: Detecta IP desde headers
+6. Backend: Llama resetRateLimitForIP(ip)
+7. Backend: requestCounts.delete(`rate_limit:${ip}`)
+8. Backend: Responde { success: true, message: "..." }
+9. Frontend: Muestra toast de éxito
 ```
+
+**Nota importante**: El paso 3 (rate limiting) tiene un límite muy alto (50 req/min), por lo que es prácticamente imposible bloquearse en este endpoint durante uso normal.
 
 ---
 
@@ -537,6 +602,22 @@ for (let i = 0; i < 101; i++) {
 ---
 
 ## Preguntas frecuentes
+
+### ¿Me quedaré atrapado si me bloqueo?
+
+**No, no te quedarás atrapado** por las siguientes razones:
+
+1. **La página HTML es estática**: Siempre puedes acceder a `/admin/debug/rate-limit` incluso si estás bloqueado en otros endpoints
+2. **Rate limiting muy permisivo**: Los endpoints de debug tienen un límite de **50 requests por minuto**, que es prácticamente imposible de alcanzar en uso normal
+3. **Endpoints separados**: Si te bloqueas en un endpoint de debug, puedes usar el otro, o simplemente esperar 1 minuto
+
+**Ejemplo**:
+- Te bloqueas haciendo 101 requests a `/api/certificates` (límite: 100/min)
+- Puedes acceder a `/admin/debug/rate-limit` sin problemas (página HTML estática)
+- Puedes usar `/api/debug/reset-rate-limit` para desbloquearte (límite: 50/min - muy permisivo)
+- Te desbloqueas y puedes continuar trabajando
+
+---
 
 ### ¿Puedo resetear rate limits de otros usuarios?
 
