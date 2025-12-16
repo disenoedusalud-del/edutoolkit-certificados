@@ -114,3 +114,41 @@ export async function requireRole(requiredRole: UserRole): Promise<AuthUser> {
   return user;
 }
 
+/**
+ * Verifica si un email está autorizado para acceder al panel
+ * Verifica en:
+ * 1. Colección adminUsers en Firestore
+ * 2. MASTER_ADMIN_EMAILS (variable de entorno)
+ * 3. ALLOWED_ADMIN_EMAILS (variable de entorno, fallback)
+ */
+export async function isAuthorizedEmail(email: string): Promise<boolean> {
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  // 1. Verificar en adminUsers (Firestore)
+  const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
+  const userDoc = await adminDb.collection("adminUsers").doc(docId).get();
+  
+  if (userDoc.exists) {
+    return true; // El usuario está en la lista de adminUsers
+  }
+  
+  // 2. Verificar en MASTER_ADMIN_EMAILS
+  const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  if (masterEmails.includes(normalizedEmail)) {
+    return true;
+  }
+  
+  // 3. Verificar en ALLOWED_ADMIN_EMAILS (fallback para compatibilidad)
+  const allowedRaw = process.env.ALLOWED_ADMIN_EMAILS || "";
+  const allowed = allowedRaw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  return allowed.includes(normalizedEmail);
+}
+
