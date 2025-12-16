@@ -17,31 +17,61 @@ export interface AuthUser {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
+    console.log("[AUTH][getCurrentUser] Iniciando verificación de sesión...");
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(COOKIE_NAME)?.value;
 
+    console.log("[AUTH][getCurrentUser] Cookie encontrada:", !!sessionCookie);
+    console.log("[AUTH][getCurrentUser] Nombre de cookie buscado:", COOKIE_NAME);
+    
     if (!sessionCookie) {
+      console.log("[AUTH][getCurrentUser] ❌ No se encontró cookie de sesión");
+      // Listar todas las cookies disponibles para debug
+      const allCookies = cookieStore.getAll();
+      console.log("[AUTH][getCurrentUser] Cookies disponibles:", allCookies.map(c => c.name));
       return null;
     }
+
+    console.log("[AUTH][getCurrentUser] ✅ Cookie encontrada, verificando con Firebase Admin...");
 
     // Verificar la cookie de sesión con Firebase Admin
-    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    let decoded;
+    try {
+      decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+      console.log("[AUTH][getCurrentUser] ✅ Cookie verificada, email:", decoded.email);
+    } catch (verifyError: any) {
+      console.error("[AUTH][getCurrentUser] ❌ Error verificando cookie:", verifyError?.message || verifyError);
+      return null;
+    }
     
     if (!decoded.email) {
+      console.log("[AUTH][getCurrentUser] ❌ No se encontró email en el token decodificado");
       return null;
     }
 
+    console.log("[AUTH][getCurrentUser] Obteniendo rol del usuario...");
+
     // Obtener el rol del usuario desde Firestore
-    const userDoc = await adminDb
-      .collection("adminUsers")
-      .doc(decoded.email.toLowerCase().replace(/[.#$/[\]]/g, "_"))
-      .get();
+    let userDoc;
+    try {
+      const docId = decoded.email.toLowerCase().replace(/[.#$/[\]]/g, "_");
+      console.log("[AUTH][getCurrentUser] Buscando usuario en Firestore con docId:", docId);
+      userDoc = await adminDb
+        .collection("adminUsers")
+        .doc(docId)
+        .get();
+      console.log("[AUTH][getCurrentUser] Usuario existe en Firestore:", userDoc.exists);
+    } catch (firestoreError: any) {
+      console.error("[AUTH][getCurrentUser] ❌ Error accediendo a Firestore:", firestoreError?.message || firestoreError);
+      // Continuar con la verificación de MASTER_ADMIN_EMAILS
+    }
 
     let role: UserRole = "VIEWER"; // Rol por defecto
 
-    if (userDoc.exists) {
+    if (userDoc?.exists) {
       const userData = userDoc.data();
       role = (userData?.role as UserRole) || "VIEWER";
+      console.log("[AUTH][getCurrentUser] Rol desde Firestore:", role);
     } else {
       // Si no existe en adminUsers, verificar si es MASTER_ADMIN desde env
       const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
@@ -49,18 +79,28 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
       
+      console.log("[AUTH][getCurrentUser] MASTER_ADMIN_EMAILS configurado:", !!process.env.MASTER_ADMIN_EMAILS);
+      console.log("[AUTH][getCurrentUser] Emails master:", masterEmails);
+      console.log("[AUTH][getCurrentUser] Email del usuario:", decoded.email.toLowerCase());
+      
       if (masterEmails.includes(decoded.email.toLowerCase())) {
         role = "MASTER_ADMIN";
+        console.log("[AUTH][getCurrentUser] ✅ Usuario es MASTER_ADMIN");
+      } else {
+        console.log("[AUTH][getCurrentUser] ⚠️ Usuario no está en MASTER_ADMIN_EMAILS, usando rol VIEWER");
       }
     }
+
+    console.log("[AUTH][getCurrentUser] ✅ Usuario autenticado:", { uid: decoded.uid, email: decoded.email, role });
 
     return {
       uid: decoded.uid,
       email: decoded.email,
       role,
     };
-  } catch (error) {
-    console.error("[AUTH] Error verificando sesión:", error);
+  } catch (error: any) {
+    console.error("[AUTH][getCurrentUser] ❌ Error inesperado verificando sesión:", error?.message || error);
+    console.error("[AUTH][getCurrentUser] Stack:", error?.stack);
     return null;
   }
 }
