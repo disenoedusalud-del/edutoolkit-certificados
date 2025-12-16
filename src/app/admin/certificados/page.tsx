@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
-import { ChartBar, Plus, BookOpen, ArrowLeft, Shield, Refresh } from "phosphor-react";
+import { ChartBar, Plus, BookOpen, ArrowLeft, Shield, ArrowClockwise } from "phosphor-react";
 import Link from "next/link";
 
 function AdminRolesButton() {
@@ -63,7 +63,7 @@ function RateLimitDebugButton() {
       href="/admin/debug/rate-limit"
       className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2"
     >
-      <Refresh size={18} weight="bold" />
+      <ArrowClockwise size={18} weight="bold" />
       Debug Rate Limit
     </Link>
   );

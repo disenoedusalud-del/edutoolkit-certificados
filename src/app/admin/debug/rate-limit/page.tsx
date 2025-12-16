@@ -5,18 +5,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { ArrowLeft, Trash, Refresh } from "phosphor-react";
+import { ArrowLeft, Trash, ArrowClockwise, Copy } from "phosphor-react";
 import Link from "next/link";
 import type { UserRole } from "@/lib/auth";
 
 export default function RateLimitDebugPage() {
   const [loading, setLoading] = useState(false);
   const [ip, setIp] = useState("");
+  const [myIP, setMyIP] = useState<string | null>(null);
+  const [loadingIP, setLoadingIP] = useState(true);
   const [checkingRole, setCheckingRole] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const router = useRouter();
 
-  // Verificar que el usuario sea MASTER_ADMIN
+  // Verificar que el usuario sea MASTER_ADMIN y cargar IP
   useEffect(() => {
     const checkRole = async () => {
       try {
@@ -32,6 +34,19 @@ export default function RateLimitDebugPage() {
           return;
         }
         setUserRole(data.role);
+        
+        // Cargar IP del usuario
+        try {
+          const ipRes = await fetch("/api/debug/my-ip");
+          if (ipRes.ok) {
+            const ipData = await ipRes.json();
+            setMyIP(ipData.ip);
+          }
+        } catch (error) {
+          console.error("Error cargando IP:", error);
+        } finally {
+          setLoadingIP(false);
+        }
       } catch (error) {
         console.error("Error verificando rol:", error);
         router.push("/login");
@@ -146,6 +161,17 @@ export default function RateLimitDebugPage() {
     }
   };
 
+  const handleCopyIP = async () => {
+    if (!myIP) return;
+    try {
+      await navigator.clipboard.writeText(myIP);
+      toast.success("IP copiada al portapapeles");
+    } catch (error) {
+      console.error("Error copiando IP:", error);
+      toast.error("Error al copiar IP");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 p-8">
       <div className="mb-4">
@@ -167,6 +193,34 @@ export default function RateLimitDebugPage() {
             Solo disponible para MASTER_ADMIN. Úsalo cuando un usuario (incluido tú) se quede bloqueado por rate limiting.
           </p>
 
+          {/* Mostrar IP actual */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                  Tu IP actual
+                </h3>
+                {loadingIP ? (
+                  <p className="text-sm text-blue-700">Cargando...</p>
+                ) : myIP ? (
+                  <p className="text-lg font-mono text-blue-800">{myIP}</p>
+                ) : (
+                  <p className="text-sm text-blue-600">No se pudo obtener la IP</p>
+                )}
+              </div>
+              {myIP && (
+                <button
+                  onClick={handleCopyIP}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  title="Copiar IP"
+                >
+                  <Copy size={16} weight="bold" />
+                  Copiar
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-4">
             {/* Resetear mi propia IP */}
             <div className="border border-slate-200 rounded-lg p-4">
@@ -181,7 +235,7 @@ export default function RateLimitDebugPage() {
                 disabled={loading}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
               >
-                <Refresh size={18} weight="bold" />
+                <ArrowClockwise size={18} weight="bold" />
                 {loading ? "Reseteando..." : "Resetear mi IP"}
               </button>
             </div>
@@ -194,7 +248,7 @@ export default function RateLimitDebugPage() {
               <p className="text-xs text-slate-500 mb-3">
                 Resetea el rate limit para una IP específica.
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-2">
                 <input
                   type="text"
                   value={ip}
@@ -210,6 +264,14 @@ export default function RateLimitDebugPage() {
                   Resetear
                 </button>
               </div>
+              {myIP && (
+                <button
+                  onClick={() => setIp(myIP)}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Usar mi IP actual ({myIP})
+                </button>
+              )}
             </div>
 
             {/* Resetear todos */}
