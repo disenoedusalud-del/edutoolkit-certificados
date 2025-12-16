@@ -50,12 +50,9 @@ async function isAuthorizedEmail(email: string): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[LOGIN][POST] Iniciando proceso de login...");
-    
     // 1. Rate limiting estricto para login (prevenir fuerza bruta)
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.AUTH);
     if (!rateLimitResult.success) {
-      console.log("[LOGIN][POST] Rate limit excedido");
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
@@ -63,80 +60,39 @@ export async function POST(request: NextRequest) {
     const { idToken } = await request.json();
 
     if (!idToken) {
-      console.log("[LOGIN][POST] ❌ Falta idToken");
       return NextResponse.json(
         { error: "Falta idToken en el cuerpo de la petición" },
         { status: 400 }
       );
     }
 
-    console.log("[LOGIN][POST] ✅ idToken recibido, verificando...");
-
     // 3. Verificar el token del cliente (Firebase Auth en el navegador)
-    let decoded;
-    try {
-      decoded = await adminAuth.verifyIdToken(idToken);
-      console.log("[LOGIN][POST] ✅ Token verificado, email:", decoded.email);
-    } catch (tokenError: any) {
-      console.error("[LOGIN][POST] ❌ Error verificando token:", tokenError?.message || tokenError);
-      return NextResponse.json(
-        {
-          error: "Token inválido o expirado",
-          details: tokenError?.message ?? String(tokenError),
-        },
-        { status: 401 }
-      );
-    }
+    const decoded = await adminAuth.verifyIdToken(idToken);
 
     const userEmail = decoded.email?.toLowerCase();
 
     if (!userEmail) {
-      console.log("[LOGIN][POST] ❌ No se pudo obtener email del token");
       return NextResponse.json(
         { error: "No se pudo obtener el correo del usuario" },
         { status: 400 }
       );
     }
 
-    console.log("[LOGIN][POST] Verificando autorización para:", userEmail);
-
     // 4. Verificar si el email está autorizado (misma lógica que registro)
     const isAuthorized = await isAuthorizedEmail(userEmail);
 
-    console.log("[LOGIN][POST] Email autorizado:", isAuthorized);
-    console.log("[LOGIN][POST] MASTER_ADMIN_EMAILS:", process.env.MASTER_ADMIN_EMAILS ? "configurado" : "NO configurado");
-    console.log("[LOGIN][POST] ALLOWED_ADMIN_EMAILS:", process.env.ALLOWED_ADMIN_EMAILS ? "configurado" : "NO configurado");
-
     if (!isAuthorized) {
-      console.warn(
-        "[LOGIN] ❌ Intento de acceso con correo no autorizado:",
-        userEmail
-      );
+      console.warn("[LOGIN] Intento de acceso con correo no autorizado:", userEmail);
       return NextResponse.json(
         { error: "Este correo no tiene permisos para acceder al panel. Contacta a un administrador para que te agregue a la lista de usuarios permitidos." },
         { status: 403 }
       );
     }
 
-    console.log("[LOGIN][POST] ✅ Email autorizado, creando cookie de sesión...");
-
-    // 3) Crear cookie de sesión con Firebase Admin
-    let sessionCookie;
-    try {
-      sessionCookie = await adminAuth.createSessionCookie(idToken, {
-        expiresIn: SESSION_EXPIRES_IN_SECONDS,
-      });
-      console.log("[LOGIN][POST] ✅ Cookie de sesión creada exitosamente");
-    } catch (cookieError: any) {
-      console.error("[LOGIN][POST] ❌ Error creando cookie:", cookieError?.message || cookieError);
-      return NextResponse.json(
-        {
-          error: "No se pudo crear la cookie de sesión",
-          details: cookieError?.message ?? String(cookieError),
-        },
-        { status: 401 }
-      );
-    }
+    // 5. Crear cookie de sesión con Firebase Admin
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, {
+      expiresIn: SESSION_EXPIRES_IN_SECONDS,
+    });
 
     const response = NextResponse.json(
       { success: true },
@@ -157,11 +113,9 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
 
-    console.log("[LOGIN][POST] ✅ Login exitoso para:", userEmail);
     return response;
   } catch (error: any) {
-    console.error("[LOGIN][POST] ❌ Error inesperado creando sesión:", error);
-    console.error("[LOGIN][POST] Stack:", error?.stack);
+    console.error("[LOGIN] Error creando sesión:", error);
     return NextResponse.json(
       {
         error: "No se pudo crear la sesión",

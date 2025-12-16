@@ -3,6 +3,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { SignOut } from "phosphor-react";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -41,9 +42,10 @@ export function LogoutButton() {
       type="button"
       onClick={handleLogout}
       disabled={disabled}
-      className="rounded-md border border-gray-300 px-3 py-1 text-sm hover:bg-gray-100 disabled:opacity-60"
+      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
     >
-      {disabled ? "Cerrando sesión..." : "Cerrar sesión"}
+      <SignOut size={18} weight="bold" />
+      {disabled ? "Cerrando sesión..." : "Salir"}
     </button>
   );
 }
