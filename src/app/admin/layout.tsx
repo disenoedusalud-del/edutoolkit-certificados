@@ -18,19 +18,19 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-theme-primary">
       {/* Header con información del usuario y botón de salir */}
-      <header className="bg-white border-b border-slate-200 shadow-sm">
+      <header className="bg-theme-secondary border-b border-theme shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold text-slate-800">
+              <h1 className="text-lg font-semibold text-text-primary">
                 Panel de Administración
               </h1>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-text-secondary">
                 {user.email}
               </span>
-              <span className="px-2 py-1 text-xs font-medium bg-slate-100 text-slate-700 rounded">
+              <span className="px-2 py-1 text-xs font-medium bg-theme-tertiary text-text-primary rounded border border-theme">
                 {user.role}
               </span>
             </div>

@@ -174,28 +174,28 @@ export default function CoursesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 p-8">
+      <div className="min-h-screen bg-theme-primary p-8">
         <div className="flex flex-col items-center justify-center py-12 gap-4">
-          <LoadingSpinner size={32} className="text-blue-600" />
-          <p className="text-slate-500 text-sm">Cargando cursos...</p>
+          <LoadingSpinner size={32} className="text-accent" />
+          <p className="text-text-secondary text-sm">Cargando cursos...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-theme-primary p-8">
       <div className="mb-4">
         <Link
           href="/admin/certificados"
-          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft size={20} weight="bold" />
           <span>Volver a Certificados</span>
         </Link>
       </div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">
+        <h1 className="text-2xl font-bold text-text-primary">
           Administración de Cursos
         </h1>
         <button
@@ -216,8 +216,8 @@ export default function CoursesPage() {
           onClick={() => setFilter("all")}
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "all"
-              ? "bg-blue-600 text-white"
-              : "bg-white text-slate-700 hover:bg-slate-100"
+              ? "bg-accent text-white"
+              : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
           Todos ({Array.isArray(courses) ? courses.length : 0})
@@ -227,7 +227,7 @@ export default function CoursesPage() {
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "active"
               ? "bg-green-600 text-white"
-              : "bg-white text-slate-700 hover:bg-slate-100"
+              : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
           Activos ({Array.isArray(courses) ? courses.filter((c) => c.status === "active").length : 0})
@@ -237,7 +237,7 @@ export default function CoursesPage() {
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "archived"
               ? "bg-gray-600 text-white"
-              : "bg-white text-slate-700 hover:bg-slate-100"
+              : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
           Archivados ({Array.isArray(courses) ? courses.filter((c) => c.status === "archived").length : 0})
@@ -245,14 +245,14 @@ export default function CoursesPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+      <div className="bg-theme-secondary rounded-xl shadow border border-theme overflow-hidden">
         {filteredCourses.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">
+          <div className="p-8 text-center text-text-secondary">
             No hay cursos {filter !== "all" && filter === "active" ? "activos" : filter === "archived" ? "archivados" : ""}.
           </div>
         ) : (
           <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+            <thead className="bg-theme-tertiary text-text-secondary uppercase text-xs">
               <tr>
                 <th className="px-4 py-3 text-left">Código</th>
                 <th className="px-4 py-3 text-left">Nombre del Curso</th>
@@ -266,15 +266,15 @@ export default function CoursesPage() {
               {filteredCourses.map((course) => (
                 <tr
                   key={course.id}
-                  className="hover:bg-slate-50 transition-colors"
+                  className="hover:bg-theme-tertiary transition-colors"
                 >
-                  <td className="px-4 py-3 font-mono font-semibold text-slate-800">
+                  <td className="px-4 py-3 font-mono font-semibold text-text-primary">
                     {course.id}
                   </td>
-                  <td className="px-4 py-3 text-slate-800">
-                    {course.name}
-                    {course.edition && (
-                      <span className="ml-2 text-xs text-slate-500">(Ed. {course.edition})</span>
+                  <td className="px-4 py-3 text-text-primary">
+                      {course.name}
+                      {course.edition && (
+                      <span className="ml-2 text-xs text-text-secondary">(Ed. {course.edition})</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -295,7 +295,7 @@ export default function CoursesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">
+                  <td className="px-4 py-3 text-text-secondary text-xs">
                     {course.createdAt
                       ? new Date(course.createdAt).toLocaleDateString("es-ES")
                       : "—"}

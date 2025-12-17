@@ -264,12 +264,12 @@ export default function CertificateList() {
 
   const getSortIcon = (field: keyof Certificate) => {
     if (sortField !== field) {
-      return <ArrowsVertical size={14} className="text-slate-400" />;
+      return <ArrowsVertical size={14} className="text-text-tertiary" />;
     }
     return sortDirection === "asc" ? (
-      <CaretUp size={14} className="text-blue-600" />
+      <CaretUp size={14} className="text-accent" />
     ) : (
-      <CaretDown size={14} className="text-blue-600" />
+      <CaretDown size={14} className="text-accent" />
     );
   };
 
@@ -434,7 +434,7 @@ export default function CertificateList() {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4">
         <LoadingSpinner size={32} className="text-blue-600" />
-        <p className="text-slate-500 text-sm">Cargando certificados...</p>
+        <p className="text-text-secondary text-sm">Cargando certificados...</p>
       </div>
     );
   }
@@ -445,21 +445,21 @@ export default function CertificateList() {
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 w-full md:w-auto">
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Buscar</label>
+            <label className="block text-xs text-text-secondary mb-1">Buscar</label>
             <input
               type="text"
               placeholder="Nombre, curso o código (ej: LM, GASH)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm bg-theme-secondary text-text-primary"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Estado</label>
+            <label className="block text-xs text-text-secondary mb-1">Estado</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm bg-theme-secondary text-text-primary"
             >
               <option value="all">Todos</option>
               <option value="en_archivo">En archivo</option>
@@ -470,11 +470,11 @@ export default function CertificateList() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">Año</label>
+            <label className="block text-xs text-text-secondary mb-1">Año</label>
             <select
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm bg-theme-secondary text-text-primary"
             >
               <option value="all">Todos</option>
               {uniqueYears.map((year) => (
@@ -491,7 +491,7 @@ export default function CertificateList() {
             className={`px-3 py-2 border rounded-lg transition-colors text-sm flex items-center gap-2 ${
               viewMode === "grouped"
                 ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                : "border-slate-300 hover:bg-slate-50"
+                : "border-theme hover:bg-theme-tertiary"
             }`}
             title={viewMode === "list" ? "Cambiar a vista agrupada" : "Cambiar a vista lista"}
           >
@@ -511,14 +511,14 @@ export default function CertificateList() {
             <>
               <button
                 onClick={expandAllGroups}
-                className="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm"
+                className="px-3 py-2 border border-theme rounded-lg hover:bg-theme-tertiary transition-colors text-sm bg-theme-secondary text-text-primary"
                 title="Expandir todos los grupos"
               >
                 Expandir
               </button>
               <button
                 onClick={collapseAllGroups}
-                className="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm"
+                className="px-3 py-2 border border-theme rounded-lg hover:bg-theme-tertiary transition-colors text-sm bg-theme-secondary text-text-primary"
                 title="Colapsar todos los grupos"
               >
                 Colapsar
@@ -587,7 +587,7 @@ export default function CertificateList() {
 
       {/* Contador de resultados y exportar */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-slate-600">
+        <div className="text-sm text-text-secondary">
           Mostrando {paginatedCerts.length} de {filteredCerts.length} certificados
         </div>
         {filteredCerts.length > 0 && (
@@ -627,7 +627,7 @@ export default function CertificateList() {
 
       {/* Tabla */}
       {filteredCerts.length === 0 ? (
-        <p className="text-slate-500 text-sm text-center py-8">
+        <p className="text-text-secondary text-sm text-center py-8">
           No se encontraron certificados con los filtros aplicados.
         </p>
       ) : viewMode === "grouped" ? (
@@ -642,43 +642,43 @@ export default function CertificateList() {
               const isExpanded = expandedGroups.has(groupKey);
               
               return (
-                <div key={groupKey} className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <div key={groupKey} className="bg-theme-secondary border border-theme rounded-lg overflow-hidden">
                   <button
                     onClick={() => toggleGroup(groupKey)}
-                    className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between text-left"
+                    className="w-full px-4 py-3 bg-theme-tertiary hover:bg-theme-secondary transition-colors flex items-center justify-between text-left"
                   >
                     <div className="flex items-center gap-3">
                       {isExpanded ? (
                         <FolderOpen size={20} className="text-blue-600" weight="fill" />
                       ) : (
-                        <Folder size={20} className="text-slate-500" weight="fill" />
+                        <Folder size={20} className="text-text-secondary" weight="fill" />
                       )}
                       <div>
-                        <div className="font-semibold text-slate-800">
+                        <div className="font-semibold text-text-primary">
                           {courseCode} - {courseName}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-text-secondary">
                           Año {year} • {groupCerts.length} certificado{groupCerts.length !== 1 ? "s" : ""}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 bg-white px-2 py-1 rounded">
+                      <span className="text-xs text-text-secondary bg-theme-secondary px-2 py-1 rounded border border-theme">
                         {groupCerts.length}
                       </span>
                       {isExpanded ? (
-                        <CaretDown size={18} className="text-slate-500" />
+                        <CaretDown size={18} className="text-text-secondary" />
                       ) : (
-                        <CaretRight size={18} className="text-slate-500" />
+                        <CaretRight size={18} className="text-text-secondary" />
                       )}
                     </div>
                   </button>
                   {isExpanded && (
-                    <div className="border-t border-slate-200">
+                    <div className="border-t border-theme">
                       {/* Búsqueda dentro de la carpeta */}
-                      <div className="p-3 bg-slate-50 border-b border-slate-200">
+                      <div className="p-3 bg-theme-tertiary border-b border-theme">
                         <div className="relative">
-                          <MagnifyingGlass size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                          <MagnifyingGlass size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary" />
                           <input
                             type="text"
                             placeholder={`Buscar en ${courseCode}...`}
@@ -690,16 +690,16 @@ export default function CertificateList() {
                               }));
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            className="w-full pl-10 pr-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm bg-theme-secondary text-text-primary"
                           />
                         </div>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
-                          <thead className="bg-slate-50 text-slate-600 uppercase text-xs">
+                          <thead className="bg-theme-tertiary text-text-secondary uppercase text-xs">
                             <tr>
                               <th className="px-4 py-2 text-left w-12">
-                                <CheckSquare size={16} className="text-slate-400" />
+                                <CheckSquare size={16} className="text-text-tertiary" />
                               </th>
                               <th className="px-4 py-2 text-left">Nombre</th>
                               <th className="px-4 py-2 text-left">ID Certificado</th>
@@ -725,7 +725,7 @@ export default function CertificateList() {
                               if (filteredGroupCerts.length === 0) {
                                 return (
                                   <tr>
-                                    <td colSpan={5} className="px-4 py-4 text-center text-slate-500 text-sm">
+                                    <td colSpan={5} className="px-4 py-4 text-center text-text-secondary text-sm">
                                       No se encontraron certificados con la búsqueda "{groupSearchTerm}"
                                     </td>
                                   </tr>
@@ -735,7 +735,7 @@ export default function CertificateList() {
                               return filteredGroupCerts.map((c) => (
                               <tr
                                 key={c.id}
-                                className="hover:bg-slate-50 transition-colors cursor-pointer"
+                                className="hover:bg-theme-tertiary transition-colors cursor-pointer"
                                 onClick={(e) => {
                                   if ((e.target as HTMLElement).closest('input[type="checkbox"]') || 
                                       (e.target as HTMLElement).closest('button') ||
@@ -757,13 +757,13 @@ export default function CertificateList() {
                                   {selectedIds.has(c.id!) ? (
                                     <CheckSquare size={20} className="text-blue-600 cursor-pointer" weight="fill" />
                                   ) : (
-                                    <Square size={20} className="text-slate-400 cursor-pointer" />
+                                    <Square size={20} className="text-text-tertiary cursor-pointer" />
                                   )}
                                 </td>
-                                <td className="px-4 py-2 font-medium text-slate-800">
+                                <td className="px-4 py-2 font-medium text-text-primary">
                                   {c.fullName}
                                 </td>
-                                <td className="px-4 py-2 text-slate-700 font-mono text-xs">
+                                <td className="px-4 py-2 text-text-primary font-mono text-xs">
                                   {c.courseId}
                                 </td>
                                 <td className="px-4 py-2">
@@ -795,9 +795,9 @@ export default function CertificateList() {
                                           setOpenMenuId(c.id || null);
                                         }
                                       }}
-                                      className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                      className="p-1 hover:bg-theme-tertiary rounded transition-colors"
                                     >
-                                      <DotsThreeVertical size={18} className="text-slate-600" />
+                                      <DotsThreeVertical size={18} className="text-text-secondary" />
                                     </button>
                                   </div>
                                 </td>
@@ -808,7 +808,7 @@ export default function CertificateList() {
                         </table>
                       </div>
                       {groupSearchTerms[groupKey] && (
-                        <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+                        <div className="px-4 py-2 bg-theme-tertiary border-t border-theme text-xs text-text-secondary">
                           Mostrando {(() => {
                             const groupSearchTerm = (groupSearchTerms[groupKey] || "").toLowerCase();
                             const filtered = groupSearchTerm
@@ -832,7 +832,7 @@ export default function CertificateList() {
               );
             })}
           {Object.keys(groupedCerts).length === 0 && (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-text-secondary">
               No se encontraron certificados con los filtros aplicados.
             </div>
           )}
@@ -842,7 +842,7 @@ export default function CertificateList() {
         <>
           <div className="overflow-x-auto overflow-y-visible">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
+              <thead className="bg-theme-tertiary text-text-secondary uppercase text-xs">
                 <tr>
                   <th className="px-4 py-2 text-left w-12">
                     <button
@@ -854,14 +854,14 @@ export default function CertificateList() {
                       ) ? (
                         <CheckSquare size={20} weight="fill" className="text-blue-600" />
                       ) : (
-                        <Square size={20} className="text-slate-400" />
+                        <Square size={20} className="text-text-tertiary" />
                       )}
                     </button>
                   </th>
                   <th className="px-4 py-2 text-left">
                     <button
                       onClick={() => handleSort("fullName")}
-                      className="flex items-center gap-1 hover:text-slate-800"
+                      className="flex items-center gap-1 hover:text-text-primary"
                     >
                       Nombre
                       {getSortIcon("fullName")}
@@ -870,7 +870,7 @@ export default function CertificateList() {
                   <th className="px-4 py-2 text-left">
                     <button
                       onClick={() => handleSort("courseName")}
-                      className="flex items-center gap-1 hover:text-slate-800"
+                      className="flex items-center gap-1 hover:text-text-primary"
                     >
                       Curso
                       {getSortIcon("courseName")}
@@ -879,7 +879,7 @@ export default function CertificateList() {
                   <th className="px-4 py-2 text-left">
                     <button
                       onClick={() => handleSort("year")}
-                      className="flex items-center gap-1 hover:text-slate-800"
+                      className="flex items-center gap-1 hover:text-text-primary"
                     >
                       Año
                       {getSortIcon("year")}
@@ -888,7 +888,7 @@ export default function CertificateList() {
                   <th className="px-4 py-2 text-left">
                     <button
                       onClick={() => handleSort("deliveryStatus")}
-                      className="flex items-center gap-1 hover:text-slate-800"
+                      className="flex items-center gap-1 hover:text-text-primary"
                     >
                       Estado
                       {getSortIcon("deliveryStatus")}
@@ -898,11 +898,11 @@ export default function CertificateList() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-theme">
                 {paginatedCerts.map((c) => (
                   <tr
                     key={c.id}
-                    className="hover:bg-slate-50 transition-colors relative cursor-pointer"
+                    className="hover:bg-theme-tertiary transition-colors relative cursor-pointer"
                     onClick={(e) => {
                       // No abrir si se hace clic en el checkbox o en el menú de tres puntos
                       if ((e.target as HTMLElement).closest('input[type="checkbox"]') || 
@@ -928,21 +928,21 @@ export default function CertificateList() {
                           className="text-blue-600 cursor-pointer"
                         />
                       ) : (
-                        <Square size={20} className="text-slate-400 cursor-pointer" />
+                        <Square size={20} className="text-text-tertiary cursor-pointer" />
                       )}
                     </td>
                     <td
-                      className="px-4 py-2 font-medium text-slate-800"
+                      className="px-4 py-2 font-medium text-text-primary"
                     >
                       {c.fullName}
                     </td>
                     <td
-                      className="px-4 py-2 text-slate-700"
+                      className="px-4 py-2 text-text-primary"
                     >
                       {c.courseName}
                     </td>
                     <td
-                      className="px-4 py-2 text-slate-700"
+                      className="px-4 py-2 text-text-primary"
                     >
                       {c.year}
                     </td>
@@ -977,9 +977,9 @@ export default function CertificateList() {
                               setOpenMenuId(c.id || null);
                             }
                           }}
-                          className="p-1 hover:bg-slate-200 rounded transition-colors"
+                          className="p-1 hover:bg-theme-tertiary rounded transition-colors"
                         >
-                          <DotsThreeVertical size={18} className="text-slate-600" />
+                          <DotsThreeVertical size={18} className="text-text-secondary" />
                         </button>
                       </div>
                     </td>
@@ -995,11 +995,11 @@ export default function CertificateList() {
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm border border-theme rounded-lg hover:bg-theme-tertiary disabled:opacity-50 disabled:cursor-not-allowed bg-theme-secondary text-text-primary"
               >
                 Anterior
               </button>
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-text-secondary">
                 Página {currentPage} de {totalPages}
               </span>
               <button
@@ -1007,7 +1007,7 @@ export default function CertificateList() {
                   setCurrentPage((p) => Math.min(totalPages, p + 1))
                 }
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm border border-theme rounded-lg hover:bg-theme-tertiary disabled:opacity-50 disabled:cursor-not-allowed bg-theme-secondary text-text-primary"
               >
                 Siguiente
               </button>
@@ -1027,7 +1027,7 @@ export default function CertificateList() {
             }}
           />
           <div 
-            className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-[200] min-w-[180px]"
+            className="fixed bg-theme-secondary border border-theme rounded-lg shadow-xl z-[200] min-w-[180px]"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
@@ -1051,7 +1051,7 @@ export default function CertificateList() {
                       setOpenMenuId(null);
                       setMenuPosition(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
                   >
                     <Pencil size={16} />
                     Edición Rápida
@@ -1063,7 +1063,7 @@ export default function CertificateList() {
                       setOpenMenuId(null);
                       setMenuPosition(null);
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
                   >
                     <Eye size={16} />
                     Ver Detalle Completo
@@ -1099,12 +1099,12 @@ export default function CertificateList() {
                         toast.error("Error al duplicar el certificado");
                       }
                     }}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
                   >
                     <Copy size={16} />
                     Duplicar
                   </button>
-                  <div className="border-t border-slate-200"></div>
+                  <div className="border-t border-theme"></div>
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
@@ -1150,9 +1150,9 @@ export default function CertificateList() {
       {/* Modal de Edición Rápida */}
       {quickViewCert && quickEditData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-800">
+          <div className="bg-theme-secondary rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-theme-secondary border-b border-theme px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-text-primary">
                 Edición Rápida - {quickViewCert.fullName}
               </h2>
               <button
@@ -1160,9 +1160,9 @@ export default function CertificateList() {
                   setQuickViewCert(null);
                   setQuickEditData(null);
                 }}
-                className="p-1 hover:bg-slate-100 rounded transition-colors"
+                className="p-1 hover:bg-theme-tertiary rounded transition-colors"
               >
-                <X size={24} className="text-slate-600" />
+                <X size={24} className="text-text-secondary" />
               </button>
             </div>
 
@@ -1170,48 +1170,48 @@ export default function CertificateList() {
               {/* Información Relevante */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-500 uppercase mb-1">
+                  <label className="block text-xs text-text-secondary uppercase mb-1">
                     Nombre Completo
                   </label>
-                  <p className="text-slate-800 font-medium">{quickViewCert.fullName}</p>
+                  <p className="text-text-primary font-medium">{quickViewCert.fullName}</p>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 uppercase mb-1">
+                  <label className="block text-xs text-text-secondary uppercase mb-1">
                     Curso
                   </label>
-                  <p className="text-slate-800">{quickViewCert.courseName}</p>
+                  <p className="text-text-primary">{quickViewCert.courseName}</p>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 uppercase mb-1">
+                  <label className="block text-xs text-text-secondary uppercase mb-1">
                     ID del Certificado
                   </label>
-                  <p className="text-slate-800 font-mono text-sm">{quickViewCert.courseId}</p>
+                  <p className="text-text-primary font-mono text-sm">{quickViewCert.courseId}</p>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 uppercase mb-1">
+                  <label className="block text-xs text-text-secondary uppercase mb-1">
                     Año
                   </label>
-                  <p className="text-slate-800">{quickViewCert.year}</p>
+                  <p className="text-text-primary">{quickViewCert.year}</p>
                 </div>
                 {quickViewCert.email && (
                   <div>
-                    <label className="block text-xs text-slate-500 uppercase mb-1">
+                    <label className="block text-xs text-text-secondary uppercase mb-1">
                       Email
                     </label>
-                    <p className="text-slate-800 text-sm">{quickViewCert.email}</p>
+                    <p className="text-text-primary text-sm">{quickViewCert.email}</p>
                   </div>
                 )}
                 {quickViewCert.phone && (
                   <div>
-                    <label className="block text-xs text-slate-500 uppercase mb-1">
+                    <label className="block text-xs text-text-secondary uppercase mb-1">
                       Teléfono
                     </label>
-                    <p className="text-slate-800 text-sm">{quickViewCert.phone}</p>
+                    <p className="text-text-primary text-sm">{quickViewCert.phone}</p>
                   </div>
                 )}
                 {quickViewCert.driveFileId && (
                   <div className="md:col-span-2">
-                    <label className="block text-xs text-slate-500 uppercase mb-2">
+                    <label className="block text-xs text-text-secondary uppercase mb-2">
                       Archivo en Google Drive
                     </label>
                     <div className="flex gap-2">
@@ -1229,26 +1229,26 @@ export default function CertificateList() {
                         href={`https://drive.google.com/uc?export=download&id=${quickViewCert.driveFileId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors flex items-center gap-2 text-sm"
+                        className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 text-sm border border-theme"
                       >
                         <Download size={18} weight="bold" />
                         Descargar
                       </a>
                     </div>
-                    <p className="text-slate-500 text-xs mt-2 font-mono break-all">
+                    <p className="text-text-secondary text-xs mt-2 font-mono break-all">
                       ID: {quickViewCert.driveFileId}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-slate-200 pt-4">
-                <h3 className="text-sm font-semibold text-slate-800 mb-4">
+              <div className="border-t border-theme pt-4">
+                <h3 className="text-sm font-semibold text-text-primary mb-4">
                   Estado y Entrega
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Estado <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -1259,7 +1259,7 @@ export default function CertificateList() {
                           deliveryStatus: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                     >
                       <option value="en_archivo">En archivo</option>
                       <option value="listo_para_entrega">Listo para entrega</option>
@@ -1269,7 +1269,7 @@ export default function CertificateList() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Fecha de Entrega
                     </label>
                     <input
@@ -1281,11 +1281,11 @@ export default function CertificateList() {
                           deliveryDate: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
                       Entregado a
                     </label>
                     <input
@@ -1298,20 +1298,20 @@ export default function CertificateList() {
                         })
                       }
                       placeholder="Ej: Madre del alumno, Titular, etc."
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Botones de Acción */}
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-200">
+              <div className="flex gap-3 justify-end pt-4 border-t border-theme">
                 <button
                   onClick={() => {
                     setQuickViewCert(null);
                     setQuickEditData(null);
                   }}
-                  className="px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                  className="px-4 py-2 text-text-primary bg-theme-tertiary rounded-lg hover:bg-theme-secondary transition-colors border border-theme"
                 >
                   Cancelar
                 </button>
@@ -1357,7 +1357,7 @@ export default function CertificateList() {
                   onClick={() => {
                     router.push(`/admin/certificados/${quickViewCert.id}`);
                   }}
-                  className="px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="px-4 py-2 text-accent bg-accent/20 rounded-lg hover:bg-accent/30 transition-colors border border-accent/30"
                 >
                   Ver Detalle Completo
                 </button>

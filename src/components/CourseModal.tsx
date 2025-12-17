@@ -154,14 +154,14 @@ export default function CourseModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+      <div className="bg-theme-secondary rounded-xl shadow-lg p-6 w-full max-w-md mx-4 border border-theme">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-slate-800">
+          <h2 className="text-xl font-bold text-text-primary">
             {course ? "Editar Curso" : "Agregar Curso Nuevo"}
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors"
+            className="text-text-tertiary hover:text-text-primary transition-colors"
           >
             <X size={24} weight="bold" />
           </button>
@@ -175,7 +175,7 @@ export default function CourseModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Nombre del Curso <span className="text-red-500">*</span>
             </label>
             <input
@@ -195,7 +195,7 @@ export default function CourseModal({
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 fieldErrors.name
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                  : "border-slate-300"
+                  : "border-theme"
               }`}
               placeholder="Ej: Lactancia Materna"
             />
@@ -205,7 +205,7 @@ export default function CourseModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Código Corto (1-20 letras) <span className="text-red-500">*</span>
             </label>
             <input
@@ -228,14 +228,14 @@ export default function CourseModal({
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono ${
                 fieldErrors.id
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                  : "border-slate-300"
+                  : "border-theme"
               }`}
               placeholder="Ej: LM, ND, ECG, LACMAT"
             />
             {fieldErrors.id && (
               <p className="text-red-600 text-xs mt-1">{fieldErrors.id}</p>
             )}
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Solo letras mayúsculas (A-Z), sin espacios ni números. Mínimo 1, máximo 20 caracteres.
             </p>
             {course && formData.id.trim().toUpperCase() !== course.id && (
@@ -246,7 +246,7 @@ export default function CourseModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Tipo de Curso <span className="text-red-500">*</span>
             </label>
             <select
@@ -255,7 +255,7 @@ export default function CourseModal({
               onChange={(e) => {
                 setFormData({ ...formData, courseType: e.target.value as Course["courseType"] });
               }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
             >
               <option value="Curso">Curso</option>
               <option value="Diplomado">Diplomado</option>
@@ -263,13 +263,13 @@ export default function CourseModal({
               <option value="Taller">Taller</option>
               <option value="Seminario">Seminario</option>
             </select>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Selecciona el tipo de curso que se aplicará a todos los certificados de este curso.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Año <span className="text-red-500">*</span>
             </label>
             <input
@@ -281,16 +281,16 @@ export default function CourseModal({
               onChange={(e) => {
                 setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() });
               }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
               placeholder="Ej: 2025"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Año del curso. Se usará para generar los IDs de los certificados.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Edición (opcional)
             </label>
             <input
@@ -301,16 +301,16 @@ export default function CourseModal({
                 const value = e.target.value === "" ? null : parseInt(e.target.value);
                 setFormData({ ...formData, edition: value });
               }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
               placeholder="Ej: 1, 2, 3, 4..."
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Número de edición del curso (opcional). Ej: 1 para primera edición, 2 para segunda, etc.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Origen <span className="text-red-500">*</span>
             </label>
             <select
@@ -319,12 +319,12 @@ export default function CourseModal({
               onChange={(e) => {
                 setFormData({ ...formData, origin: e.target.value as "historico" | "nuevo" });
               }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
             >
               <option value="nuevo">Nuevo</option>
               <option value="historico">Histórico</option>
             </select>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Indica si el curso es nuevo o histórico. Los certificados heredarán este origen.
             </p>
           </div>

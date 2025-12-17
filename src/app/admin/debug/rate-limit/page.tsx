@@ -59,7 +59,7 @@ export default function RateLimitDebugPage() {
 
   if (checkingRole) {
     return (
-      <main className="min-h-screen bg-slate-50 p-8 flex items-center justify-center">
+      <main className="min-h-screen bg-theme-primary p-8 flex items-center justify-center">
         <LoadingSpinner />
       </main>
     );
@@ -177,7 +177,7 @@ export default function RateLimitDebugPage() {
       <div className="mb-4">
         <Link
           href="/admin/certificados"
-          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft size={20} weight="bold" />
           <span>Volver a Certificados</span>
@@ -185,11 +185,11 @@ export default function RateLimitDebugPage() {
       </div>
 
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-xl shadow border border-slate-200 p-6">
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">
+        <div className="bg-theme-secondary rounded-xl shadow border border-theme p-6">
+          <h1 className="text-2xl font-bold text-text-primary mb-2">
             Resetear Rate Limit
           </h1>
-          <p className="text-sm text-slate-600 mb-6">
+          <p className="text-sm text-text-secondary mb-6">
             Solo disponible para MASTER_ADMIN. Úsalo cuando un usuario (incluido tú) se quede bloqueado por rate limiting.
           </p>
 
@@ -223,11 +223,11 @@ export default function RateLimitDebugPage() {
 
           <div className="space-y-4">
             {/* Resetear mi propia IP */}
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h2 className="font-semibold text-slate-700 mb-2">
+            <div className="border border-theme rounded-lg p-4 bg-theme-tertiary">
+              <h2 className="font-semibold text-text-primary mb-2">
                 Resetear mi IP actual
               </h2>
-              <p className="text-xs text-slate-500 mb-3">
+              <p className="text-xs text-text-secondary mb-3">
                 Resetea el rate limit para tu IP actual (útil si te quedaste bloqueado).
               </p>
               <button
@@ -241,11 +241,11 @@ export default function RateLimitDebugPage() {
             </div>
 
             {/* Resetear IP específica */}
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h2 className="font-semibold text-slate-700 mb-2">
+            <div className="border border-theme rounded-lg p-4 bg-theme-tertiary">
+              <h2 className="font-semibold text-text-primary mb-2">
                 Resetear IP específica
               </h2>
-              <p className="text-xs text-slate-500 mb-3">
+              <p className="text-xs text-text-secondary mb-3">
                 Resetea el rate limit para una IP específica.
               </p>
               <div className="flex gap-2 mb-2">
@@ -293,8 +293,8 @@ export default function RateLimitDebugPage() {
             </div>
           </div>
 
-          <div className="mt-6 p-3 bg-slate-100 rounded-lg">
-            <p className="text-xs text-slate-600">
+          <div className="mt-6 p-3 bg-theme-tertiary rounded-lg border border-theme">
+            <p className="text-xs text-text-secondary">
               <strong>Nota:</strong> El rate limit se basa en la IP del cliente. 
               Si estás detrás de un proxy o compartes IP con otros usuarios, 
               resetear puede afectar a otros también.

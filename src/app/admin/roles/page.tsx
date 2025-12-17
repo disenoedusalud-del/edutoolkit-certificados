@@ -134,7 +134,7 @@ export default function AdminRolesPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-8">
+      <main className="min-h-screen bg-theme-primary p-8">
         <div className="flex items-center justify-center h-64">
           <LoadingSpinner />
         </div>
@@ -147,7 +147,7 @@ export default function AdminRolesPage() {
       <div className="mb-4">
         <Link
           href="/admin/certificados"
-          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft size={20} weight="bold" />
           <span>Volver a Certificados</span>
@@ -155,7 +155,7 @@ export default function AdminRolesPage() {
       </div>
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">
+        <h1 className="text-2xl font-bold text-text-primary">
           Administración de Roles
         </h1>
         {!showForm && (
@@ -170,13 +170,13 @@ export default function AdminRolesPage() {
       </div>
 
       {showForm ? (
-        <div className="bg-white rounded-xl shadow p-6 border border-slate-200 mb-6">
+        <div className="bg-theme-secondary rounded-xl shadow p-6 border border-theme mb-6">
           <h2 className="text-xl font-semibold mb-4">
             {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Email
               </label>
               <input
@@ -184,12 +184,12 @@ export default function AdminRolesPage() {
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
                 disabled={!!editingUser}
-                className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
+                className="w-full rounded-md border border-theme px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent bg-theme-secondary text-text-primary disabled:bg-theme-tertiary"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Rol
               </label>
               <select
@@ -214,7 +214,7 @@ export default function AdminRolesPage() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+                className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary border border-theme"
               >
                 Cancelar
               </button>
@@ -243,14 +243,14 @@ export default function AdminRolesPage() {
                   <tr>
                     <td
                       colSpan={3}
-                      className="px-4 py-8 text-center text-slate-500"
+                      className="px-4 py-8 text-center text-text-secondary"
                     >
                       No hay usuarios registrados
                     </td>
                   </tr>
                 ) : (
                   users.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50">
+                    <tr key={user.id} className="hover:bg-theme-tertiary">
                       <td className="px-4 py-3 text-sm">{user.email}</td>
                       <td className="px-4 py-3">
                         <span
@@ -259,7 +259,7 @@ export default function AdminRolesPage() {
                               ? "bg-purple-100 text-purple-700"
                               : user.role === "EDITOR"
                               ? "bg-blue-100 text-blue-700"
-                              : "bg-slate-100 text-slate-700"
+                              : "bg-theme-tertiary text-text-primary"
                           }`}
                         >
                           <Shield size={14} weight="bold" />

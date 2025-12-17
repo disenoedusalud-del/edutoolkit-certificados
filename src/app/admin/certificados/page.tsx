@@ -30,7 +30,7 @@ function AjustesButton() {
   return (
     <Link
       href="/admin/ajustes"
-      className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2"
+      className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
     >
       <Gear size={18} weight="bold" />
       Ajustes
@@ -60,7 +60,7 @@ export default function Page() {
             </Link>
             <button
               onClick={() => setShowStats(!showStats)}
-              className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
             >
               <ChartBar size={18} weight="bold" />
               {showStats ? "Ocultar Estadísticas" : "Ver Estadísticas"}

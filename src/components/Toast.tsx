@@ -61,7 +61,7 @@ export function ToastComponent({ toast, onClose }: ToastProps) {
       </div>
       <button
         onClick={() => onClose(toast.id)}
-        className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+        className="flex-shrink-0 text-text-tertiary hover:text-text-primary transition-colors"
       >
         <X size={16} weight="bold" />
       </button>

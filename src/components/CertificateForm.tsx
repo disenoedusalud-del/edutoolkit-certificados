@@ -449,13 +449,13 @@ export default function CertificateForm({
 
         <div className="space-y-6">
         {/* Información Personal */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-3 mb-4">
+        <div className="bg-theme-secondary rounded-lg border border-theme p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-3 mb-4">
             Información Personal
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Nombre Completo <span className="text-red-500">*</span>
             </label>
             <input
@@ -475,7 +475,7 @@ export default function CertificateForm({
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 fieldErrors.fullName
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                  : "border-slate-300"
+                  : "border-theme"
               }`}
             />
             {fieldErrors.fullName && (
@@ -483,7 +483,7 @@ export default function CertificateForm({
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Email
             </label>
             <input
@@ -502,7 +502,7 @@ export default function CertificateForm({
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                 fieldErrors.email
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                  : "border-slate-300"
+                  : "border-theme"
               }`}
             />
             {fieldErrors.email && (
@@ -510,7 +510,7 @@ export default function CertificateForm({
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Teléfono
             </label>
             <input
@@ -519,20 +519,20 @@ export default function CertificateForm({
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value })
               }
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
             />
           </div>
           </div>
         </div>
 
         {/* Información del Curso */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-3 mb-4">
+        <div className="bg-theme-secondary rounded-lg border border-theme p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-3 mb-4">
             Información del Curso
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Curso <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
@@ -555,8 +555,8 @@ export default function CertificateForm({
                   className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                     fieldErrors.courseName
                       ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                      : "border-slate-300"
-                  } ${loadingCourses ? "bg-slate-100 cursor-not-allowed" : ""}`}
+                      : "border-theme"
+                  } ${loadingCourses ? "bg-theme-tertiary cursor-not-allowed" : ""}`}
                 >
                   <option value="">
                     {loadingCourses 
@@ -586,17 +586,17 @@ export default function CertificateForm({
               )}
               {formData.selectedCourseId && (
                 <div className="mt-2 space-y-1">
-                  <p className="text-xs text-slate-500">
-                    Curso seleccionado: <span className="font-medium text-slate-700">{formData.courseName}</span>
+                  <p className="text-xs text-text-secondary">
+                    Curso seleccionado: <span className="font-medium text-text-primary">{formData.courseName}</span>
                   </p>
                   {formData.courseType && (
-                    <p className="text-xs text-slate-500">
-                      Tipo: <span className="font-medium text-slate-700">{formData.courseType}</span>
+                    <p className="text-xs text-text-secondary">
+                      Tipo: <span className="font-medium text-text-primary">{formData.courseType}</span>
                     </p>
                   )}
                   {formData.courseId && (
-                    <p className="text-xs text-slate-500">
-                      ID generado: <span className="font-mono font-medium text-slate-700">{formData.courseId}</span>
+                    <p className="text-xs text-text-secondary">
+                      ID generado: <span className="font-mono font-medium text-text-primary">{formData.courseId}</span>
                     </p>
                   )}
                 </div>
@@ -613,7 +613,7 @@ export default function CertificateForm({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   Estado
                 </label>
                 <select
@@ -624,7 +624,7 @@ export default function CertificateForm({
                       deliveryStatus: e.target.value as Certificate["deliveryStatus"],
                     })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                 >
                   <option value="en_archivo">En archivo</option>
                   <option value="listo_para_entrega">Listo para entrega</option>
@@ -634,7 +634,7 @@ export default function CertificateForm({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   Fecha de Entrega
                 </label>
                 <input
@@ -643,11 +643,11 @@ export default function CertificateForm({
                   onChange={(e) =>
                     setFormData({ ...formData, deliveryDate: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   Entregado a
                 </label>
                 <input
@@ -656,7 +656,7 @@ export default function CertificateForm({
                   onChange={(e) =>
                     setFormData({ ...formData, deliveredTo: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                 />
               </div>
             </div>
@@ -664,13 +664,13 @@ export default function CertificateForm({
         )}
 
         {/* Información de Archivo */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-3 mb-4">
+        <div className="bg-theme-secondary rounded-lg border border-theme p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-3 mb-4">
             Información de Archivo
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Ubicación Física
             </label>
             <input
@@ -679,15 +679,15 @@ export default function CertificateForm({
               onChange={(e) =>
                 setFormData({ ...formData, physicalLocation: e.target.value })
               }
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
               placeholder="Ej: Caja 1 / 2019 / LACMAT-2019-01"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Ubicación física del certificado en archivo
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-text-secondary mb-1">
               Código de Folio
             </label>
             <input
@@ -696,10 +696,10 @@ export default function CertificateForm({
               onChange={(e) =>
                 setFormData({ ...formData, folioCode: e.target.value })
               }
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
               placeholder="Ej: FOLIO-001"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Código de folio o referencia interna del certificado
             </p>
           </div>
@@ -707,13 +707,13 @@ export default function CertificateForm({
         </div>
 
         {/* Información Adicional */}
-        <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-3 mb-4">
+        <div className="bg-theme-secondary rounded-lg border border-theme p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-3 mb-4">
             Información Adicional
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 Fuente de Contacto
               </label>
               <select
@@ -724,7 +724,7 @@ export default function CertificateForm({
                     contactSource: e.target.value as Certificate["contactSource"],
                   })
                 }
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
               >
                 <option value="ninguno">Ninguno</option>
                 <option value="inscripcion">Inscripción</option>
@@ -732,7 +732,7 @@ export default function CertificateForm({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-text-secondary mb-1">
                 ID de Archivo en Drive
               </label>
             <input
@@ -772,14 +772,14 @@ export default function CertificateForm({
                 }
               }}
               placeholder="ID o URL de Google Drive (ej: https://drive.google.com/file/d/1a2b3c4d5e6f7g8h9i0j/view)"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Puedes pegar el ID del archivo o la URL completa de Google Drive. El sistema extraerá automáticamente el ID al guardar.
             </p>
             </div>
             <div className="md:col-span-2 space-y-3 pt-2">
-              <h4 className="text-sm font-medium text-slate-700">Notificaciones y Consentimientos</h4>
+              <h4 className="text-sm font-medium text-text-secondary">Notificaciones y Consentimientos</h4>
               <div className="space-y-2">
                 <label className="flex items-center gap-2">
                   <input
@@ -788,7 +788,7 @@ export default function CertificateForm({
                     onChange={(e) =>
                       setFormData({ ...formData, emailSent: e.target.checked })
                     }
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-accent border-theme rounded focus:ring-accent"
                   />
                   <span className="text-sm text-slate-700">Email enviado</span>
                 </label>
@@ -799,7 +799,7 @@ export default function CertificateForm({
                     onChange={(e) =>
                       setFormData({ ...formData, whatsappSent: e.target.checked })
                     }
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-accent border-theme rounded focus:ring-accent"
                   />
                   <span className="text-sm text-slate-700">WhatsApp enviado</span>
                 </label>
@@ -810,7 +810,7 @@ export default function CertificateForm({
                     onChange={(e) =>
                       setFormData({ ...formData, marketingConsent: e.target.checked })
                     }
-                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-accent border-theme rounded focus:ring-accent"
                   />
                   <span className="text-sm text-slate-700">Consentimiento de marketing</span>
                 </label>
@@ -825,7 +825,7 @@ export default function CertificateForm({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+              className="px-4 py-2 text-text-primary bg-theme-tertiary rounded-lg hover:bg-theme-secondary transition-colors border border-theme"
             >
               Cancelar
             </button>

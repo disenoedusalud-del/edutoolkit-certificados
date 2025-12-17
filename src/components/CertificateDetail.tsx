@@ -47,7 +47,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
     return (
       <div className="flex flex-col items-center justify-center p-8 gap-4">
         <LoadingSpinner size={32} className="text-blue-600" />
-        <p className="text-slate-500 text-sm">Cargando certificado...</p>
+        <p className="text-text-secondary text-sm">Cargando certificado...</p>
       </div>
     );
   }
@@ -93,18 +93,18 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
         <div className="mb-4">
           <button
             onClick={() => setEditing(false)}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+            className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
           >
             <ArrowLeft size={20} weight="bold" />
             <span>Volver al detalle</span>
           </button>
         </div>
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-800">
+          <h2 className="text-2xl font-bold text-text-primary">
             Editar Certificado
           </h2>
         </div>
-        <div className="bg-white rounded-xl shadow border border-slate-200 p-6">
+        <div className="bg-theme-secondary rounded-xl shadow border border-theme p-6">
           <CertificateForm
             certificate={certificate}
             onCancel={() => {
@@ -129,14 +129,14 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
       <div className="mb-4">
         <button
           onClick={() => router.push("/admin/certificados")}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft size={20} weight="bold" />
           <span>Volver a la lista</span>
         </button>
       </div>
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-800">
+        <h2 className="text-2xl font-bold text-text-primary">
           Detalle del Certificado
         </h2>
         <div className="flex gap-2">
@@ -212,7 +212,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
           </button>
           <Link
             href="/admin/certificados"
-            className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm"
+            className="px-4 py-2 text-text-secondary hover:text-text-primary text-sm"
           >
             ← Volver
           </Link>
@@ -223,48 +223,48 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Información Personal */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">
+            <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-2">
               Información Personal
             </h3>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Nombre Completo</label>
-              <p className="text-slate-800 font-medium">{certificate.fullName}</p>
+              <label className="text-xs text-text-secondary uppercase">Nombre Completo</label>
+              <p className="text-text-primary font-medium">{certificate.fullName}</p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Email</label>
-              <p className="text-slate-800">
-                {certificate.email || <span className="text-slate-400">No registrado</span>}
+              <label className="text-xs text-text-secondary uppercase">Email</label>
+              <p className="text-text-primary">
+                {certificate.email || <span className="text-text-tertiary">No registrado</span>}
               </p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Teléfono</label>
-              <p className="text-slate-800">
-                {certificate.phone || <span className="text-slate-400">No registrado</span>}
+              <label className="text-xs text-text-secondary uppercase">Teléfono</label>
+              <p className="text-text-primary">
+                {certificate.phone || <span className="text-text-tertiary">No registrado</span>}
               </p>
             </div>
           </div>
 
           {/* Información del Curso */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">
+            <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-2">
               Información del Curso
             </h3>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Nombre del Curso</label>
-              <p className="text-slate-800 font-medium">{certificate.courseName}</p>
+              <label className="text-xs text-text-secondary uppercase">Nombre del Curso</label>
+              <p className="text-text-primary font-medium">{certificate.courseName}</p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Tipo de Curso</label>
-              <p className="text-slate-800">{certificate.courseType}</p>
+              <label className="text-xs text-text-secondary uppercase">Tipo de Curso</label>
+              <p className="text-text-primary">{certificate.courseType}</p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Año</label>
-              <p className="text-slate-800">{certificate.year}</p>
+              <label className="text-xs text-text-secondary uppercase">Año</label>
+              <p className="text-text-primary">{certificate.year}</p>
             </div>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Origen</label>
-              <p className="text-slate-800">
-                <span className="px-2 py-1 bg-slate-100 rounded text-xs">
+              <label className="text-xs text-text-secondary uppercase">Origen</label>
+              <p className="text-text-primary">
+                <span className="px-2 py-1 bg-theme-tertiary rounded text-xs border border-theme">
                   {certificate.origin === "historico" ? "Histórico" : "Nuevo"}
                 </span>
               </p>
@@ -273,11 +273,11 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
 
           {/* Estado de Entrega */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">
+            <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-2">
               Estado de Entrega
             </h3>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Estado</label>
+              <label className="text-xs text-text-secondary uppercase">Estado</label>
               <p className="mt-1">
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -290,40 +290,40 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
             </div>
             {certificate.deliveryDate && (
               <div>
-                <label className="text-xs text-slate-500 uppercase">Fecha de Entrega</label>
-                <p className="text-slate-800">
+                <label className="text-xs text-text-secondary uppercase">Fecha de Entrega</label>
+                <p className="text-text-primary">
                   {new Date(certificate.deliveryDate).toLocaleDateString("es-ES")}
                 </p>
               </div>
             )}
             {certificate.deliveredTo && (
               <div>
-                <label className="text-xs text-slate-500 uppercase">Entregado a</label>
-                <p className="text-slate-800">{certificate.deliveredTo}</p>
+                <label className="text-xs text-text-secondary uppercase">Entregado a</label>
+                <p className="text-text-primary">{certificate.deliveredTo}</p>
               </div>
             )}
             {certificate.physicalLocation && (
               <div>
-                <label className="text-xs text-slate-500 uppercase">Ubicación Física</label>
-                <p className="text-slate-800">{certificate.physicalLocation}</p>
+                <label className="text-xs text-text-secondary uppercase">Ubicación Física</label>
+                <p className="text-text-primary">{certificate.physicalLocation}</p>
               </div>
             )}
             {certificate.folioCode && (
               <div>
-                <label className="text-xs text-slate-500 uppercase">Código de Folio</label>
-                <p className="text-slate-800 font-mono">{certificate.folioCode}</p>
+                <label className="text-xs text-text-secondary uppercase">Código de Folio</label>
+                <p className="text-text-primary font-mono">{certificate.folioCode}</p>
               </div>
             )}
           </div>
 
           {/* Información Adicional */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">
+            <h3 className="text-lg font-semibold text-text-primary border-b border-theme pb-2">
               Información Adicional
             </h3>
             <div>
-              <label className="text-xs text-slate-500 uppercase">Fuente de Contacto</label>
-              <p className="text-slate-800">
+              <label className="text-xs text-text-secondary uppercase">Fuente de Contacto</label>
+              <p className="text-text-primary">
                 {certificate.contactSource === "inscripcion"
                   ? "Inscripción"
                   : certificate.contactSource === "retiro_presencial"
@@ -333,15 +333,15 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
             </div>
             <div className="flex gap-4">
               <div>
-                <label className="text-xs text-slate-500 uppercase">Email Enviado</label>
-                <p className="text-slate-800 flex items-center gap-1">
+                <label className="text-xs text-text-secondary uppercase">Email Enviado</label>
+                <p className="text-text-primary flex items-center gap-1">
                   {certificate.emailSent ? (
                     <span className="text-green-600 flex items-center gap-1">
                       <Check size={16} weight="bold" />
                       Sí
                     </span>
                   ) : (
-                    <span className="text-slate-400 flex items-center gap-1">
+                    <span className="text-text-tertiary flex items-center gap-1">
                       <X size={16} weight="bold" />
                       No
                     </span>
@@ -349,15 +349,15 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                 </p>
               </div>
               <div>
-                <label className="text-xs text-slate-500 uppercase">WhatsApp Enviado</label>
-                <p className="text-slate-800 flex items-center gap-1">
+                <label className="text-xs text-text-secondary uppercase">WhatsApp Enviado</label>
+                <p className="text-text-primary flex items-center gap-1">
                   {certificate.whatsappSent ? (
                     <span className="text-green-600 flex items-center gap-1">
                       <Check size={16} weight="bold" />
                       Sí
                     </span>
                   ) : (
-                    <span className="text-slate-400 flex items-center gap-1">
+                    <span className="text-text-tertiary flex items-center gap-1">
                       <X size={16} weight="bold" />
                       No
                     </span>
@@ -365,15 +365,15 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                 </p>
               </div>
               <div>
-                <label className="text-xs text-slate-500 uppercase">Consentimiento Marketing</label>
-                <p className="text-slate-800 flex items-center gap-1">
+                <label className="text-xs text-text-secondary uppercase">Consentimiento Marketing</label>
+                <p className="text-text-primary flex items-center gap-1">
                   {certificate.marketingConsent ? (
                     <span className="text-green-600 flex items-center gap-1">
                       <Check size={16} weight="bold" />
                       Sí
                     </span>
                   ) : (
-                    <span className="text-slate-400 flex items-center gap-1">
+                    <span className="text-text-tertiary flex items-center gap-1">
                       <X size={16} weight="bold" />
                       No
                     </span>
@@ -382,7 +382,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
               </div>
             </div>
             <div>
-              <label className="text-xs text-slate-500 uppercase mb-2 block">
+              <label className="text-xs text-text-secondary uppercase mb-2 block">
                 Archivo en Google Drive
               </label>
               {certificate.driveFileId ? (
@@ -401,17 +401,17 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                       href={`https://drive.google.com/uc?export=download&id=${certificate.driveFileId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1 bg-slate-200 text-slate-700 rounded text-xs hover:bg-slate-300 transition-colors"
+                      className="px-3 py-1 bg-theme-tertiary text-text-primary rounded text-xs hover:bg-theme-secondary transition-colors border border-theme"
                     >
                       Descargar
                     </a>
                   </div>
-                  <p className="text-slate-500 text-xs mt-1 font-mono break-all mb-2">
+                  <p className="text-text-secondary text-xs mt-1 font-mono break-all mb-2">
                     ID: {certificate.driveFileId}
                   </p>
                 </>
               ) : (
-                <p className="text-slate-400 text-xs mb-2">No hay archivo asociado</p>
+                <p className="text-text-tertiary text-xs mb-2">No hay archivo asociado</p>
               )}
               <div>
                 <label
@@ -471,15 +471,15 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                     }
                   }}
                 />
-                <p className="text-slate-400 text-xs mt-1">
+                <p className="text-text-tertiary text-xs mt-1">
                   Solo archivos PDF, máximo 10MB
                 </p>
               </div>
             </div>
             {certificate.createdAt && (
               <div>
-                <label className="text-xs text-slate-500 uppercase">Fecha de Creación</label>
-                <p className="text-slate-800 text-sm">
+                <label className="text-xs text-text-secondary uppercase">Fecha de Creación</label>
+                <p className="text-text-primary text-sm">
                   {new Date(certificate.createdAt).toLocaleString("es-ES")}
                 </p>
               </div>
