@@ -1,25 +1,47 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Certificate } from "@/types/Certificate";
 import {
   ClipboardText,
   CheckCircle,
   Package,
   Calendar,
+  Warning,
 } from "phosphor-react";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
 
+interface CertificateStatsData {
+  total: number;
+  porEstado: {
+    entregados: number;
+    listosParaEntrega: number;
+    enArchivo: number;
+    digitalEnviado: number;
+  };
+  porAño: Record<number, number>;
+  esteAño: number;
+}
+
 export default function CertificateStats() {
-  const [certs, setCerts] = useState<Certificate[]>([]);
+  const [stats, setStats] = useState<CertificateStatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/certificates")
-      .then((res) => res.json())
-      .then((data) => setCerts(data))
+    fetch("/api/certificates/stats")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Error ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setStats(data);
+        setError(null);
+      })
       .catch((error) => {
-        console.error("Error loading certificates:", error);
+        console.error("Error loading certificate stats:", error);
+        setError("No se pudieron cargar las estadísticas. Por favor, intenta de nuevo.");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -44,36 +66,40 @@ export default function CertificateStats() {
     );
   }
 
-  // Calcular estadísticas
-  const total = certs.length;
-  const porEstado = certs.reduce(
-    (acc, cert) => {
-      const status = cert.deliveryStatus || "en_archivo";
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  if (error || !stats) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-red-800">
+          <Warning size={20} weight="fill" />
+          <span className="font-medium">{error || "Error desconocido"}</span>
+        </div>
+        <button
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            fetch("/api/certificates/stats")
+              .then((res) => res.json())
+              .then((data) => {
+                setStats(data);
+                setError(null);
+              })
+              .catch((err) => {
+                setError("No se pudieron cargar las estadísticas.");
+                console.error(err);
+              })
+              .finally(() => setLoading(false));
+          }}
+          className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
 
-  const entregados =
-    porEstado["entregado"] || 0;
-  const listosParaEntrega =
-    porEstado["listo_para_entrega"] || 0;
-  const enArchivo = porEstado["en_archivo"] || 0;
-  const digitalEnviado = porEstado["digital_enviado"] || 0;
-
-  // Certificados por año
-  const porAño = certs.reduce(
-    (acc, cert) => {
-      const año = cert.year || new Date().getFullYear();
-      acc[año] = (acc[año] || 0) + 1;
-      return acc;
-    },
-    {} as Record<number, number>
-  );
-
-  const añoActual = new Date().getFullYear();
-  const esteAño = porAño[añoActual] || 0;
+  // Usar datos del backend
+  const { total, porEstado, porAño, esteAño } = stats;
+  const { entregados, listosParaEntrega, enArchivo, digitalEnviado } = porEstado;
 
   const stats = [
     {
