@@ -1,34 +1,17 @@
 // src/app/api/debug/my-ip/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
-export const runtime = "nodejs";
-
-/**
- * Rate limiting MUY permisivo para endpoints de debug
- * 50 requests por minuto - suficiente para uso normal pero difícil de alcanzar
- * Esto evita que te quedes bloqueado en los endpoints de debug
- */
-const DEBUG_RATE_LIMIT = {
-  maxRequests: 50,
-  windowMs: 60 * 1000, // 1 minuto
-};
+export const dynamic = "force-dynamic";
 
 /**
- * Endpoint para obtener la IP del usuario actual (solo MASTER_ADMIN)
+ * Endpoint para obtener la IP del usuario actual.
+ * Solo disponible para usuarios autenticados (no requiere rol específico).
  */
 export async function GET(request: NextRequest) {
   try {
-    // Rate limiting muy permisivo (50 req/min) para evitar bloqueos en este endpoint
-    const rateLimitResult = await rateLimit(request, DEBUG_RATE_LIMIT);
-    if (!rateLimitResult.success) {
-      return rateLimitResponse(rateLimitResult.resetTime);
-    }
-
-    // Solo MASTER_ADMIN puede ver su IP
+    // Verificar que el usuario esté autenticado
     const user = await getCurrentUser();
-    
     if (!user) {
       return NextResponse.json(
         { error: "No autenticado" },
@@ -36,44 +19,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (user.role !== "MASTER_ADMIN") {
+    // Obtener la IP del request
+    // Intentar obtener de headers comunes (Vercel, proxies, etc.)
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const realIP = request.headers.get("x-real-ip");
+    const cfConnectingIP = request.headers.get("cf-connecting-ip"); // Cloudflare
+
+    let ip: string | null = null;
+
+    if (cfConnectingIP) {
+      ip = cfConnectingIP;
+    } else if (forwardedFor) {
+      // x-forwarded-for puede contener múltiples IPs separadas por coma
+      // La primera es generalmente la IP original del cliente
+      ip = forwardedFor.split(",")[0].trim();
+    } else if (realIP) {
+      ip = realIP;
+    }
+
+    if (!ip) {
       return NextResponse.json(
-        { error: "Solo MASTER_ADMIN puede ver su IP" },
-        { status: 403 }
+        { error: "No se pudo determinar la IP" },
+        { status: 500 }
       );
     }
 
-    // Obtener IP del request
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIP = request.headers.get("x-real-ip");
-    const cfIP = request.headers.get("cf-connecting-ip");
-    
-    const clientIP = forwarded?.split(",")[0].trim() || realIP || cfIP || "unknown";
-
-    return NextResponse.json(
-      {
-        ip: clientIP,
-        headers: {
-          "x-forwarded-for": forwarded || null,
-          "x-real-ip": realIP || null,
-          "cf-connecting-ip": cfIP || null,
-        },
-      },
-      {
-        headers: {
-          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-        },
-      }
-    );
+    return NextResponse.json({ ip });
   } catch (error) {
-    console.error("[MY-IP] Error:", error);
+    console.error("[DEBUG][MY-IP] Error:", error);
     return NextResponse.json(
-      {
-        error: "Error al obtener IP",
-        details: error instanceof Error ? error.message : String(error),
-      },
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }
 }
-

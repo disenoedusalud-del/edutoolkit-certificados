@@ -1,45 +1,12 @@
 // src/app/api/auth/reset-password/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { adminAuth } from "@/lib/firebaseAdmin";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 import { validateEmail } from "@/lib/validation";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { isAuthorizedEmail } from "@/lib/auth";
+
 export const runtime = "nodejs";
-
-
-/**
- * Verifica si un email está autorizado (misma lógica que login/register)
- */
-async function isAuthorizedEmail(email: string): Promise<boolean> {
-  const normalizedEmail = email.toLowerCase().trim();
-  
-  // 1. Verificar en adminUsers (Firestore)
-  const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
-  const userDoc = await adminDb.collection("adminUsers").doc(docId).get();
-  
-  if (userDoc.exists) {
-    return true;
-  }
-  
-  // 2. Verificar en MASTER_ADMIN_EMAILS
-  const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  
-  if (masterEmails.includes(normalizedEmail)) {
-    return true;
-  }
-  
-  // 3. Verificar en ALLOWED_ADMIN_EMAILS
-  const allowedRaw = process.env.ALLOWED_ADMIN_EMAILS || "";
-  const allowed = allowedRaw
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  
-  return allowed.includes(normalizedEmail);
-}
 
 export async function POST(request: NextRequest) {
   console.log("[RESET-PASSWORD] ⚡ Endpoint llamado");
