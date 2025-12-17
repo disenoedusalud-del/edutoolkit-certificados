@@ -219,7 +219,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow border border-slate-200 p-6">
+      <div className="bg-theme-secondary rounded-xl shadow border border-theme p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Información Personal */}
           <div className="space-y-4">
