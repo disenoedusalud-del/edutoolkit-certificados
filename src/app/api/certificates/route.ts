@@ -41,43 +41,87 @@ export async function GET(request: NextRequest) {
     // 4. Paginación: parsear y validar parámetros
     const page = Math.max(1, parseInt(pageParam || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(limitParam || "50", 10))); // Max 100, default 50
-    const offset = (page - 1) * limit;
 
     // 5. Obtener total de documentos (para calcular totalPages)
     const totalSnapshot = await adminDb.collection("certificates").count().get();
     const total = totalSnapshot.data().count;
 
     // 6. Obtener documentos paginados
-    const snapshot = await adminDb
-      .collection("certificates")
-      .limit(limit)
-      .offset(offset)
-      .get();
+    // Usar el mismo patrón que en /api/courses
+    let query = adminDb.collection("certificates");
+    
+    // Intentar ordenar por createdAt, pero si falla (por falta de índice o campo), obtener sin ordenar
+    try {
+      query = query.orderBy("createdAt", "desc");
+      const snapshot = await query.limit(limit).offset((page - 1) * limit).get();
+      const data = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
 
-    const data = snapshot.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    }));
+      const totalPages = Math.ceil(total / limit);
 
-    const totalPages = Math.ceil(total / limit);
-
-    // 7. Retornar con estructura de paginación
-    return NextResponse.json(
-      {
-        data,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
+      // 7. Retornar con estructura de paginación
+      return NextResponse.json(
+        {
+          data,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
         },
-      },
-      {
-        headers: {
-          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        }
+      );
+    } catch (orderError: any) {
+      // Si falla el ordenamiento, obtener sin ordenar y paginar en memoria
+      logger.warn("No se pudo ordenar certificados, obteniendo sin orden", { 
+        error: orderError.message, 
+        endpoint: "/api/certificates" 
+      });
+      
+      const allSnapshot = await adminDb.collection("certificates").get();
+      const allDocs = allSnapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+      
+      // Ordenar en memoria por createdAt si existe
+      allDocs.sort((a, b) => {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate; // Descendente
+      });
+      
+      // Paginar en memoria
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const data = allDocs.slice(startIndex, endIndex);
+      
+      const totalPages = Math.ceil(total / limit);
+
+      return NextResponse.json(
+        {
+          data,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
         },
-      }
-    );
+        {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        }
+      );
+    }
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") {

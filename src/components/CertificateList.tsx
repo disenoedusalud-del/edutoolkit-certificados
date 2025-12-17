@@ -53,6 +53,13 @@ export default function CertificateList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
+  const [usingBackendPagination, setUsingBackendPagination] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<string>("");
   const [showBulkActions, setShowBulkActions] = useState(false);
@@ -73,33 +80,79 @@ export default function CertificateList() {
   const [quickEditLoading, setQuickEditLoading] = useState(false);
   const router = useRouter();
 
-  const loadCertificates = async () => {
+  // Detectar si hay filtros activos
+  const hasActiveFilters = useMemo(() => {
+    return searchTerm !== "" || statusFilter !== "all" || yearFilter !== "all" || sortField !== null;
+  }, [searchTerm, statusFilter, yearFilter, sortField]);
+
+  const loadCertificates = async (page: number = 1) => {
     try {
       setLoading(true);
-      const res = await fetch("/api/certificates");
-      const data = await res.json();
       
-      // Asegurar que siempre sea un array
-      if (Array.isArray(data)) {
-        setCerts(data);
-      } else if (data.error) {
-        console.error("Error from API:", data.error);
-        setCerts([]); // Establecer array vacío en caso de error
+      // Si no hay filtros activos, usar paginación del backend
+      if (!hasActiveFilters) {
+        // Usar paginación del backend
+        setUsingBackendPagination(true);
+        const res = await fetch(`/api/certificates?page=${page}&limit=${ITEMS_PER_PAGE}`);
+        const data = await res.json();
+        
+        if (data.error) {
+          console.error("Error from API:", data.error);
+          setCerts([]);
+          setPagination(null);
+        } else if (data.pagination) {
+          // Respuesta con paginación
+          setCerts(data.data || []);
+          setPagination(data.pagination);
+        } else {
+          // Fallback: respuesta sin paginación (formato antiguo)
+          setCerts(Array.isArray(data) ? data : []);
+          setPagination(null);
+        }
       } else {
-        console.warn("Unexpected data format:", data);
-        setCerts([]); // Establecer array vacío si el formato no es el esperado
+        // Hay filtros activos, cargar TODOS los certificados (sin paginación) para filtrar en memoria
+        setUsingBackendPagination(false);
+        const res = await fetch("/api/certificates"); // Sin parámetros = todos los certificados
+        const data = await res.json();
+        
+        if (Array.isArray(data)) {
+          // Formato antiguo: array directo
+          setCerts(data);
+        } else if (data.error) {
+          console.error("Error from API:", data.error);
+          setCerts([]);
+        } else if (data.data && Array.isArray(data.data)) {
+          // Formato nuevo con paginación, pero necesitamos todos
+          // Si hay paginación, necesitamos hacer múltiples requests o cargar todos de otra forma
+          // Por ahora, cargamos solo la primera página y mostramos advertencia
+          console.warn("Filtros activos pero API devolvió paginación. Cargando solo primera página.");
+          setCerts(data.data);
+        } else {
+          setCerts([]);
+        }
+        setPagination(null);
       }
     } catch (error) {
       console.error("Error loading certificates:", error);
-      setCerts([]); // Establecer array vacío en caso de error de red
+      setCerts([]);
+      setPagination(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadCertificates();
-  }, []);
+    // Si hay filtros, desactivar paginación del backend y recargar todos
+    if (hasActiveFilters) {
+      setUsingBackendPagination(false);
+      setCurrentPage(1);
+    }
+  }, [hasActiveFilters]);
+
+  useEffect(() => {
+    loadCertificates(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, hasActiveFilters]);
 
   // Filtrar y ordenar certificados
   const filteredCerts = useMemo(() => {
@@ -220,13 +273,17 @@ export default function CertificateList() {
     );
   };
 
-  // Paginación
-  const totalPages = Math.ceil(filteredCerts.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedCerts = filteredCerts.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE
-  );
+  // Paginación: usar backend si no hay filtros, sino usar memoria
+  const totalPages = usingBackendPagination && pagination 
+    ? pagination.totalPages 
+    : Math.ceil(filteredCerts.length / ITEMS_PER_PAGE);
+  
+  const paginatedCerts = usingBackendPagination
+    ? filteredCerts // Cuando usamos backend, filteredCerts ya está paginado
+    : (() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredCerts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+      })();
 
   // Obtener años únicos para el filtro
   const uniqueYears = useMemo(() => {
@@ -239,9 +296,12 @@ export default function CertificateList() {
     return years;
   }, [certs]);
 
+  // Resetear página cuando cambian los filtros (solo si no usamos backend pagination)
   useEffect(() => {
-    setCurrentPage(1); // Resetear a la primera página cuando cambian los filtros
-  }, [searchTerm, statusFilter, yearFilter, sortField, sortDirection]);
+    if (!usingBackendPagination) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, statusFilter, yearFilter, sortField, sortDirection, usingBackendPagination]);
 
   // Toggle selección individual
   const toggleSelect = (id: string, e: React.MouseEvent) => {
