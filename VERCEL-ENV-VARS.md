@@ -105,6 +105,32 @@ DRIVE_CERTIFICATES_FOLDER_ID=1ABC...xyz
 
 ---
 
+## 🚀 Vercel KV (Opcional pero Recomendado)
+
+Configuración de Vercel KV para rate limiting distribuido. Si no se configuran, el rate limiting usará memoria (no distribuido).
+
+```
+KV_REST_API_URL=https://tu-kv-instance.kv.vercel-storage.com
+KV_REST_API_TOKEN=tu-token-de-kv
+```
+
+**Nota:**
+- **Recomendado para producción:** Vercel KV permite rate limiting distribuido entre múltiples instancias de servidor.
+- **Sin KV:** El rate limiting funcionará pero solo en memoria (se pierde al reiniciar y no funciona entre instancias).
+- **Cómo obtener las credenciales:**
+  1. Ve a [Vercel Dashboard](https://vercel.com/dashboard)
+  2. Selecciona tu proyecto
+  3. Ve a **Storage** → **Create Database** → **KV**
+  4. Crea una base de datos KV
+  5. Copia `KV_REST_API_URL` y `KV_REST_API_TOKEN` desde la configuración
+
+**Ventajas de usar KV:**
+- Rate limiting distribuido (funciona entre múltiples instancias de Vercel)
+- Persistencia entre reinicios
+- Mejor escalabilidad
+
+---
+
 ## 🌍 App URL (Opcional)
 
 URL base de la aplicación para generar enlaces (reset password, etc.).
@@ -222,7 +248,8 @@ Las cookies de sesión se configuran automáticamente con:
 | Autenticación | `MASTER_ADMIN_EMAILS`, `ALLOWED_ADMIN_EMAILS` | ✅ Sí |
 | EmailJS | `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY` | ✅ Sí |
 | Apps Script Drive | `APPS_SCRIPT_UPLOAD_URL`, `APPS_SCRIPT_UPLOAD_TOKEN`, `DRIVE_CERTIFICATES_FOLDER_ID` | ✅ Sí |
+| Vercel KV | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | ⚠️ Opcional (recomendado) |
 | App URL | `NEXT_PUBLIC_APP_URL` | ⚠️ Opcional |
 
-**Total: ~18 variables de entorno**
+**Total: ~20 variables de entorno** (18 requeridas + 2 opcionales recomendadas)
 

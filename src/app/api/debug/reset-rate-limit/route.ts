@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     if (all === true) {
       // Resetear todos los rate limits
-      const count = resetAllRateLimits();
+      const count = await resetAllRateLimits();
       return NextResponse.json(
         {
           success: true,
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Resetear rate limit para una IP específica (o la IP del request)
     const targetIP = ip || requestIP;
-    const existed = resetRateLimitForIP(targetIP);
+    const existed = await resetRateLimitForIP(targetIP);
 
     return NextResponse.json(
       {
