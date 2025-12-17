@@ -6,6 +6,32 @@ import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
 import { ChartBar, Plus, BookOpen, ArrowLeft, Gear } from "phosphor-react";
 import Link from "next/link";
+import ThemeSelector from "@/components/ThemeSelector";
+
+function ThemeSettingsButton() {
+  const [showThemeSettings, setShowThemeSettings] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowThemeSettings(!showThemeSettings)}
+        className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
+        title="Ajustes de tema"
+      >
+        <Gear size={18} weight="bold" />
+        Tema
+      </button>
+      {showThemeSettings && (
+        <div className="absolute top-12 right-0 bg-theme-secondary border border-theme rounded-lg shadow-xl p-4 z-50 min-w-[200px]">
+          <div className="mb-2">
+            <h3 className="text-sm font-semibold text-text-primary mb-2">Apariencia</h3>
+            <ThemeSelector />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AjustesButton() {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -50,6 +76,7 @@ export default function Page() {
         </h1>
         {!showForm && (
           <div className="flex gap-2 items-center">
+            <ThemeSettingsButton />
             <AjustesButton />
             <Link
               href="/admin/cursos"
