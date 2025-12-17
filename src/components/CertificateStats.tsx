@@ -101,7 +101,7 @@ export default function CertificateStats() {
   const { total, porEstado, porAño, esteAño } = stats;
   const { entregados, listosParaEntrega, enArchivo, digitalEnviado } = porEstado;
 
-  const stats = [
+  const statsCards = [
     {
       label: "Total Certificados",
       value: total,
@@ -131,7 +131,7 @@ export default function CertificateStats() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {stats.map((stat) => (
+        {statsCards.map((stat) => (
           <div
             key={stat.label}
             className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm"

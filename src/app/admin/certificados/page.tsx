@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
+import ThemeSelector from "@/components/ThemeSelector";
 import { ChartBar, Plus, BookOpen, ArrowLeft, Gear } from "phosphor-react";
 import Link from "next/link";
 
@@ -49,7 +50,8 @@ export default function Page() {
           Gestión de Certificados
         </h1>
         {!showForm && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <ThemeSelector />
             <AjustesButton />
             <Link
               href="/admin/cursos"

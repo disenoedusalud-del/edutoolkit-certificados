@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Shield, ArrowClockwise, Gear } from "phosphor-react";
+import { ArrowLeft, Shield, ArrowClockwise, Gear, Palette } from "phosphor-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import ThemeSelector from "@/components/ThemeSelector";
 import type { UserRole } from "@/lib/auth";
 
 export default function AjustesPage() {
@@ -71,6 +72,21 @@ export default function AjustesPage() {
           <p className="text-sm text-slate-600 mb-6">
             Configuración y herramientas administrativas disponibles solo para MASTER_ADMIN.
           </p>
+
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-slate-700 mb-4">Apariencia</h2>
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-slate-800 mb-1">Tema de la aplicación</h3>
+                  <p className="text-sm text-slate-600">
+                    Cambia entre Tokyo Night, Dark, Light y Solarized Light
+                  </p>
+                </div>
+                <ThemeSelector />
+              </div>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Administrar Roles */}

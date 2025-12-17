@@ -2,6 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Variables CSS para cada tema */
+:root[data-theme="tokyo-night"] {
+  /* Tokyo Night - Default */
+  --bg-primary: #1a1b26;
+  --bg-secondary: #24283b;
+  --bg-tertiary: #2f3549;
+  --text-primary: #c0caf5;
+  --text-secondary: #a9b1d6;
+  --text-tertiary: #565f89;
+  --border-color: #3b4261;
+  --accent: #7aa2f7;
+  --accent-hover: #9ab8ff;
+  --success: #9ece6a;
+  --warning: #e0af68;
+  --error: #f7768e;
+  --info: #7aa2f7;
+}
+
+:root[data-theme="dark"] {
+  /* Dark */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
+  --border-color: #30363d;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --success: #3fb950;
+  --warning: #d29922;
+  --error: #f85149;
+  --info: #58a6ff;
+}
+
+:root[data-theme="light"] {
+  /* Light */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-tertiary: #8c959f;
+  --border-color: #d0d7de;
+  --accent: #0969da;
+  --accent-hover: #0860ca;
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --error: #cf222e;
+  --info: #0969da;
+}
+
+:root[data-theme="solarized-light"] {
+  /* Solarized Light */
+  --bg-primary: #fdf6e3;
+  --bg-secondary: #eee8d5;
+  --bg-tertiary: #e6dfcc;
+  --text-primary: #586e75;
+  --text-secondary: #657b83;
+  --text-tertiary: #839496;
+  --border-color: #93a1a1;
+  --accent: #268bd2;
+  --accent-hover: #2aa198;
+  --success: #859900;
+  --warning: #b58900;
+  --error: #dc322f;
+  --info: #268bd2;
+}
+
+/* Aplicar colores a elementos base */
+@layer base {
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
 @layer utilities {
   @keyframes slide-in-from-right {
     from {
@@ -16,5 +94,46 @@
 
   .animate-in {
     animation: slide-in-from-right 0.3s ease-out;
+  }
+
+  /* Utilidades para usar variables de tema */
+  .bg-theme-primary {
+    background-color: var(--bg-primary);
+  }
+
+  .bg-theme-secondary {
+    background-color: var(--bg-secondary);
+  }
+
+  .bg-theme-tertiary {
+    background-color: var(--bg-tertiary);
+  }
+
+  .text-theme-primary {
+    color: var(--text-primary);
+  }
+
+  .text-theme-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-theme-tertiary {
+    color: var(--text-tertiary);
+  }
+
+  .border-theme {
+    border-color: var(--border-color);
+  }
+
+  .text-accent {
+    color: var(--accent);
+  }
+
+  .bg-accent {
+    background-color: var(--accent);
+  }
+
+  .bg-accent-hover:hover {
+    background-color: var(--accent-hover);
   }
 }

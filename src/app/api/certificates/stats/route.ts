@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
+import type { Certificate } from "@/types/Certificate";
 
 /**
  * GET /api/certificates/stats
@@ -15,18 +16,22 @@ import { logger } from "@/lib/logger";
 export async function GET(request: NextRequest) {
   try {
     // 1. Rate limiting
-    const rateLimitResult = await rateLimit(request, RATE_LIMITS.GET);
-    if (!rateLimitResult.allowed) {
-      return rateLimitResponse(rateLimitResult);
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
     }
 
     // 2. Verificar rol (VIEWER o superior)
-    const authResult = await requireRole(["VIEWER", "EDITOR", "MASTER_ADMIN"]);
-    if (!authResult.authorized) {
-      return NextResponse.json(
-        { error: "No autorizado" },
-        { status: 403 }
-      );
+    try {
+      await requireRole("VIEWER");
+    } catch (error: any) {
+      if (error.message === "FORBIDDEN" || error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autorizado" },
+          { status: 403 }
+        );
+      }
+      throw error;
     }
 
     // 3. Obtener todos los certificados (necesario para estadísticas)
@@ -37,7 +42,7 @@ export async function GET(request: NextRequest) {
     const certificates = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }));
+    })) as Certificate[];
 
     // 4. Calcular estadísticas
     const total = certificates.length;

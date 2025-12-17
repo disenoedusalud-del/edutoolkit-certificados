@@ -48,12 +48,12 @@ export async function GET(request: NextRequest) {
 
     // 6. Obtener documentos paginados
     // Usar el mismo patrón que en /api/courses
-    let query = adminDb.collection("certificates");
+    const certificatesRef = adminDb.collection("certificates");
     
     // Intentar ordenar por createdAt, pero si falla (por falta de índice o campo), obtener sin ordenar
     try {
-      query = query.orderBy("createdAt", "desc");
-      const snapshot = await query.limit(limit).offset((page - 1) * limit).get();
+      const orderedQuery = certificatesRef.orderBy("createdAt", "desc");
+      const snapshot = await orderedQuery.limit(limit).offset((page - 1) * limit).get();
       const data = snapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       const allDocs = allSnapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
-      }));
+      })) as Array<{ id: string; createdAt?: string; [key: string]: any }>;
       
       // Ordenar en memoria por createdAt si existe
       allDocs.sort((a, b) => {
