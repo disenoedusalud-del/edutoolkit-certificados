@@ -6,6 +6,7 @@ import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 import { validateCourse, validationErrorResponse } from "@/lib/validation";
 import { getOrCreateFolderInAppsScriptDrive, createFolderInAppsScriptDrive } from "@/lib/appsScriptDrive";
 import type { Query, DocumentData } from "firebase-admin/firestore";
+import { logger } from "@/lib/logger";
 
 // Tipo para los datos de curso en la respuesta
 type CourseRow = {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
         });
       } catch (orderError: any) {
         // Si falla el ordenamiento (probablemente falta índice), obtener sin ordenar
-        console.warn("No se pudo ordenar cursos, obteniendo sin orden:", orderError.message);
+        logger.warn("No se pudo ordenar cursos, obteniendo sin orden", { error: orderError.message, endpoint: "/api/courses" });
         
         // Reconstruir la query con el filtro pero sin orderBy
         let queryWithoutOrder: Query<DocumentData> = coursesRef as Query<DocumentData>;
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
       );
     } catch (orderError: any) {
       // Si falla el ordenamiento, obtener sin ordenar y aplicar paginación en memoria
-      console.warn("No se pudo ordenar cursos con paginación, obteniendo sin orden:", orderError.message);
+      logger.warn("No se pudo ordenar cursos con paginación, obteniendo sin orden", { error: orderError.message, endpoint: "/api/courses", page, limit });
       
       let queryWithoutOrder: Query<DocumentData> = coursesRef as Query<DocumentData>;
       if (status === "active" || status === "archived") {
@@ -187,7 +188,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.error("Error fetching courses:", error);
+    logger.error("Error obteniendo cursos", error, { endpoint: "/api/courses" });
     // Si hay un error, devolver array vacío en lugar de objeto de error
     // Esto evita problemas en el frontend
     return NextResponse.json([]);
@@ -322,7 +323,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.error("Error creating course:", error);
+    logger.error("Error creando curso", error, { endpoint: "/api/courses", method: "POST" });
     return NextResponse.json(
       { error: "Error al crear el curso" },
       { status: 500 }

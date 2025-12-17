@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { isAuthorizedEmail } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
     const isAuthorized = await isAuthorizedEmail(userEmail);
 
     if (!isAuthorized) {
-      console.warn("[LOGIN] Intento de acceso con correo no autorizado:", userEmail);
+      logger.warn("Intento de acceso con correo no autorizado", { email: userEmail });
       return NextResponse.json(
         { error: "Este correo no tiene permisos para acceder al panel. Contacta a un administrador para que te agregue a la lista de usuarios permitidos." },
         { status: 403 }
@@ -75,9 +76,10 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
 
+    logger.info("Sesión creada exitosamente", { email: userEmail });
     return response;
   } catch (error: any) {
-    console.error("[LOGIN] Error creando sesión:", error);
+    logger.error("Error creando sesión", error, { endpoint: "/api/login" });
     return NextResponse.json(
       {
         error: "No se pudo crear la sesión",

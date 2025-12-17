@@ -2,12 +2,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { isAuthorizedEmail } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  let email: string | undefined;
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    email = body.email;
+    const password = body.password;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       // En Admin SDK, si no existe lanza auth/user-not-found
       if (err?.code !== "auth/user-not-found") {
-        console.error("[REGISTER] Error comprobando usuario:", err);
+        logger.error("Error comprobando usuario existente", err, { email, endpoint: "/api/register" });
         return NextResponse.json(
           { error: "Error interno al verificar el usuario" },
           { status: 500 },
@@ -59,9 +63,10 @@ export async function POST(req: NextRequest) {
       disabled: false,
     });
 
+    logger.info("Usuario registrado exitosamente", { email });
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("[REGISTER] Error:", error);
+    logger.error("Error registrando usuario", error, { email: email || "unknown", endpoint: "/api/register" });
     return NextResponse.json(
       {
         error: "No se pudo crear la cuenta",

@@ -4,6 +4,7 @@ import type { Certificate } from "@/types/Certificate";
 import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 import { validateCertificate, validationErrorResponse } from "@/lib/validation";
+import { logger } from "@/lib/logger";
 
 // GET /api/certificates
 export async function GET(request: NextRequest) {
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.error("Error fetching certificates:", error);
+    logger.error("Error obteniendo certificados", error, { endpoint: "/api/certificates" });
 
     return NextResponse.json(
       {
@@ -238,7 +239,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.error("Error creating certificate:", error);
+    logger.error("Error creando certificado", error, { endpoint: "/api/certificates", method: "POST" });
     return NextResponse.json(
       {
         error: "Error al crear el certificado",

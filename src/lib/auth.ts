@@ -1,6 +1,7 @@
 // src/lib/auth.ts
 import { cookies } from "next/headers";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { logger } from "@/lib/logger";
 
 const COOKIE_NAME = "edutoolkit_session";
 
@@ -35,7 +36,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const userEmail = decoded.email.toLowerCase();
     const docId = userEmail.replace(/[.#$/[\]]/g, "_");
     
-    console.log("[AUTH][getCurrentUser] Buscando usuario:", {
+    logger.debug("Buscando usuario en Firestore", {
       email: decoded.email,
       normalizedEmail: userEmail,
       docId: docId,
@@ -51,28 +52,25 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     if (userDoc.exists) {
       const userData = userDoc.data();
       role = (userData?.role as UserRole) || "VIEWER";
-      console.log("[AUTH][getCurrentUser] Usuario encontrado en Firestore:", {
+      logger.debug("Usuario encontrado en Firestore", {
         docId,
         email: userData?.email,
         role: userData?.role,
         roleAsignado: role,
       });
     } else {
-      console.log("[AUTH][getCurrentUser] Usuario NO encontrado en Firestore, verificando MASTER_ADMIN_EMAILS");
+      logger.debug("Usuario NO encontrado en Firestore, verificando MASTER_ADMIN_EMAILS", { email: userEmail });
       // Si no existe en adminUsers, verificar si es MASTER_ADMIN desde env
       const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
         .split(",")
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
       
-      console.log("[AUTH][getCurrentUser] MASTER_ADMIN_EMAILS:", masterEmails);
-      console.log("[AUTH][getCurrentUser] ¿Es MASTER_ADMIN?:", masterEmails.includes(userEmail));
-      
       if (masterEmails.includes(userEmail)) {
         role = "MASTER_ADMIN";
-        console.log("[AUTH][getCurrentUser] ✅ Rol asignado: MASTER_ADMIN (desde env)");
+        logger.debug("Rol asignado: MASTER_ADMIN (desde env)", { email: userEmail });
       } else {
-        console.log("[AUTH][getCurrentUser] ⚠️ Usuario no encontrado, usando rol por defecto: VIEWER");
+        logger.debug("Usuario no encontrado, usando rol por defecto: VIEWER", { email: userEmail });
       }
     }
 
@@ -82,7 +80,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       role,
     };
   } catch (error) {
-    console.error("[AUTH] Error verificando sesión:", error);
+    logger.error("Error verificando sesión", error, { function: "getCurrentUser" });
     return null;
   }
 }
