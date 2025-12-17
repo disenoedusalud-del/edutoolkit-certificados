@@ -5,6 +5,8 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
+import { Gear } from "phosphor-react";
+import ThemeSelector from "@/components/ThemeSelector";
 
 type Mode = "login" | "register";
 
@@ -14,6 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showThemeSettings, setShowThemeSettings] = useState(false);
 
   const router = useRouter();
 
@@ -119,26 +122,46 @@ export default function LoginPage() {
   const title = mode === "login" ? "Iniciar sesión" : "Crear cuenta";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100">
-      <div className="w-full max-w-md space-y-6 rounded-xl bg-white p-6 shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-theme-primary relative">
+      {/* Botón de ajustes de tema en la esquina superior derecha */}
+      <div className="absolute top-4 right-4">
+        <button
+          type="button"
+          onClick={() => setShowThemeSettings(!showThemeSettings)}
+          className="p-2 rounded-lg bg-theme-secondary hover:bg-theme-tertiary transition-colors border border-theme text-text-primary"
+          title="Ajustes de tema"
+        >
+          <Gear size={20} weight="bold" />
+        </button>
+        {showThemeSettings && (
+          <div className="absolute top-12 right-0 bg-theme-secondary border border-theme rounded-lg shadow-xl p-4 z-50 min-w-[200px]">
+            <div className="mb-2">
+              <h3 className="text-sm font-semibold text-text-primary mb-2">Apariencia</h3>
+              <ThemeSelector />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="w-full max-w-md space-y-6 rounded-xl bg-theme-secondary p-6 shadow-md border border-theme">
         <div className="space-y-1 text-center">
-          <h1 className="text-lg font-semibold text-slate-800">
+          <h1 className="text-lg font-semibold text-text-primary">
             {title} · Panel de certificados
           </h1>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-text-secondary">
             Solo personal autorizado de EduSalud puede acceder.
           </p>
         </div>
 
         {/* Toggle Login / Registro */}
-        <div className="flex rounded-md border bg-slate-50 text-xs">
+        <div className="flex rounded-md border border-theme bg-theme-tertiary text-xs">
           <button
             type="button"
             onClick={() => setMode("login")}
-            className={`flex-1 px-3 py-2 border-r ${
+            className={`flex-1 px-3 py-2 border-r border-theme ${
               mode === "login"
-                ? "bg-white font-semibold text-slate-800"
-                : "text-slate-500 hover:bg-slate-100"
+                ? "bg-theme-secondary font-semibold text-text-primary"
+                : "text-text-secondary hover:bg-theme-secondary"
             }`}
           >
             Iniciar sesión
@@ -148,8 +171,8 @@ export default function LoginPage() {
             onClick={() => setMode("register")}
             className={`flex-1 px-3 py-2 ${
               mode === "register"
-                ? "bg-white font-semibold text-slate-800"
-                : "text-slate-500 hover:bg-slate-100"
+                ? "bg-theme-secondary font-semibold text-text-primary"
+                : "text-text-secondary hover:bg-theme-secondary"
             }`}
           >
             Crear cuenta
@@ -158,7 +181,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-700">
+            <label className="block text-xs font-medium text-text-secondary">
               Correo
             </label>
             <input
@@ -166,13 +189,13 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-md border border-theme px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent bg-theme-secondary text-text-primary"
               placeholder="correo@unah.edu.hn"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-700">
+            <label className="block text-xs font-medium text-text-secondary">
               Contraseña
             </label>
             <input
@@ -181,11 +204,11 @@ export default function LoginPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+              className="w-full rounded-md border border-theme px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent bg-theme-secondary text-text-primary"
               placeholder="••••••••"
             />
             {mode === "register" && (
-              <p className="mt-1 text-[11px] text-slate-500">
+              <p className="mt-1 text-[11px] text-text-secondary">
                 La contraseña debe tener al menos 6 caracteres.
               </p>
             )}
@@ -200,7 +223,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-60"
+            className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60"
           >
             {loading
               ? mode === "login"
@@ -216,7 +239,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => router.push("/forgot-password")}
-                className="text-xs text-sky-600 hover:text-sky-700 hover:underline"
+                className="text-xs text-accent hover:text-accent-hover hover:underline"
               >
                 ¿Olvidaste tu contraseña?
               </button>
@@ -225,7 +248,7 @@ export default function LoginPage() {
         </form>
 
         {mode === "register" && (
-          <p className="text-center text-[11px] text-slate-500">
+          <p className="text-center text-[11px] text-text-secondary">
             Solo se crearán cuentas para correos previamente autorizados por
             coordinación.
           </p>
