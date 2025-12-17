@@ -17,19 +17,66 @@ export async function GET(request: NextRequest) {
     // 2. Verificar autenticación (VIEWER puede leer)
     await requireRole("VIEWER");
 
-    // 3. Obtener certificados
-    const snapshot = await adminDb.collection("certificates").get();
+    // 3. Obtener parámetros de paginación
+    const { searchParams } = new URL(request.url);
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+
+    // Si no hay parámetros de paginación, mantener comportamiento original (retornar todos)
+    if (!pageParam && !limitParam) {
+      const snapshot = await adminDb.collection("certificates").get();
+      const data = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      return NextResponse.json(data, {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      });
+    }
+
+    // 4. Paginación: parsear y validar parámetros
+    const page = Math.max(1, parseInt(pageParam || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam || "50", 10))); // Max 100, default 50
+    const offset = (page - 1) * limit;
+
+    // 5. Obtener total de documentos (para calcular totalPages)
+    const totalSnapshot = await adminDb.collection("certificates").count().get();
+    const total = totalSnapshot.data().count;
+
+    // 6. Obtener documentos paginados
+    const snapshot = await adminDb
+      .collection("certificates")
+      .limit(limit)
+      .offset(offset)
+      .get();
 
     const data = snapshot.docs.map((d) => ({
       id: d.id,
       ...d.data(),
     }));
 
-    return NextResponse.json(data, {
-      headers: {
-        "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+    const totalPages = Math.ceil(total / limit);
+
+    // 7. Retornar con estructura de paginación
+    return NextResponse.json(
+      {
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
       },
-    });
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") {

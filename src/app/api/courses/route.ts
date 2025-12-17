@@ -26,9 +26,11 @@ export async function GET(request: NextRequest) {
     // 2. Verificar autenticación (VIEWER puede leer)
     await requireRole("VIEWER");
 
-    // 3. Obtener cursos
+    // 3. Obtener parámetros
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // "active" | "archived" | null (todos)
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
 
     const coursesRef = adminDb.collection("courses");
     let query: Query<DocumentData> = coursesRef as Query<DocumentData>;
@@ -38,48 +40,136 @@ export async function GET(request: NextRequest) {
       query = query.where("status", "==", status);
     }
 
-    // Intentar ordenar por nombre, pero si falla (por falta de índice), obtener sin ordenar
+    // Si no hay parámetros de paginación, mantener comportamiento original
+    if (!pageParam && !limitParam) {
+      // Intentar ordenar por nombre, pero si falla (por falta de índice), obtener sin ordenar
+      try {
+        query = query.orderBy("name", "asc");
+        const snapshot = await query.get();
+        const data: CourseRow[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRow));
+        return NextResponse.json(Array.isArray(data) ? data : [], {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        });
+      } catch (orderError: any) {
+        // Si falla el ordenamiento (probablemente falta índice), obtener sin ordenar
+        console.warn("No se pudo ordenar cursos, obteniendo sin orden:", orderError.message);
+        
+        // Reconstruir la query con el filtro pero sin orderBy
+        let queryWithoutOrder: Query<DocumentData> = coursesRef as Query<DocumentData>;
+        if (status === "active" || status === "archived") {
+          queryWithoutOrder = queryWithoutOrder.where("status", "==", status);
+        }
+        
+        const snapshot = await queryWithoutOrder.get();
+        const data: CourseRow[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRow));
+        
+        // Filtrar por status en memoria si es necesario (por si acaso)
+        let filteredData: CourseRow[] = data;
+        if (status === "active" || status === "archived") {
+          filteredData = data.filter((course: CourseRow) => {
+            const courseStatus = course.status || "active";
+            return courseStatus === status;
+          });
+        }
+        
+        // Ordenar manualmente en memoria
+        const sortedData: CourseRow[] = Array.isArray(filteredData) 
+          ? filteredData.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+          : [];
+        
+        return NextResponse.json(sortedData, {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        });
+      }
+    }
+
+    // 4. Paginación: parsear y validar parámetros
+    const page = Math.max(1, parseInt(pageParam || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(limitParam || "50", 10))); // Max 100, default 50
+    const offset = (page - 1) * limit;
+
+    // 5. Obtener total de documentos (considerando filtro de status)
+    let totalQuery: Query<DocumentData> = coursesRef as Query<DocumentData>;
+    if (status === "active" || status === "archived") {
+      totalQuery = totalQuery.where("status", "==", status);
+    }
+    const totalSnapshot = await totalQuery.count().get();
+    const total = totalSnapshot.data().count;
+
+    // 6. Obtener documentos paginados
+    // Intentar ordenar, pero si falla, obtener sin ordenar y ordenar en memoria
     try {
       query = query.orderBy("name", "asc");
-      const snapshot = await query.get();
+      const snapshot = await query.limit(limit).offset(offset).get();
       const data: CourseRow[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRow));
-      return NextResponse.json(Array.isArray(data) ? data : []);
-    } catch (orderError: any) {
-      // Si falla el ordenamiento (probablemente falta índice), obtener sin ordenar
-      console.warn("No se pudo ordenar cursos, obteniendo sin orden:", orderError.message);
       
-      // Reconstruir la query con el filtro pero sin orderBy
+      const totalPages = Math.ceil(total / limit);
+      
+      return NextResponse.json(
+        {
+          data,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
+        },
+        {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        }
+      );
+    } catch (orderError: any) {
+      // Si falla el ordenamiento, obtener sin ordenar y aplicar paginación en memoria
+      console.warn("No se pudo ordenar cursos con paginación, obteniendo sin orden:", orderError.message);
+      
       let queryWithoutOrder: Query<DocumentData> = coursesRef as Query<DocumentData>;
       if (status === "active" || status === "archived") {
         queryWithoutOrder = queryWithoutOrder.where("status", "==", status);
       }
       
       const snapshot = await queryWithoutOrder.get();
-      const data: CourseRow[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRow));
+      let data: CourseRow[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as CourseRow));
       
-      console.log("Cursos obtenidos (sin orden):", data.length, "Filtro status:", status);
-      
-      // Filtrar por status en memoria si es necesario (por si acaso)
-      let filteredData: CourseRow[] = data;
+      // Filtrar por status en memoria si es necesario
       if (status === "active" || status === "archived") {
-        filteredData = data.filter((course: CourseRow) => {
-          const courseStatus = course.status || "active"; // Default a active si no tiene status
+        data = data.filter((course: CourseRow) => {
+          const courseStatus = course.status || "active";
           return courseStatus === status;
         });
-        console.log("Cursos filtrados por status:", filteredData.length);
       }
       
       // Ordenar manualmente en memoria
-      const sortedData: CourseRow[] = Array.isArray(filteredData) 
-        ? filteredData.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+      const sortedData: CourseRow[] = Array.isArray(data) 
+        ? data.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
         : [];
       
-      console.log("Cursos finales:", sortedData.length);
-      return NextResponse.json(sortedData, {
-        headers: {
-          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+      // Aplicar paginación en memoria
+      const paginatedData = sortedData.slice(offset, offset + limit);
+      const totalPages = Math.ceil(sortedData.length / limit);
+      
+      return NextResponse.json(
+        {
+          data: paginatedData,
+          pagination: {
+            page,
+            limit,
+            total: sortedData.length,
+            totalPages,
+          },
         },
-      });
+        {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        }
+      );
     }
   } catch (error: unknown) {
     if (error instanceof Error) {
