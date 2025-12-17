@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ThemeSettingsButton } from "@/components/ThemeSettingsButton";
+import { AdminSettingsButton } from "@/components/AdminSettingsButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +36,11 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
                 {user.role}
               </span>
             </div>
-            <LogoutButton />
+            <div className="flex items-center gap-2">
+              <ThemeSettingsButton />
+              <AdminSettingsButton userRole={user.role} />
+              <LogoutButton />
+            </div>
           </div>
         </div>
       </header>

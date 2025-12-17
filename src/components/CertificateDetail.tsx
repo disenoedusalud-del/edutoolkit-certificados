@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { Certificate } from "@/types/Certificate";
 import Link from "next/link";
 import CertificateForm from "./CertificateForm";
-import { Check, X, Trash, Copy, ArrowLeft, Upload, File, Gear } from "phosphor-react";
+import { Check, X, Trash, Copy, ArrowLeft, Upload, File } from "phosphor-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
-import ThemeSelector from "@/components/ThemeSelector";
 
 interface CertificateDetailProps {
   id: string;
@@ -20,7 +19,6 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [showThemeSettings, setShowThemeSettings] = useState(false);
   const router = useRouter();
 
   const loadCertificate = async () => {
@@ -128,7 +126,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <button
           onClick={() => router.push("/admin/certificados")}
           className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
@@ -136,24 +134,6 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
           <ArrowLeft size={20} weight="bold" />
           <span>Volver a la lista</span>
         </button>
-        <div className="relative">
-          <button
-            onClick={() => setShowThemeSettings(!showThemeSettings)}
-            className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
-            title="Ajustes de tema"
-          >
-            <Gear size={18} weight="bold" />
-            Tema
-          </button>
-          {showThemeSettings && (
-            <div className="absolute top-12 right-0 bg-theme-secondary border border-theme rounded-lg shadow-xl p-4 z-50 min-w-[200px]">
-              <div className="mb-2">
-                <h3 className="text-sm font-semibold text-text-primary mb-2">Apariencia</h3>
-                <ThemeSelector />
-              </div>
-            </div>
-          )}
-        </div>
       </div>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-text-primary">

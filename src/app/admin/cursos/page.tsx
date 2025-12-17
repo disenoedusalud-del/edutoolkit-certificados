@@ -5,9 +5,8 @@ import { Course } from "@/types/Course";
 import CourseModal from "@/components/CourseModal";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "@/components/LoadingSpinner";
-import { Pencil, Archive, Plus, CheckCircle, XCircle, ArrowLeft, Trash, Gear } from "phosphor-react";
+import { Pencil, Archive, Plus, CheckCircle, XCircle, ArrowLeft, Trash } from "phosphor-react";
 import Link from "next/link";
-import ThemeSelector from "@/components/ThemeSelector";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -16,7 +15,6 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [showThemeSettings, setShowThemeSettings] = useState(false);
 
   const loadCourses = async () => {
     try {
@@ -200,36 +198,16 @@ export default function CoursesPage() {
         <h1 className="text-2xl font-bold text-text-primary">
           Administración de Cursos
         </h1>
-        <div className="flex gap-2 items-center">
-          <div className="relative">
-            <button
-              onClick={() => setShowThemeSettings(!showThemeSettings)}
-              className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
-              title="Ajustes de tema"
-            >
-              <Gear size={18} weight="bold" />
-              Tema
-            </button>
-            {showThemeSettings && (
-              <div className="absolute top-12 right-0 bg-theme-secondary border border-theme rounded-lg shadow-xl p-4 z-50 min-w-[200px]">
-                <div className="mb-2">
-                  <h3 className="text-sm font-semibold text-text-primary mb-2">Apariencia</h3>
-                  <ThemeSelector />
-                </div>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={() => {
-              setEditingCourse(null);
-              setShowModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus size={18} weight="bold" />
-            Agregar Curso Nuevo
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setEditingCourse(null);
+            setShowModal(true);
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+        >
+          <Plus size={18} weight="bold" />
+          Agregar Curso Nuevo
+        </button>
       </div>
 
       {/* Filtros */}

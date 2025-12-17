@@ -1,68 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
-import { ChartBar, Plus, BookOpen, ArrowLeft, Gear } from "phosphor-react";
+import { ChartBar, Plus, BookOpen, ArrowLeft } from "phosphor-react";
 import Link from "next/link";
-import ThemeSelector from "@/components/ThemeSelector";
-
-function ThemeSettingsButton() {
-  const [showThemeSettings, setShowThemeSettings] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setShowThemeSettings(!showThemeSettings)}
-        className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
-        title="Ajustes de tema"
-      >
-        <Gear size={18} weight="bold" />
-        Tema
-      </button>
-      {showThemeSettings && (
-        <div className="absolute top-12 right-0 bg-theme-secondary border border-theme rounded-lg shadow-xl p-4 z-50 min-w-[200px]">
-          <div className="mb-2">
-            <h3 className="text-sm font-semibold text-text-primary mb-2">Apariencia</h3>
-            <ThemeSelector />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AjustesButton() {
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.role) {
-          setUserRole(data.role);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading || userRole !== "MASTER_ADMIN") {
-    return null;
-  }
-
-  return (
-    <Link
-      href="/admin/ajustes"
-      className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
-    >
-      <Gear size={18} weight="bold" />
-      Ajustes
-    </Link>
-  );
-}
 
 export default function Page() {
   const [showForm, setShowForm] = useState(false);
@@ -76,8 +19,6 @@ export default function Page() {
         </h1>
         {!showForm && (
           <div className="flex gap-2 items-center">
-            <ThemeSettingsButton />
-            <AjustesButton />
             <Link
               href="/admin/cursos"
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
