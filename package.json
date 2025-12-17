@@ -12,7 +12,8 @@
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "deploy:indexes": "firebase deploy --only firestore:indexes"
   },
   "dependencies": {
     "@emailjs/nodejs": "^5.0.2",

@@ -114,11 +114,11 @@ Estos índices no son críticos ahora, pero mejorarán el rendimiento si se impl
 6. Haz clic en **Create**
 7. Espera a que el índice se construya (puede tomar unos minutos)
 
-### Método 2: Firebase CLI (Alternativo)
+### Método 2: Firebase CLI (Recomendado para automatización)
 
-Si prefieres usar la línea de comandos:
+El proyecto ya incluye el archivo `firestore.indexes.json` con todos los índices necesarios.
 
-1. Instala Firebase CLI:
+1. Instala Firebase CLI (si no lo tienes):
    ```bash
    npm install -g firebase-tools
    ```
@@ -128,43 +128,29 @@ Si prefieres usar la línea de comandos:
    firebase login
    ```
 
-3. Crea un archivo `firestore.indexes.json` en la raíz del proyecto:
-   ```json
-   {
-     "indexes": [
-       {
-         "collectionGroup": "courses",
-         "queryScope": "COLLECTION",
-         "fields": [
-           {
-             "fieldPath": "status",
-             "order": "ASCENDING"
-           },
-           {
-             "fieldPath": "name",
-             "order": "ASCENDING"
-           }
-         ]
-       },
-       {
-         "collectionGroup": "certificates",
-         "queryScope": "COLLECTION",
-         "fields": [
-           {
-             "fieldPath": "courseId",
-             "order": "ASCENDING"
-           }
-         ]
-       }
-     ],
-     "fieldOverrides": []
-   }
+3. Despliega los índices usando uno de estos métodos:
+
+   **Opción A: Script npm (más fácil)**
+   ```bash
+   npm run deploy:indexes
    ```
 
-4. Despliega los índices:
+   **Opción B: Script PowerShell (Windows)**
+   ```powershell
+   .\scripts\deploy-indexes.ps1
+   ```
+
+   **Opción C: Script Bash (Linux/Mac)**
+   ```bash
+   ./scripts/deploy-indexes.sh
+   ```
+
+   **Opción D: Comando directo**
    ```bash
    firebase deploy --only firestore:indexes
    ```
+
+**Nota:** El archivo `firestore.indexes.json` incluye todos los índices requeridos y recomendados listados en este documento.
 
 ---
 
