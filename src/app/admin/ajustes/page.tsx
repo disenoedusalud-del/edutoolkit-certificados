@@ -49,11 +49,11 @@ export default function AjustesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-theme-primary p-8">
       <div className="mb-4">
         <Link
           href="/admin/certificados"
-          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+          className="inline-flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
         >
           <ArrowLeft size={20} weight="bold" />
           <span>Volver a Certificados</span>
@@ -61,25 +61,25 @@ export default function AjustesPage() {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow border border-slate-200 p-6">
+        <div className="bg-theme-secondary rounded-xl shadow border border-theme p-6">
           <div className="flex items-center gap-3 mb-6">
-            <Gear size={32} weight="bold" className="text-slate-700" />
-            <h1 className="text-2xl font-bold text-slate-800">
+            <Gear size={32} weight="bold" className="text-text-primary" />
+            <h1 className="text-2xl font-bold text-text-primary">
               Ajustes del Sistema
             </h1>
           </div>
 
-          <p className="text-sm text-slate-600 mb-6">
+          <p className="text-sm text-text-secondary mb-6">
             Configuración y herramientas administrativas disponibles solo para MASTER_ADMIN.
           </p>
 
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-slate-700 mb-4">Apariencia</h2>
-            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+            <h2 className="text-lg font-semibold text-text-primary mb-4">Apariencia</h2>
+            <div className="bg-theme-tertiary rounded-lg p-4 border border-theme">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-medium text-slate-800 mb-1">Tema de la aplicación</h3>
-                  <p className="text-sm text-slate-600">
+                  <h3 className="font-medium text-text-primary mb-1">Tema de la aplicación</h3>
+                  <p className="text-sm text-text-secondary">
                     Cambia entre Tokyo Night, Dark, Light y Solarized Light
                   </p>
                 </div>
@@ -92,17 +92,17 @@ export default function AjustesPage() {
             {/* Administrar Roles */}
             <Link
               href="/admin/roles"
-              className="p-6 border border-slate-200 rounded-lg hover:border-amber-500 hover:shadow-md transition-all group"
+              className="p-6 border border-theme rounded-lg hover:border-accent hover:shadow-md transition-all group bg-theme-secondary"
             >
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-amber-100 rounded-lg group-hover:bg-amber-200 transition-colors">
-                  <Shield size={24} weight="bold" className="text-amber-700" />
+                <div className="p-3 bg-accent/20 rounded-lg group-hover:bg-accent/30 transition-colors">
+                  <Shield size={24} weight="bold" className="text-accent" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-800 mb-1">
+                  <h3 className="font-semibold text-text-primary mb-1">
                     Administrar Roles
                   </h3>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-text-secondary">
                     Gestiona los roles y permisos de los usuarios del sistema.
                   </p>
                 </div>
@@ -112,17 +112,17 @@ export default function AjustesPage() {
             {/* Debug Rate Limit */}
             <Link
               href="/admin/debug/rate-limit"
-              className="p-6 border border-slate-200 rounded-lg hover:border-orange-500 hover:shadow-md transition-all group"
+              className="p-6 border border-theme rounded-lg hover:border-accent hover:shadow-md transition-all group bg-theme-secondary"
             >
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
-                  <ArrowClockwise size={24} weight="bold" className="text-orange-700" />
+                <div className="p-3 bg-accent/20 rounded-lg group-hover:bg-accent/30 transition-colors">
+                  <ArrowClockwise size={24} weight="bold" className="text-accent" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-800 mb-1">
+                  <h3 className="font-semibold text-text-primary mb-1">
                     Debug Rate Limit
                   </h3>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm text-text-secondary">
                     Resetea bloqueos de rate limiting cuando sea necesario.
                   </p>
                 </div>
@@ -130,8 +130,8 @@ export default function AjustesPage() {
             </Link>
           </div>
 
-          <div className="mt-6 p-4 bg-slate-50 rounded-lg">
-            <p className="text-xs text-slate-600">
+          <div className="mt-6 p-4 bg-theme-tertiary rounded-lg border border-theme">
+            <p className="text-xs text-text-secondary">
               <strong>Nota:</strong> Estas herramientas son de uso exclusivo para administradores del sistema. 
               Úsalas con precaución y solo cuando sea necesario.
             </p>

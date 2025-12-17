@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
-import ThemeSelector from "@/components/ThemeSelector";
 import { ChartBar, Plus, BookOpen, ArrowLeft, Gear } from "phosphor-react";
 import Link from "next/link";
 
@@ -44,14 +43,13 @@ export default function Page() {
   const [showStats, setShowStats] = useState(false);
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-theme-primary p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">
+        <h1 className="text-2xl font-bold text-text-primary">
           Gestión de Certificados
         </h1>
         {!showForm && (
           <div className="flex gap-2 items-center">
-            <ThemeSelector />
             <AjustesButton />
             <Link
               href="/admin/cursos"
@@ -79,11 +77,11 @@ export default function Page() {
       </div>
 
       {showForm ? (
-        <div className="bg-white rounded-xl shadow p-6 border border-slate-200">
+        <div className="bg-theme-secondary rounded-xl shadow p-6 border border-theme">
           <div className="mb-4">
             <button
               onClick={() => setShowForm(false)}
-              className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
+              className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
             >
               <ArrowLeft size={20} weight="bold" />
               <span>Volver a la lista</span>
@@ -94,11 +92,11 @@ export default function Page() {
       ) : (
         <div className="space-y-6">
           {showStats && (
-            <div className="bg-white rounded-xl shadow p-6 border border-slate-200">
+            <div className="bg-theme-secondary rounded-xl shadow p-6 border border-theme">
               <CertificateStats />
             </div>
           )}
-          <div className="bg-white rounded-xl shadow p-4 border border-slate-200">
+          <div className="bg-theme-secondary rounded-xl shadow p-4 border border-theme">
             <CertificateList />
           </div>
         </div>

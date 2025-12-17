@@ -29,6 +29,19 @@ module.exports = {
         error: "var(--error)",
         info: "var(--info)",
       },
+      backgroundColor: {
+        'theme-primary': 'var(--bg-primary)',
+        'theme-secondary': 'var(--bg-secondary)',
+        'theme-tertiary': 'var(--bg-tertiary)',
+      },
+      textColor: {
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-tertiary': 'var(--text-tertiary)',
+      },
+      borderColor: {
+        'theme': 'var(--border-color)',
+      },
     },
   },
   plugins: [],
