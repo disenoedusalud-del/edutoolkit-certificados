@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useImperativeHandle, forwardRef, useCallback } from "react";
 import { Certificate } from "@/types/Certificate";
 import { useRouter } from "next/navigation";
 import { exportToCSV, downloadCSV } from "@/lib/exportUtils";
 import {
-  Download,
   CheckSquare,
   Square,
   Trash,
@@ -24,11 +23,21 @@ import {
   Folder,
   FolderOpen,
   MagnifyingGlass,
+  Download,
 } from "phosphor-react";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
 
 const ITEMS_PER_PAGE = 10;
+
+export interface CertificateListHandle {
+  exportSelected: () => void;
+  exportAll: () => void;
+  exportByCourse: () => void;
+  getGroupedCerts: () => Record<string, Certificate[]>;
+  selectedCount: number;
+  hasSelected: boolean;
+}
 
 const statusColors: Record<string, string> = {
   en_archivo: "bg-gray-100 text-gray-700",
@@ -46,7 +55,7 @@ const statusLabels: Record<string, string> = {
   anulado: "Anulado",
 };
 
-export default function CertificateList() {
+const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,8 +78,9 @@ export default function CertificateList() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [quickViewCert, setQuickViewCert] = useState<Certificate | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "grouped">("grouped");
+  const [viewMode, setViewMode] = useState<"list" | "grouped" | "grid">("grouped");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [selectedGroupForModal, setSelectedGroupForModal] = useState<{groupKey: string, certs: Certificate[]} | null>(null);
   const [groupSearchTerms, setGroupSearchTerms] = useState<Record<string, string>>({});
   const [quickEditData, setQuickEditData] = useState<{
     deliveryStatus: string;
@@ -252,6 +262,52 @@ export default function CertificateList() {
     setExpandedGroups(new Set());
   };
 
+  // Abrir modal de grupo en vista grid
+  const openGroupModal = (groupKey: string) => {
+    const certs = groupedCerts[groupKey];
+    if (certs) {
+      setSelectedGroupForModal({ groupKey, certs });
+    }
+  };
+
+  // Funciones de exportación
+  const exportSelected = useCallback(() => {
+    if (selectedIds.size === 0) {
+      toast.error("No hay certificados seleccionados");
+      return;
+    }
+    
+    const selectedCerts = filteredCerts.filter((cert) => 
+      cert.id && selectedIds.has(cert.id)
+    );
+    
+    if (selectedCerts.length === 0) {
+      toast.error("No se encontraron certificados seleccionados");
+      return;
+    }
+    
+    const csv = exportToCSV(selectedCerts);
+    const filename = `certificados_seleccionados_${new Date().toISOString().split("T")[0]}.csv`;
+    downloadCSV(csv, filename);
+    toast.success(`${selectedCerts.length} certificado(s) exportado(s)`);
+  }, [selectedIds, filteredCerts]);
+
+  const exportAll = useCallback(() => {
+    if (filteredCerts.length === 0) {
+      toast.error("No hay certificados para exportar");
+      return;
+    }
+    
+    const csv = exportToCSV(filteredCerts);
+    const filename = `certificados_${new Date().toISOString().split("T")[0]}.csv`;
+    downloadCSV(csv, filename);
+    toast.success(`${filteredCerts.length} certificado(s) exportado(s)`);
+  }, [filteredCerts]);
+
+  const exportByCourse = useCallback(() => {
+    // Esta función solo necesita abrir el modal, que ya está manejado en el componente padre
+    // No necesita implementación aquí, pero la agregamos para completar la interfaz
+  }, []);
 
   const handleSort = (field: keyof Certificate) => {
     if (sortField === field) {
@@ -430,6 +486,16 @@ export default function CertificateList() {
     }
   }, [openMenuId]);
 
+  // Exponer funciones y propiedades a través del ref
+  useImperativeHandle(ref, () => ({
+    exportSelected,
+    exportAll,
+    exportByCourse,
+    getGroupedCerts: () => groupedCerts,
+    selectedCount: selectedIds.size,
+    hasSelected: selectedIds.size > 0,
+  }), [exportSelected, exportAll, exportByCourse, groupedCerts, selectedIds.size]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4">
@@ -486,27 +552,44 @@ export default function CertificateList() {
           </div>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
-          <button
-            onClick={() => setViewMode(viewMode === "list" ? "grouped" : "list")}
-            className={`px-3 py-2 border rounded-lg transition-colors text-sm flex items-center gap-2 ${
-              viewMode === "grouped"
-                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                : "border-theme hover:bg-theme-tertiary"
-            }`}
-            title={viewMode === "list" ? "Cambiar a vista agrupada" : "Cambiar a vista lista"}
-          >
-            {viewMode === "list" ? (
-              <>
-                <Folder size={18} />
-                Agrupada
-              </>
-            ) : (
-              <>
-                <ArrowsVertical size={18} />
-                Lista
-              </>
-            )}
-          </button>
+          <div className="flex border border-theme rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 ${
+                viewMode === "list"
+                  ? "bg-blue-600 text-white"
+                  : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
+              }`}
+              title="Vista de lista"
+            >
+              <ArrowsVertical size={18} />
+              Lista
+            </button>
+            <button
+              onClick={() => setViewMode("grouped")}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 border-l border-theme ${
+                viewMode === "grouped"
+                  ? "bg-blue-600 text-white"
+                  : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
+              }`}
+              title="Vista agrupada"
+            >
+              <Folder size={18} />
+              Agrupada
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 border-l border-theme ${
+                viewMode === "grid"
+                  ? "bg-blue-600 text-white"
+                  : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
+              }`}
+              title="Vista de cuadrícula"
+            >
+              <FolderOpen size={18} />
+              Cuadrícula
+            </button>
+          </div>
           {viewMode === "grouped" && (
             <>
               <button
@@ -585,44 +668,11 @@ export default function CertificateList() {
         </div>
       )}
 
-      {/* Contador de resultados y exportar */}
+      {/* Contador de resultados */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-text-secondary">
           Mostrando {paginatedCerts.length} de {filteredCerts.length} certificados
         </div>
-        {filteredCerts.length > 0 && (
-          <div className="flex gap-2">
-            {selectedIds.size > 0 && (
-              <button
-                onClick={() => {
-                  const selectedCerts = filteredCerts.filter(
-                    (c) => c.id && selectedIds.has(c.id)
-                  );
-                  const csv = exportToCSV(selectedCerts);
-                  const filename = `certificados_seleccionados_${new Date().toISOString().split("T")[0]}.csv`;
-                  downloadCSV(csv, filename);
-                  toast.success(`${selectedCerts.length} certificado(s) exportado(s)`);
-                }}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm flex items-center gap-2"
-              >
-                <Download size={18} weight="bold" />
-                Exportar Seleccionados ({selectedIds.size})
-              </button>
-            )}
-            <button
-              onClick={() => {
-                const csv = exportToCSV(filteredCerts);
-                const filename = `certificados_${new Date().toISOString().split("T")[0]}.csv`;
-                downloadCSV(csv, filename);
-                toast.success(`${filteredCerts.length} certificado(s) exportado(s)`);
-              }}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm flex items-center gap-2"
-            >
-              <Download size={18} weight="bold" />
-              Exportar Todos
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Tabla */}
@@ -645,11 +695,13 @@ export default function CertificateList() {
                 <div key={groupKey} className="bg-theme-secondary border border-theme rounded-lg overflow-hidden">
                   <button
                     onClick={() => toggleGroup(groupKey)}
-                    className="w-full px-4 py-3 bg-theme-tertiary hover:bg-theme-secondary transition-colors flex items-center justify-between text-left"
+                    className="w-full px-4 py-3 bg-theme-secondary hover:bg-theme-tertiary transition-colors flex items-center justify-between text-left relative border border-theme"
                   >
-                    <div className="flex items-center gap-3">
+                    {/* Barra izquierda de color - solo visible en neo-brutalism */}
+                    <div className="absolute left-0 top-0 bottom-0 w-[10px] barra-indicador-grupo" />
+                    <div className="flex items-center gap-3 pl-4">
                       {isExpanded ? (
-                        <FolderOpen size={20} className="text-blue-600" weight="fill" />
+                        <FolderOpen size={20} className="text-accent" weight="fill" />
                       ) : (
                         <Folder size={20} className="text-text-secondary" weight="fill" />
                       )}
@@ -663,7 +715,7 @@ export default function CertificateList() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-secondary bg-theme-secondary px-2 py-1 rounded border border-theme">
+                      <span className="text-xs font-medium text-text-secondary bg-theme-secondary px-2 py-1 rounded border border-theme">
                         {groupCerts.length}
                       </span>
                       {isExpanded ? (
@@ -833,6 +885,50 @@ export default function CertificateList() {
             })}
           {Object.keys(groupedCerts).length === 0 && (
             <div className="text-center py-8 text-text-secondary">
+              No se encontraron certificados con los filtros aplicados.
+            </div>
+          )}
+        </div>
+      ) : viewMode === "grid" ? (
+        /* Vista Cuadrícula */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Object.entries(groupedCerts)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([groupKey, groupCerts]) => {
+              const courseCode = groupCerts[0].courseId ? groupCerts[0].courseId.split("-")[0] : "SIN-CODIGO";
+              const courseName = groupCerts[0].courseName;
+              const year = groupCerts[0].year;
+              
+              return (
+                <button
+                  key={groupKey}
+                  onClick={() => openGroupModal(groupKey)}
+                  className="bg-theme-secondary border-2 border-theme rounded-lg p-4 hover:border-accent hover:bg-theme-tertiary transition-all text-left group"
+                >
+                  <div className="flex items-start gap-3 mb-3">
+                    <FolderOpen size={32} className="text-blue-600 group-hover:text-accent transition-colors" weight="fill" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-text-primary truncate">
+                        {courseCode}
+                      </div>
+                      <div className="text-xs text-text-secondary truncate">
+                        {courseName}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-text-secondary">
+                      Año: <span className="font-medium text-text-primary">{year}</span>
+                    </div>
+                    <div className="text-xs text-text-secondary">
+                      Certificados: <span className="font-medium text-text-primary">{groupCerts.length}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          {Object.keys(groupedCerts).length === 0 && (
+            <div className="col-span-full text-center py-8 text-text-secondary">
               No se encontraron certificados con los filtros aplicados.
             </div>
           )}
@@ -1149,7 +1245,7 @@ export default function CertificateList() {
 
       {/* Modal de Edición Rápida */}
       {quickViewCert && quickEditData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-theme-secondary rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-theme-secondary border-b border-theme px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold text-text-primary">
@@ -1366,7 +1462,179 @@ export default function CertificateList() {
           </div>
         </div>
       )}
+
+      {/* Modal de Certificados del Curso (Vista Grid) */}
+      {selectedGroupForModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4" onClick={() => setSelectedGroupForModal(null)}>
+          <div className="bg-theme-secondary border border-theme rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between p-6 border-b border-theme">
+              <div className="flex items-center gap-3">
+                <FolderOpen size={24} weight="bold" className="text-accent" />
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">
+                    {selectedGroupForModal.certs[0].courseId?.split("-")[0]} - {selectedGroupForModal.certs[0].courseName}
+                  </h2>
+                  <p className="text-sm text-text-secondary">
+                    Año {selectedGroupForModal.certs[0].year} • {selectedGroupForModal.certs.length} certificado{selectedGroupForModal.certs.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedGroupForModal(null)}
+                className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
+              >
+                <X size={20} weight="bold" className="text-text-secondary" />
+              </button>
+            </div>
+
+            {/* Contenido del Modal - Tabla de certificados */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-theme-tertiary text-text-secondary uppercase text-xs sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2 text-left w-12">
+                        <CheckSquare size={16} className="text-text-tertiary" />
+                      </th>
+                      <th className="px-4 py-2 text-left">Nombre</th>
+                      <th className="px-4 py-2 text-left">ID Certificado</th>
+                      <th className="px-4 py-2 text-left">Email</th>
+                      <th className="px-4 py-2 text-left">Teléfono</th>
+                      <th className="px-4 py-2 text-left">Estado</th>
+                      <th className="px-4 py-2 text-left w-12">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-theme">
+                    {selectedGroupForModal.certs.map((cert) => (
+                      <tr key={cert.id} className="hover:bg-theme-tertiary transition-colors">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSelect(cert.id || "", e);
+                            }}
+                            className="flex items-center justify-center"
+                          >
+                            {cert.id && selectedIds.has(cert.id) ? (
+                              <CheckSquare size={20} weight="fill" className="text-blue-600" />
+                            ) : (
+                              <Square size={20} className="text-text-tertiary" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-text-primary font-medium">
+                          {cert.fullName}
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary font-mono text-xs">
+                          {cert.courseId}
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">
+                          {cert.email || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary">
+                          {cert.phone || "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[cert.deliveryStatus || "en_archivo"]}`}>
+                            {statusLabels[cert.deliveryStatus || "en_archivo"]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === cert.id ? null : cert.id || "");
+                                setMenuPosition({ top: e.clientY, left: e.clientX });
+                              }}
+                              className="p-1 hover:bg-theme-secondary rounded transition-colors"
+                            >
+                              <DotsThreeVertical size={18} className="text-text-secondary" />
+                            </button>
+                            {openMenuId === cert.id && menuPosition && (
+                              <div
+                                className="fixed z-[60] bg-theme-secondary border border-theme rounded-lg shadow-lg py-1 min-w-[150px]"
+                                style={{
+                                  top: `${menuPosition.top}px`,
+                                  left: `${menuPosition.left}px`,
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setQuickViewCert(cert);
+                                    setQuickEditData({
+                                      deliveryStatus: cert.deliveryStatus || "en_archivo",
+                                      deliveryDate: cert.deliveryDate || "",
+                                      deliveredTo: cert.deliveredTo || "",
+                                    });
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
+                                >
+                                  <Eye size={16} />
+                                  Ver Detalle
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/admin/certificados/${cert.id}`);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
+                                >
+                                  <Pencil size={16} />
+                                  Editar
+                                </button>
+                                {cert.driveFileId && (
+                                  <a
+                                    href={cert.driveWebViewLink || `https://drive.google.com/file/d/${cert.driveFileId}/view`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
+                                  >
+                                    <File size={16} />
+                                    Ver PDF
+                                  </a>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (cert.courseId) {
+                                      navigator.clipboard.writeText(cert.courseId);
+                                      toast.success("ID copiado al portapapeles");
+                                    }
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-theme-tertiary flex items-center gap-2"
+                                >
+                                  <Copy size={16} />
+                                  Copiar ID
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+});
+
+CertificateList.displayName = "CertificateList";
+
+export default CertificateList;
 

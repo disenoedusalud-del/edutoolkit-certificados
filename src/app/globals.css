@@ -71,6 +71,50 @@
   --info: #268bd2;
 }
 
+:root[data-theme="neo-brutalism"] {
+  /* Neo Brutalism - Paleta neutra minimalista: 95% neutros / 5% acento */
+  /* Neutros / Base */
+  --bg-primary: #F2F2F2;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F2F2F2;
+  --text-primary: #0D0D0D;
+  --text-secondary: #4B4B4B;
+  --text-tertiary: #666666;
+  --border-color: #0D0D0D;
+  
+  /* Acentos (solo 2) - 5% del diseño */
+  --accent: #9E77F2;
+  --accent-hover: #A38BD9;
+  --accent-soft: #A38BD9;
+  --secondary-accent: #A0F2AC;
+  --success: #A0F2AC;
+  --warning: #A0F2AC;
+  --error: #A0F2AC;
+  --info: #9E77F2;
+}
+
+:root[data-theme="neo-brutalism-dark"] {
+  /* Neo Brutalism Oscuro - Similar a Dark pero con estilo brutalista */
+  /* Neutros / Base - igual que dark */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
+  --border-color: #30363d;
+  
+  /* Acentos (solo 2) - 5% del diseño */
+  --accent: #B794F6;
+  --accent-hover: #C4A5F8;
+  --accent-soft: #C4A5F8;
+  --secondary-accent: #B3F5B8;
+  --success: #B3F5B8;
+  --warning: #B3F5B8;
+  --error: #B3F5B8;
+  --info: #B794F6;
+}
+
 /* Aplicar colores a elementos base */
 @layer base {
   body {
@@ -136,4 +180,552 @@
   .bg-accent-hover:hover {
     background-color: var(--accent-hover);
   }
+}
+
+/* Estilos específicos para Neo Brutalism - Auténtico */
+:root[data-theme="neo-brutalism"] {
+  /* Sombras duras y simples (drop shadow sólida, sin blur) */
+  --brutal-shadow: 4px 4px 0px 0px #000000;
+  --brutal-shadow-hover: 6px 6px 0px 0px #000000;
+  --brutal-shadow-active: 2px 2px 0px 0px #000000;
+  --brutal-shadow-large: 8px 8px 0px 0px #000000;
+  --border-width: 2px;
+}
+
+/* Botones con estilo brutalista auténtico */
+:root[data-theme="neo-brutalism"] button:not([class*="border-0"]):not([class*="border-none"]):not(.btn-primary):not(.btn-secondary) {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 600 !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Botones Primary: fondo lila, texto negro, borde negro */
+:root[data-theme="neo-brutalism"] button.btn-primary,
+:root[data-theme="neo-brutalism"] button.bg-accent {
+  background-color: #9E77F2 !important;
+  color: #0D0D0D !important;
+  border: var(--border-width) solid #0D0D0D !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 600 !important;
+}
+
+/* Botones Secondary: blanco, borde negro, texto negro */
+:root[data-theme="neo-brutalism"] button.btn-secondary {
+  background-color: #FFFFFF !important;
+  color: #0D0D0D !important;
+  border: var(--border-width) solid #0D0D0D !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 600 !important;
+}
+
+/* Botones Tertiary (icon buttons): blanco, borde negro, hover con tinte lila 6-8% */
+:root[data-theme="neo-brutalism"] button.p-1\.5,
+:root[data-theme="neo-brutalism"] button.p-1 {
+  background-color: #FFFFFF !important;
+  border: var(--border-width) solid #0D0D0D !important;
+  border-radius: 0px !important;
+  transition: all 0.1s ease !important;
+}
+
+:root[data-theme="neo-brutalism"] button.p-1\.5:hover,
+:root[data-theme="neo-brutalism"] button.p-1:hover {
+  background-color: rgba(158, 119, 242, 0.07) !important;
+}
+
+:root[data-theme="neo-brutalism"] button:hover:not(:disabled):not([class*="border-0"]):not([class*="border-none"]) {
+  box-shadow: var(--brutal-shadow-hover) !important;
+  transform: translate(-2px, -2px) !important;
+}
+
+:root[data-theme="neo-brutalism"] button:active:not(:disabled):not([class*="border-0"]):not([class*="border-none"]) {
+  box-shadow: var(--brutal-shadow-active) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+/* Botones con clases específicas - Primary */
+:root[data-theme="neo-brutalism"] button.bg-blue-600,
+:root[data-theme="neo-brutalism"] button.bg-purple-600 {
+  background-color: #9E77F2 !important;
+  color: #0D0D0D !important;
+  border: var(--border-width) solid #0D0D0D !important;
+}
+
+:root[data-theme="neo-brutalism"] button.bg-green-600,
+:root[data-theme="neo-brutalism"] button.bg-red-600 {
+  background-color: #FFFFFF !important;
+  color: #0D0D0D !important;
+  border: var(--border-width) solid #0D0D0D !important;
+}
+
+/* Inputs y selects con estilo brutalista */
+:root[data-theme="neo-brutalism"] input[type="text"],
+:root[data-theme="neo-brutalism"] input[type="email"],
+:root[data-theme="neo-brutalism"] input[type="password"],
+:root[data-theme="neo-brutalism"] input[type="date"],
+:root[data-theme="neo-brutalism"] input[type="number"],
+:root[data-theme="neo-brutalism"] select,
+:root[data-theme="neo-brutalism"] textarea {
+  border: var(--border-width) solid #0D0D0D !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 400 !important;
+  background-color: #FFFFFF !important;
+  color: #0D0D0D !important;
+}
+
+:root[data-theme="neo-brutalism"] input:focus,
+:root[data-theme="neo-brutalism"] select:focus,
+:root[data-theme="neo-brutalism"] textarea:focus {
+  outline: 2px solid #9E77F2 !important;
+  outline-offset: -2px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transform: none !important;
+}
+
+/* Cards y contenedores - diseño por bloques, solo neutros */
+:root[data-theme="neo-brutalism"] .bg-theme-secondary:not([class*="border-0"]):not([class*="border-none"]) {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  background-color: var(--bg-secondary) !important;
+}
+
+:root[data-theme="neo-brutalism"] .bg-theme-tertiary:not([class*="border-0"]):not([class*="border-none"]) {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  background-color: var(--bg-primary) !important;
+}
+
+/* Modales y overlays - sin blur, fondo sólido */
+:root[data-theme="neo-brutalism"] .fixed.inset-0.bg-black\/50,
+:root[data-theme="neo-brutalism"] .fixed.inset-0.bg-black\/\[0\.8\] {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-theme="neo-brutalism"] .fixed.inset-0 > div {
+  border: var(--border-width) solid var(--border-color) !important;
+  box-shadow: var(--brutal-shadow-large) !important;
+}
+
+/* Eliminar border-radius - diseño blocky */
+:root[data-theme="neo-brutalism"] .rounded-xl,
+:root[data-theme="neo-brutalism"] .rounded-lg,
+:root[data-theme="neo-brutalism"] .rounded-md,
+:root[data-theme="neo-brutalism"] .rounded,
+:root[data-theme="neo-brutalism"] .rounded-full {
+  border-radius: 0px !important;
+}
+
+/* Tablas con bordes gruesos */
+:root[data-theme="neo-brutalism"] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: var(--border-width) solid var(--border-color) !important;
+}
+
+:root[data-theme="neo-brutalism"] table th,
+:root[data-theme="neo-brutalism"] table td {
+  border: var(--border-width) solid var(--border-color) !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme="neo-brutalism"] table th {
+  background-color: var(--bg-tertiary) !important;
+  font-weight: 600 !important;
+}
+
+/* Links con estilo brutalista */
+:root[data-theme="neo-brutalism"] a:not([class*="border-0"]) {
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  border-bottom: var(--border-width) solid var(--border-color) !important;
+  transition: all 0.1s ease !important;
+}
+
+:root[data-theme="neo-brutalism"] a:hover:not([class*="border-0"]) {
+  background-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 2px 2px 0px 0px var(--border-color) !important;
+}
+
+/* Badges y tags - principalmente neutros, acentos solo cuando necesario */
+:root[data-theme="neo-brutalism"] .bg-blue-100,
+:root[data-theme="neo-brutalism"] .bg-purple-100 {
+  background-color: rgba(158, 119, 242, 0.08) !important;
+  border: var(--border-width) solid rgba(158, 119, 242, 0.2) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px rgba(158, 119, 242, 0.15) !important;
+  font-weight: 500 !important;
+  color: var(--accent) !important;
+}
+
+:root[data-theme="neo-brutalism"] .bg-green-100 {
+  background-color: rgba(160, 242, 172, 0.08) !important;
+  border: var(--border-width) solid rgba(160, 242, 172, 0.2) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px rgba(160, 242, 172, 0.15) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="neo-brutalism"] .bg-red-100,
+:root[data-theme="neo-brutalism"] .bg-yellow-100,
+:root[data-theme="neo-brutalism"] .bg-gray-100 {
+  background-color: var(--bg-primary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px var(--border-color) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Iconos en contenedores cuadrados */
+:root[data-theme="neo-brutalism"] svg {
+  filter: none !important;
+}
+
+/* Eliminar efectos suaves */
+:root[data-theme="neo-brutalism"] * {
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+
+:root[data-theme="neo-brutalism"] *:not(button):not(input):not(select):not(textarea) {
+  transition: none !important;
+}
+
+:root[data-theme="neo-brutalism"] button,
+:root[data-theme="neo-brutalism"] input,
+:root[data-theme="neo-brutalism"] select,
+:root[data-theme="neo-brutalism"] textarea,
+:root[data-theme="neo-brutalism"] a {
+  transition: all 0.1s ease !important;
+}
+
+/* Tablas - solo neutros, sin alternancia de color */
+:root[data-theme="neo-brutalism"] table tbody tr:nth-child(even),
+:root[data-theme="neo-brutalism"] table tbody tr:nth-child(odd) {
+  background-color: var(--bg-secondary) !important;
+}
+
+:root[data-theme="neo-brutalism"] table tbody tr:hover {
+  background-color: rgba(163, 139, 217, 0.03) !important;
+}
+
+/* Topbar - solo neutros */
+:root[data-theme="neo-brutalism"] header {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: var(--border-width) solid var(--border-color) !important;
+}
+
+:root[data-theme="neo-brutalism"] header .bg-theme-tertiary {
+  background-color: #F2F2F2 !important;
+  border-color: #0D0D0D !important;
+  color: #0D0D0D !important;
+}
+
+:root[data-theme="neo-brutalism"] .punto-admin {
+  background-color: #9E77F2 !important;
+}
+
+/* Barras indicadoras - solo en neo-brutalism */
+:root[data-theme="neo-brutalism"] .barra-indicador {
+  background-color: #9E77F2 !important;
+}
+
+:root[data-theme="neo-brutalism"] .barra-indicador-grupo {
+  background-color: #9E77F2 !important;
+}
+
+/* Aplicar acentos vivos a elementos destacados */
+:root[data-theme="neo-brutalism"] .text-accent {
+  color: var(--accent) !important;
+}
+
+:root[data-theme="neo-brutalism"] .bg-accent {
+  background-color: var(--accent) !important;
+  color: #FFFFFF !important;
+}
+
+/* Subrayados con acentos vivos */
+:root[data-theme="neo-brutalism"] a:hover:not([class*="border-0"]) {
+  border-bottom-color: var(--accent) !important;
+}
+
+/* Estilos específicos para Neo Brutalism Dark - Auténtico */
+:root[data-theme="neo-brutalism-dark"] {
+  /* Sombras duras y simples (drop shadow sólida, sin blur) - usando color de borde */
+  --brutal-shadow: 4px 4px 0px 0px var(--border-color);
+  --brutal-shadow-hover: 6px 6px 0px 0px var(--border-color);
+  --brutal-shadow-active: 2px 2px 0px 0px var(--border-color);
+  --brutal-shadow-large: 8px 8px 0px 0px var(--border-color);
+  --border-width: 2px;
+}
+
+/* Botones con estilo brutalista oscuro */
+:root[data-theme="neo-brutalism-dark"] button:not([class*="border-0"]):not([class*="border-none"]):not(.btn-primary):not(.btn-secondary) {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 600 !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Botones Primary: fondo lila claro, texto blanco, borde blanco */
+:root[data-theme="neo-brutalism-dark"] button.btn-primary,
+:root[data-theme="neo-brutalism-dark"] button.bg-accent {
+  background-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 600 !important;
+}
+
+/* Botones Secondary: fondo oscuro, borde blanco, texto blanco */
+:root[data-theme="neo-brutalism-dark"] button.btn-secondary {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 600 !important;
+}
+
+/* Botones Tertiary (icon buttons): fondo oscuro, borde blanco, hover con tinte lila */
+:root[data-theme="neo-brutalism-dark"] button.p-1\.5,
+:root[data-theme="neo-brutalism-dark"] button.p-1 {
+  background-color: var(--bg-secondary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  transition: all 0.1s ease !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] button.p-1\.5:hover,
+:root[data-theme="neo-brutalism-dark"] button.p-1:hover {
+  background-color: rgba(183, 148, 246, 0.15) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] button:hover:not(:disabled):not([class*="border-0"]):not([class*="border-none"]) {
+  box-shadow: var(--brutal-shadow-hover) !important;
+  transform: translate(-2px, -2px) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] button:active:not(:disabled):not([class*="border-0"]):not([class*="border-none"]) {
+  box-shadow: var(--brutal-shadow-active) !important;
+  transform: translate(2px, 2px) !important;
+}
+
+/* Botones con clases específicas - Primary */
+:root[data-theme="neo-brutalism-dark"] button.bg-blue-600,
+:root[data-theme="neo-brutalism-dark"] button.bg-purple-600 {
+  background-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] button.bg-green-600,
+:root[data-theme="neo-brutalism-dark"] button.bg-red-600 {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+}
+
+/* Inputs y selects con estilo brutalista oscuro */
+:root[data-theme="neo-brutalism-dark"] input[type="text"],
+:root[data-theme="neo-brutalism-dark"] input[type="email"],
+:root[data-theme="neo-brutalism-dark"] input[type="password"],
+:root[data-theme="neo-brutalism-dark"] input[type="date"],
+:root[data-theme="neo-brutalism-dark"] input[type="number"],
+:root[data-theme="neo-brutalism-dark"] select,
+:root[data-theme="neo-brutalism-dark"] textarea {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transition: all 0.1s ease !important;
+  font-weight: 400 !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] input:focus,
+:root[data-theme="neo-brutalism-dark"] select:focus,
+:root[data-theme="neo-brutalism-dark"] textarea:focus {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: -2px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  transform: none !important;
+}
+
+/* Cards y contenedores - diseño por bloques, solo neutros */
+:root[data-theme="neo-brutalism-dark"] .bg-theme-secondary:not([class*="border-0"]):not([class*="border-none"]) {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  background-color: var(--bg-secondary) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] .bg-theme-tertiary:not([class*="border-0"]):not([class*="border-none"]) {
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: var(--brutal-shadow) !important;
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Modales y overlays - sin blur, fondo sólido */
+:root[data-theme="neo-brutalism-dark"] .fixed.inset-0.bg-black\/50,
+:root[data-theme="neo-brutalism-dark"] .fixed.inset-0.bg-black\/\[0\.8\] {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] .fixed.inset-0 > div {
+  border: var(--border-width) solid var(--border-color) !important;
+  box-shadow: var(--brutal-shadow-large) !important;
+}
+
+/* Eliminar border-radius - diseño blocky */
+:root[data-theme="neo-brutalism-dark"] .rounded-xl,
+:root[data-theme="neo-brutalism-dark"] .rounded-lg,
+:root[data-theme="neo-brutalism-dark"] .rounded-md,
+:root[data-theme="neo-brutalism-dark"] .rounded,
+:root[data-theme="neo-brutalism-dark"] .rounded-full {
+  border-radius: 0px !important;
+}
+
+/* Tablas con bordes gruesos */
+:root[data-theme="neo-brutalism-dark"] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: var(--border-width) solid var(--border-color) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] table th,
+:root[data-theme="neo-brutalism-dark"] table td {
+  border: var(--border-width) solid var(--border-color) !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] table th {
+  background-color: var(--bg-tertiary) !important;
+  font-weight: 600 !important;
+}
+
+/* Tablas - solo neutros, sin alternancia de color */
+:root[data-theme="neo-brutalism-dark"] table tbody tr:nth-child(even),
+:root[data-theme="neo-brutalism-dark"] table tbody tr:nth-child(odd) {
+  background-color: var(--bg-secondary) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] table tbody tr:hover {
+  background-color: rgba(183, 148, 246, 0.1) !important;
+}
+
+/* Links con estilo brutalista */
+:root[data-theme="neo-brutalism-dark"] a:not([class*="border-0"]) {
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  border-bottom: var(--border-width) solid var(--border-color) !important;
+  transition: all 0.1s ease !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] a:hover:not([class*="border-0"]) {
+  background-color: var(--accent) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 2px 2px 0px 0px var(--border-color) !important;
+}
+
+/* Badges y tags - principalmente neutros, acentos solo cuando necesario */
+:root[data-theme="neo-brutalism-dark"] .bg-blue-100,
+:root[data-theme="neo-brutalism-dark"] .bg-purple-100 {
+  background-color: rgba(183, 148, 246, 0.15) !important;
+  border: var(--border-width) solid rgba(183, 148, 246, 0.4) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px rgba(183, 148, 246, 0.3) !important;
+  font-weight: 500 !important;
+  color: var(--accent) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] .bg-green-100 {
+  background-color: rgba(179, 245, 184, 0.15) !important;
+  border: var(--border-width) solid rgba(179, 245, 184, 0.4) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px rgba(179, 245, 184, 0.3) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] .bg-red-100,
+:root[data-theme="neo-brutalism-dark"] .bg-yellow-100,
+:root[data-theme="neo-brutalism-dark"] .bg-gray-100 {
+  background-color: var(--bg-tertiary) !important;
+  border: var(--border-width) solid var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px 0px var(--border-color) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Topbar - solo neutros */
+:root[data-theme="neo-brutalism-dark"] header {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: var(--border-width) solid var(--border-color) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] header .bg-theme-tertiary {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] .punto-admin {
+  background-color: var(--accent) !important;
+}
+
+/* Barras indicadoras - solo en neo-brutalism-dark */
+:root[data-theme="neo-brutalism-dark"] .barra-indicador {
+  background-color: var(--accent) !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] .barra-indicador-grupo {
+  background-color: var(--accent) !important;
+}
+
+/* Eliminar efectos suaves */
+:root[data-theme="neo-brutalism-dark"] svg {
+  filter: none !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] * {
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] *:not(button):not(input):not(select):not(textarea) {
+  transition: none !important;
+}
+
+:root[data-theme="neo-brutalism-dark"] button,
+:root[data-theme="neo-brutalism-dark"] input,
+:root[data-theme="neo-brutalism-dark"] select,
+:root[data-theme="neo-brutalism-dark"] textarea,
+:root[data-theme="neo-brutalism-dark"] a {
+  transition: all 0.1s ease !important;
 }

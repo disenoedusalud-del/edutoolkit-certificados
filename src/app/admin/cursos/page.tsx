@@ -203,7 +203,7 @@ export default function CoursesPage() {
             setEditingCourse(null);
             setShowModal(true);
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
         >
           <Plus size={18} weight="bold" />
           Agregar Curso Nuevo
@@ -216,7 +216,7 @@ export default function CoursesPage() {
           onClick={() => setFilter("all")}
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "all"
-              ? "bg-accent text-white"
+              ? "bg-accent text-white border border-theme"
               : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
@@ -226,7 +226,7 @@ export default function CoursesPage() {
           onClick={() => setFilter("active")}
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "active"
-              ? "bg-green-600 text-white"
+              ? "bg-green-600 text-white border border-theme"
               : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
@@ -236,7 +236,7 @@ export default function CoursesPage() {
           onClick={() => setFilter("archived")}
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "archived"
-              ? "bg-gray-600 text-white"
+              ? "bg-gray-600 text-white border border-theme"
               : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
@@ -252,8 +252,9 @@ export default function CoursesPage() {
           </div>
         ) : (
           <table className="min-w-full text-sm">
-            <thead className="bg-theme-tertiary text-text-secondary uppercase text-xs">
+            <thead className="bg-theme-secondary text-text-secondary uppercase text-xs border-b-2 border-border-color">
               <tr>
+                <th className="px-0 py-3 w-[12px]"></th>
                 <th className="px-4 py-3 text-left">Código</th>
                 <th className="px-4 py-3 text-left">Nombre del Curso</th>
                 <th className="px-4 py-3 text-left">Tipo</th>
@@ -266,8 +267,10 @@ export default function CoursesPage() {
               {filteredCourses.map((course) => (
                 <tr
                   key={course.id}
-                  className="hover:bg-theme-tertiary transition-colors"
+                  className="bg-theme-secondary hover:bg-theme-tertiary transition-colors"
                 >
+                  {/* Barra izquierda de color - solo visible en neo-brutalism */}
+                  <td className="px-0 py-0 w-[10px] barra-indicador"></td>
                   <td className="px-4 py-3 font-mono font-semibold text-text-primary">
                     {course.id}
                   </td>

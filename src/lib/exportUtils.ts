@@ -2,83 +2,54 @@ import { Certificate } from "@/types/Certificate";
 
 /**
  * Convierte un array de certificados a formato CSV
+ * Usa el mismo formato que la plantilla de importación
  */
 export function exportToCSV(certificates: Certificate[]): string {
   if (certificates.length === 0) {
     return "";
   }
 
-  // Encabezados
+  // Encabezados (mismo formato que la plantilla de importación)
   const headers = [
-    "ID",
-    "Nombre Completo",
-    "Email",
-    "Teléfono",
-    "Curso",
-    "ID Curso",
-    "Tipo Curso",
-    "Año",
-    "Origen",
-    "Estado",
-    "Fecha Entrega",
-    "Entregado a",
-    "Ubicación Física",
-    "Código Folio",
-    "Fuente Contacto",
-    "Email Enviado",
-    "WhatsApp Enviado",
-    "Consentimiento Marketing",
-    "ID Drive",
-    "Fecha Creación",
-    "Fecha Actualización",
+    "Nombre Completo (requerido)",
+    "Nombre del Curso (requerido)",
+    "Tipo de Curso (requerido si es nuevo)",
+    "Año (requerido)",
+    "Email (opcional)",
+    "Teléfono (opcional)",
+    "Origen (opcional)",
+    "Estado (opcional)",
   ];
 
   // Filas de datos
   const rows = certificates.map((cert) => {
     return [
-      cert.id || "",
       cert.fullName || "",
-      cert.email || "",
-      cert.phone || "",
       cert.courseName || "",
-      cert.courseId || "",
       cert.courseType || "",
       cert.year?.toString() || "",
-      cert.origin === "historico" ? "Histórico" : "Nuevo",
-      getStatusLabel(cert.deliveryStatus || "en_archivo"),
-      cert.deliveryDate
-        ? new Date(cert.deliveryDate).toLocaleDateString("es-ES")
-        : "",
-      cert.deliveredTo || "",
-      cert.physicalLocation || "",
-      cert.folioCode || "",
-      getContactSourceLabel(cert.contactSource || "ninguno"),
-      cert.emailSent ? "Sí" : "No",
-      cert.whatsappSent ? "Sí" : "No",
-      cert.marketingConsent ? "Sí" : "No",
-      cert.driveFileId || "",
-      cert.createdAt
-        ? new Date(cert.createdAt).toLocaleString("es-ES")
-        : "",
-      cert.updatedAt
-        ? new Date(cert.updatedAt).toLocaleString("es-ES")
-        : "",
+      cert.email || "",
+      cert.phone || "",
+      cert.origin || "nuevo",
+      cert.deliveryStatus || "en_archivo",
     ];
   });
 
   // Combinar encabezados y filas
+  // Usar punto y coma como separador (formato Excel español)
   const csvContent = [headers, ...rows]
-    .map((row) => row.map((cell) => escapeCSV(cell)).join(","))
+    .map((row) => row.map((cell) => escapeCSV(cell)).join(";"))
     .join("\n");
 
   return csvContent;
 }
 
 /**
- * Escapa valores para CSV (maneja comillas y comas)
+ * Escapa valores para CSV (maneja comillas, comas y punto y coma)
  */
 function escapeCSV(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+  // Manejar punto y coma también (usado en formato Excel español)
+  if (value.includes(",") || value.includes(";") || value.includes('"') || value.includes("\n")) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;

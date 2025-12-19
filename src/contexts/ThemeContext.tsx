@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 
-export type Theme = "tokyo-night" | "dark" | "light" | "solarized-light";
+export type Theme = "tokyo-night" | "dark" | "light" | "solarized-light" | "neo-brutalism" | "neo-brutalism-dark";
 
 interface ThemeContextType {
   theme: Theme;
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setMounted(true);
     // Cargar tema guardado o usar default
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme;
-    if (savedTheme && ["tokyo-night", "dark", "light", "solarized-light"].includes(savedTheme)) {
+    if (savedTheme && ["tokyo-night", "dark", "light", "solarized-light", "neo-brutalism", "neo-brutalism-dark"].includes(savedTheme)) {
       setThemeState(savedTheme);
     } else {
       // Detectar preferencia del sistema si es de noche/día

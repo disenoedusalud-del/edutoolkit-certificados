@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
-import { Moon, Sun, Palette } from "phosphor-react";
+import { Moon, Sun, Palette, PaintBrush } from "phosphor-react";
 import { useState, useRef, useEffect } from "react";
 
 const themes: { value: Theme; label: string; icon: typeof Moon }[] = [
@@ -9,6 +9,8 @@ const themes: { value: Theme; label: string; icon: typeof Moon }[] = [
   { value: "dark", label: "Dark", icon: Moon },
   { value: "light", label: "Light", icon: Sun },
   { value: "solarized-light", label: "Solarized Light", icon: Sun },
+  { value: "neo-brutalism", label: "Neo Brutalism", icon: PaintBrush },
+  { value: "neo-brutalism-dark", label: "Neo Brutalism Dark", icon: Moon },
 ];
 
 export default function ThemeSelector() {

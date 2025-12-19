@@ -32,8 +32,11 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               <span className="text-sm text-text-secondary">
                 {user.email}
               </span>
-              <span className="px-2 py-1 text-xs font-medium bg-theme-tertiary text-text-primary rounded border border-theme">
+              <span className="px-2 py-1 text-xs font-medium bg-theme-tertiary text-text-primary rounded border border-theme relative">
                 {user.role}
+                {user.role === "MASTER_ADMIN" && (
+                  <span className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-accent rounded-full punto-admin"></span>
+                )}
               </span>
             </div>
             <div className="flex items-center gap-2">

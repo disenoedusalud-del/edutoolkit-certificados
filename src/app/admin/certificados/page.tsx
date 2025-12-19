@@ -1,15 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
+import CertificateImport from "@/components/CertificateImport";
+import ImportExportMenu from "@/components/ImportExportMenu";
+import CourseExportModal from "@/components/CourseExportModal";
 import { ChartBar, Plus, BookOpen, ArrowLeft } from "phosphor-react";
 import Link from "next/link";
+import type { CertificateListHandle } from "@/components/CertificateList";
 
 export default function Page() {
   const [showForm, setShowForm] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [showCourseExport, setShowCourseExport] = useState(false);
+  const certificateListRef = useRef<CertificateListHandle>(null);
 
   return (
     <main className="min-h-screen bg-theme-primary p-8">
@@ -19,23 +26,42 @@ export default function Page() {
         </h1>
         {!showForm && (
           <div className="flex gap-2 items-center">
+            <ImportExportMenu
+              onImportClick={() => {
+                setShowImport(!showImport);
+                if (showImport) {
+                  setShowStats(false);
+                }
+              }}
+              onExportSelected={() => {
+                certificateListRef.current?.exportSelected();
+              }}
+              onExportAll={() => {
+                certificateListRef.current?.exportAll();
+              }}
+              onExportByCourse={() => {
+                setShowCourseExport(true);
+              }}
+              getSelectedCount={() => certificateListRef.current?.selectedCount || 0}
+              getHasSelected={() => certificateListRef.current?.hasSelected || false}
+            />
             <Link
               href="/admin/cursos"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
             >
               <BookOpen size={18} weight="bold" />
               Administrar Cursos
             </Link>
             <button
               onClick={() => setShowStats(!showStats)}
-              className="px-4 py-2 bg-theme-tertiary text-text-primary rounded-lg hover:bg-theme-secondary transition-colors flex items-center gap-2 border border-theme"
+              className="px-4 py-2 bg-theme-secondary text-text-primary rounded-lg hover:bg-theme-tertiary transition-colors flex items-center gap-2 border border-theme btn-secondary"
             >
               <ChartBar size={18} weight="bold" />
               {showStats ? "Ocultar Estadísticas" : "Ver Estadísticas"}
             </button>
             <button
               onClick={() => setShowForm(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
             >
               <Plus size={18} weight="bold" />
               Nuevo Certificado
@@ -59,13 +85,22 @@ export default function Page() {
         </div>
       ) : (
         <div className="space-y-6">
+          {showImport && (
+            <CertificateImport onClose={() => setShowImport(false)} />
+          )}
           {showStats && (
             <div className="bg-theme-secondary rounded-xl shadow p-6 border border-theme">
               <CertificateStats />
             </div>
           )}
+          {showCourseExport && certificateListRef.current && (
+            <CourseExportModal
+              groupedCerts={certificateListRef.current.getGroupedCerts()}
+              onClose={() => setShowCourseExport(false)}
+            />
+          )}
           <div className="bg-theme-secondary rounded-xl shadow p-4 border border-theme">
-            <CertificateList />
+            <CertificateList ref={certificateListRef} />
           </div>
         </div>
       )}

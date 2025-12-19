@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
-import { Gear } from "phosphor-react";
+import { Gear, Eye, EyeSlash } from "phosphor-react";
 import ThemeSelector from "@/components/ThemeSelector";
 
 type Mode = "login" | "register";
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const router = useRouter();
 
@@ -198,15 +199,29 @@ export default function LoginPage() {
             <label className="block text-xs font-medium text-text-secondary">
               Contraseña
             </label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-theme px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent bg-theme-secondary text-text-primary"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-md border border-theme px-3 py-2 pr-10 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent bg-theme-secondary text-text-primary"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-text-primary transition-colors"
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? (
+                  <EyeSlash size={18} weight="regular" />
+                ) : (
+                  <Eye size={18} weight="regular" />
+                )}
+              </button>
+            </div>
             {mode === "register" && (
               <p className="mt-1 text-[11px] text-text-secondary">
                 La contraseña debe tener al menos 6 caracteres.
