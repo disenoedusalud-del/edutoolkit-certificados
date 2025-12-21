@@ -22,8 +22,8 @@ export function showToast(
     };
     toastCallback(toast);
   } else {
-    // Fallback a alert si no hay callback configurado
-    alert(message);
+    // Fallback a console si no hay callback configurado
+    console.log(`[TOAST] ${type}: ${message}`);
   }
 }
 

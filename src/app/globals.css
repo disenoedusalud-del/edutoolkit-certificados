@@ -189,12 +189,20 @@
     color: var(--success);
   }
 
+  .text-warning {
+    color: var(--warning);
+  }
+
   .bg-error {
     background-color: var(--error);
   }
 
   .bg-success {
     background-color: var(--success);
+  }
+
+  .bg-warning {
+    background-color: var(--warning);
   }
 
   .divide-theme > * + * {

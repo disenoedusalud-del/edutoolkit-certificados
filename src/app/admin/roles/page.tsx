@@ -7,6 +7,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ArrowLeft, Plus, Trash, Pencil, Shield } from "phosphor-react";
 import Link from "next/link";
 import type { UserRole } from "@/lib/auth";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 interface AdminUser {
   id: string;
@@ -24,6 +25,7 @@ export default function AdminRolesPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formRole, setFormRole] = useState<UserRole>("VIEWER");
   const [formLoading, setFormLoading] = useState(false);
+  const { confirm } = useConfirm();
 
   const loadUsers = async () => {
     try {
@@ -86,7 +88,15 @@ export default function AdminRolesPage() {
   };
 
   const handleDelete = async (email: string) => {
-    if (!confirm(`¿Estás seguro de eliminar el usuario ${email}?`)) {
+    const confirmed = await confirm({
+      title: "Eliminar Usuario",
+      message: `¿Estás seguro de eliminar el usuario ${email}?\n\nEsta acción no se puede deshacer.`,
+      variant: "danger",
+      confirmText: "Eliminar",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirmed) {
       return;
     }
 

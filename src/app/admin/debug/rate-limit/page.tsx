@@ -8,6 +8,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ArrowLeft, Trash, ArrowClockwise, Copy } from "phosphor-react";
 import Link from "next/link";
 import type { UserRole } from "@/lib/auth";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 export default function RateLimitDebugPage() {
   const [loading, setLoading] = useState(false);
@@ -17,6 +18,7 @@ export default function RateLimitDebugPage() {
   const [checkingRole, setCheckingRole] = useState(true);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const router = useRouter();
+  const { confirm } = useConfirm();
 
   // Verificar que el usuario sea MASTER_ADMIN y cargar IP
   useEffect(() => {
@@ -102,7 +104,15 @@ export default function RateLimitDebugPage() {
   };
 
   const handleResetAll = async () => {
-    if (!confirm("¿Estás seguro de resetear TODOS los rate limits? Esto afectará a todos los usuarios.")) {
+    const confirmed = await confirm({
+      title: "Resetear Todos los Rate Limits",
+      message: "¿Estás seguro de resetear TODOS los rate limits?\n\nEsto afectará a todos los usuarios.",
+      variant: "danger",
+      confirmText: "Resetear Todos",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirmed) {
       return;
     }
 

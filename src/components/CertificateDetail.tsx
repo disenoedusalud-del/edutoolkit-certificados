@@ -8,6 +8,7 @@ import { Check, X, Trash, Copy, ArrowLeft, Upload, File } from "phosphor-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 interface CertificateDetailProps {
   id: string;
@@ -20,6 +21,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
+  const { confirm } = useConfirm();
 
   const loadCertificate = async () => {
     try {
@@ -183,11 +185,15 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
           </button>
           <button
             onClick={async () => {
-              if (
-                confirm(
-                  "¿Estás seguro de eliminar este certificado? Esta acción no se puede deshacer."
-                )
-              ) {
+              const confirmed = await confirm({
+                title: "Eliminar Certificado",
+                message: "¿Estás seguro de eliminar este certificado?\n\nEsta acción no se puede deshacer.",
+                variant: "danger",
+                confirmText: "Eliminar",
+                cancelText: "Cancelar",
+              });
+
+              if (confirmed) {
                 try {
                   const response = await fetch(`/api/certificates/${id}`, {
                     method: "DELETE",

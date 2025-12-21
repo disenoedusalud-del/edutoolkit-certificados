@@ -27,6 +27,7 @@ import {
 } from "phosphor-react";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -74,6 +75,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [sortField, setSortField] = useState<keyof Certificate | null>(null);
+  const { confirm } = useConfirm();
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -398,11 +400,15 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   const handleBulkStatusChange = async () => {
     if (!bulkStatus || selectedIds.size === 0) return;
 
-    if (
-      !confirm(
-        `¿Estás seguro de cambiar el estado de ${selectedIds.size} certificado(s) a "${statusLabels[bulkStatus]}"?`
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Cambiar Estado",
+      message: `¿Estás seguro de cambiar el estado de ${selectedIds.size} certificado(s) a "${statusLabels[bulkStatus]}"?`,
+      variant: "warning",
+      confirmText: "Cambiar",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -438,11 +444,15 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
 
-    if (
-      !confirm(
-        `¿Estás seguro de eliminar ${selectedIds.size} certificado(s)? Esta acción no se puede deshacer.`
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Eliminar Certificados",
+      message: `¿Estás seguro de eliminar ${selectedIds.size} certificado(s)?\n\nEsta acción no se puede deshacer.`,
+      variant: "danger",
+      confirmText: "Eliminar",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -1206,11 +1216,15 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                       e.stopPropagation();
                       setOpenMenuId(null);
                       setMenuPosition(null);
-                      if (
-                        confirm(
-                          "¿Estás seguro de eliminar este certificado? Esta acción no se puede deshacer."
-                        )
-                      ) {
+                      const confirmed = await confirm({
+                        title: "Eliminar Certificado",
+                        message: "¿Estás seguro de eliminar este certificado?\n\nEsta acción no se puede deshacer.",
+                        variant: "danger",
+                        confirmText: "Eliminar",
+                        cancelText: "Cancelar",
+                      });
+
+                      if (confirmed) {
                         try {
                           const response = await fetch(
                             `/api/certificates/${cert.id}`,

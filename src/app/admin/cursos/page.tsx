@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "@/components/LoadingSpinner";
 import { Pencil, Archive, Plus, CheckCircle, XCircle, ArrowLeft, Trash } from "phosphor-react";
 import Link from "next/link";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -15,6 +16,7 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const { confirm } = useConfirm();
 
   const loadCourses = async () => {
     try {
@@ -62,11 +64,15 @@ export default function CoursesPage() {
   };
 
   const handleArchive = async (course: Course) => {
-    if (
-      !confirm(
-        `¿Estás seguro de archivar el curso "${course.name}"? Ya no aparecerá en el selector de cursos.`
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Archivar Curso",
+      message: `¿Estás seguro de archivar el curso "${course.name}"?\n\nYa no aparecerá en el selector de cursos.`,
+      variant: "warning",
+      confirmText: "Archivar",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -125,16 +131,28 @@ export default function CoursesPage() {
         ? `¿Estás seguro de ELIMINAR el curso "${course.name}"?\n\n⚠️ ADVERTENCIA: Se eliminarán ${certificateCount} certificado(s) asociado(s) a este curso. Esta acción NO se puede deshacer.`
         : `¿Estás seguro de ELIMINAR el curso "${course.name}"?\n\nEsta acción NO se puede deshacer.`;
 
-      if (!confirm(message)) {
+      const confirmed = await confirm({
+        title: "Eliminar Curso",
+        message,
+        variant: "danger",
+        confirmText: "Eliminar",
+        cancelText: "Cancelar",
+      });
+
+      if (!confirmed) {
         return;
       }
 
       // Confirmación adicional si hay certificados
       if (certificateCount > 0) {
-        const secondConfirm = confirm(
-          `ÚLTIMA CONFIRMACIÓN:\n\nSe eliminarán ${certificateCount} certificado(s) permanentemente.\n\n¿Estás completamente seguro?`
-        );
-        if (!secondConfirm) {
+        const secondConfirmed = await confirm({
+          title: "Última Confirmación",
+          message: `ÚLTIMA CONFIRMACIÓN:\n\nSe eliminarán ${certificateCount} certificado(s) permanentemente.\n\n¿Estás completamente seguro?`,
+          variant: "danger",
+          confirmText: "Sí, eliminar todo",
+          cancelText: "Cancelar",
+        });
+        if (!secondConfirmed) {
           return;
         }
       }
