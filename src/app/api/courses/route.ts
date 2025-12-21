@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Verificar permisos (ADMIN o superior puede crear cursos)
-    await requireRole("ADMIN");
+    const currentUser = await requireRole("ADMIN");
 
     // 3. Validar entrada
     const body = await request.json();
@@ -300,6 +300,21 @@ export async function POST(request: NextRequest) {
     await adminDb.collection("courses").doc(id).set(courseData);
     
     console.log("Curso creado:", courseData);
+
+    // Registrar en historial unificado
+    await adminDb.collection("systemHistory").add({
+      action: "created",
+      entityType: "course",
+      entityId: id,
+      entityName: name.trim(),
+      performedBy: currentUser.email,
+      timestamp: new Date().toISOString(),
+      details: {
+        courseType,
+        year: courseData.year,
+        status,
+      },
+    });
 
     return NextResponse.json(courseData, {
       status: 201,

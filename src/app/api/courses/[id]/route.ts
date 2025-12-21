@@ -93,7 +93,7 @@ export async function PUT(
     }
 
     // 2. Verificar permisos (ADMIN o superior puede editar cursos)
-    await requireRole("ADMIN");
+    const currentUser = await requireRole("ADMIN");
 
     // 3. Obtener datos
     const { id: oldId } = await params;
@@ -155,6 +155,23 @@ export async function PUT(
       // Eliminar el documento antiguo
       await adminDb.collection("courses").doc(oldId).delete();
 
+      // Registrar en historial unificado
+      await adminDb.collection("systemHistory").add({
+        action: "updated",
+        entityType: "course",
+        entityId: newId,
+        entityName: courseData.name,
+        performedBy: currentUser.email,
+        timestamp: new Date().toISOString(),
+        details: {
+          oldId,
+          newId,
+          courseType: courseData.courseType,
+          year: courseData.year,
+          status: courseData.status,
+        },
+      });
+
       return NextResponse.json(courseData, {
         headers: {
           "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
@@ -205,6 +222,19 @@ export async function PUT(
       const updatedDoc = await adminDb.collection("courses").doc(oldId).get();
       const data = { id: updatedDoc.id, ...updatedDoc.data() };
 
+      // Registrar en historial unificado
+      await adminDb.collection("systemHistory").add({
+        action: "updated",
+        entityType: "course",
+        entityId: oldId,
+        entityName: data.name,
+        performedBy: currentUser.email,
+        timestamp: new Date().toISOString(),
+        details: {
+          changes: updateData,
+        },
+      });
+
       return NextResponse.json(data, {
         headers: {
           "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
@@ -247,7 +277,7 @@ export async function DELETE(
     }
 
     // 2. Verificar permisos (MASTER_ADMIN puede eliminar cursos)
-    await requireRole("MASTER_ADMIN");
+    const currentUser = await requireRole("MASTER_ADMIN");
 
     // 3. Obtener curso
     const { id } = await params;
@@ -289,10 +319,29 @@ export async function DELETE(
       console.log(`[DELETE-COURSE] ✅ ${certificateCount} certificados eliminados`);
     }
 
-    // 6. Eliminar el curso
+    // 6. Obtener datos del curso antes de eliminar para el historial
+    const courseData = doc.data();
+    const courseName = courseData?.name || id;
+
+    // 7. Eliminar el curso
     await adminDb.collection("courses").doc(id).delete();
 
     console.log(`[DELETE-COURSE] ✅ Curso ${id} eliminado`);
+
+    // Registrar en historial unificado
+    await adminDb.collection("systemHistory").add({
+      action: "deleted",
+      entityType: "course",
+      entityId: id,
+      entityName: courseName,
+      performedBy: currentUser.email,
+      timestamp: new Date().toISOString(),
+      details: {
+        deletedCertificates: certificateCount,
+        courseType: courseData?.courseType,
+        year: courseData?.year,
+      },
+    });
 
     return NextResponse.json(
       { 

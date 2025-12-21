@@ -2,18 +2,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Clock, UserPlus, UserMinus, Pencil } from "phosphor-react";
+import { X, Clock, UserPlus, UserMinus, Pencil, BookOpen, Trash } from "phosphor-react";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { toast } from "@/lib/toast";
 
 interface AuditLog {
   id: string;
   action: "created" | "updated" | "deleted";
-  email: string;
+  entityType: "adminUser" | "course" | "certificate";
+  entityId: string;
+  entityName?: string;
+  email?: string;
   role?: string;
   previousRole?: string;
   performedBy: string;
   timestamp: string;
+  details?: Record<string, any>;
 }
 
 interface HistoryResponse {
@@ -70,7 +74,20 @@ export default function AdminUsersHistoryModal({ isOpen, onClose }: Props) {
     }
   };
 
-  const getActionIcon = (action: string) => {
+  const getActionIcon = (action: string, entityType: string) => {
+    if (entityType === "course") {
+      switch (action) {
+        case "created":
+          return <BookOpen size={18} weight="bold" className="text-success" />;
+        case "deleted":
+          return <Trash size={18} weight="bold" className="text-error" />;
+        case "updated":
+          return <Pencil size={18} weight="bold" className="text-accent" />;
+        default:
+          return <Clock size={18} weight="bold" />;
+      }
+    }
+    // Para adminUser
     switch (action) {
       case "created":
         return <UserPlus size={18} weight="bold" className="text-success" />;
@@ -83,14 +100,15 @@ export default function AdminUsersHistoryModal({ isOpen, onClose }: Props) {
     }
   };
 
-  const getActionLabel = (action: string) => {
+  const getActionLabel = (action: string, entityType: string) => {
+    const entityLabel = entityType === "course" ? "Curso" : entityType === "certificate" ? "Certificado" : "Usuario";
     switch (action) {
       case "created":
-        return "Agregado";
+        return `${entityLabel} agregado`;
       case "deleted":
-        return "Eliminado";
+        return `${entityLabel} eliminado`;
       case "updated":
-        return "Actualizado";
+        return `${entityLabel} actualizado`;
       default:
         return action;
     }
@@ -138,25 +156,38 @@ export default function AdminUsersHistoryModal({ isOpen, onClose }: Props) {
                   className="bg-theme-tertiary rounded-lg p-4 border border-theme"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="mt-0.5">{getActionIcon(log.action)}</div>
+                    <div className="mt-0.5">{getActionIcon(log.action, log.entityType)}</div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-text-primary">
-                          {getActionLabel(log.action)}
+                          {getActionLabel(log.action, log.entityType)}
                         </span>
                         <span className="text-sm text-text-secondary">
-                          {log.email}
+                          {log.entityName || log.email || log.entityId}
                         </span>
                       </div>
-                      {log.action === "updated" && log.previousRole && (
+                      {log.entityType === "adminUser" && log.action === "updated" && log.previousRole && (
                         <div className="text-xs text-text-secondary mb-1">
                           Rol anterior: <span className="font-medium">{log.previousRole}</span> → 
                           Rol nuevo: <span className="font-medium">{log.role}</span>
                         </div>
                       )}
-                      {log.action === "created" && log.role && (
+                      {log.entityType === "adminUser" && log.action === "created" && log.role && (
                         <div className="text-xs text-text-secondary mb-1">
                           Rol asignado: <span className="font-medium">{log.role}</span>
+                        </div>
+                      )}
+                      {log.entityType === "course" && log.details && (
+                        <div className="text-xs text-text-secondary mb-1">
+                          {log.details.deletedCertificates !== undefined && (
+                            <span>Certificados eliminados: <span className="font-medium">{log.details.deletedCertificates}</span></span>
+                          )}
+                          {log.details.courseType && (
+                            <span className="ml-2">Tipo: <span className="font-medium">{log.details.courseType}</span></span>
+                          )}
+                          {log.details.year && (
+                            <span className="ml-2">Año: <span className="font-medium">{log.details.year}</span></span>
+                          )}
                         </div>
                       )}
                       <div className="flex items-center gap-4 text-xs text-text-tertiary">

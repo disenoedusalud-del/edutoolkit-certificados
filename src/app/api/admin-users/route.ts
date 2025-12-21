@@ -116,10 +116,13 @@ export async function POST(request: NextRequest) {
       { merge: true }
     );
 
-    // Registrar en historial
+    // Registrar en historial unificado
     const action = existingDoc.exists ? "updated" : "created";
-    await adminDb.collection("adminUsersHistory").add({
+    await adminDb.collection("systemHistory").add({
       action,
+      entityType: "adminUser",
+      entityId: normalizedEmail,
+      entityName: normalizedEmail,
       email: normalizedEmail,
       role,
       previousRole: existingDoc.exists ? previousRole : undefined,
@@ -273,9 +276,12 @@ export async function DELETE(request: NextRequest) {
     await docRef.delete();
     console.log("[DELETE-USER] ✅ Usuario eliminado correctamente");
 
-    // Registrar en historial
-    await adminDb.collection("adminUsersHistory").add({
+    // Registrar en historial unificado
+    await adminDb.collection("systemHistory").add({
       action: "deleted",
+      entityType: "adminUser",
+      entityId: normalizedEmail,
+      entityName: normalizedEmail,
       email: normalizedEmail,
       role: userRole,
       performedBy: currentUser.email,
