@@ -220,14 +220,14 @@ export async function PUT(
       await adminDb.collection("courses").doc(oldId).update(updateData);
 
       const updatedDoc = await adminDb.collection("courses").doc(oldId).get();
-      const data = { id: updatedDoc.id, ...updatedDoc.data() };
+      const data = { id: updatedDoc.id, ...updatedDoc.data() } as Course;
 
       // Registrar en historial unificado
       await adminDb.collection("systemHistory").add({
         action: "updated",
         entityType: "course",
         entityId: oldId,
-        entityName: data.name,
+        entityName: data.name || oldId,
         performedBy: currentUser.email,
         timestamp: new Date().toISOString(),
         details: {
