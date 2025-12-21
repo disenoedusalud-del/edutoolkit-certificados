@@ -1,7 +1,7 @@
 // src/components/ConfirmDialog.tsx
 "use client";
 
-import { X, Warning, Trash, AlertCircle } from "phosphor-react";
+import { X, Warning, Trash, Info } from "phosphor-react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -42,7 +42,7 @@ export default function ConfirmDialog({
       buttonHover: "hover:bg-warning/90",
     },
     info: {
-      icon: AlertCircle,
+      icon: Info,
       iconColor: "text-accent",
       iconBg: "bg-accent/20",
       buttonBg: "bg-accent",
