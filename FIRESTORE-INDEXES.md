@@ -64,6 +64,33 @@ query
 
 ---
 
+### Colección: `adminUsersHistory`
+
+#### 1. Índice Simple: `timestamp` (DESC)
+
+**Query que lo requiere:**
+```typescript
+query.orderBy("timestamp", "desc").limit(limit).offset(offset)
+```
+
+**Cuándo se usa:**
+- GET `/api/admin-users/history` - Obtener historial de cambios de usuarios admin
+- Muestra los cambios más recientes primero
+
+**Configuración en Firebase Console:**
+1. Ve a **Firestore Database** → **Indexes**
+2. Haz clic en **Create Index**
+3. Configura:
+   - **Collection ID:** `adminUsersHistory`
+   - **Fields to index:**
+     - Campo 1: `timestamp` (Descending)
+   - **Query scope:** Collection
+4. Haz clic en **Create**
+
+**Nota:** Este índice es necesario para ordenar el historial por fecha (más recientes primero) con paginación.
+
+---
+
 ## 🔍 Índices Futuros (Recomendados)
 
 Estos índices no son críticos ahora, pero mejorarán el rendimiento si se implementan filtros avanzados:
