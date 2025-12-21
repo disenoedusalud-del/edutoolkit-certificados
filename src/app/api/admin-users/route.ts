@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Solo MASTER_ADMIN puede crear/actualizar usuarios
-    await requireRole("MASTER_ADMIN");
+    const currentUser = await requireRole("MASTER_ADMIN");
 
     // 3. Validar entrada
     const body = await request.json();
@@ -99,9 +99,10 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim();
     const docId = normalizedEmail.replace(/[.#$/[\]]/g, "_");
 
-    // Verificar si ya existe para preservar createdAt
+    // Verificar si ya existe para preservar createdAt y detectar cambios
     const existingDoc = await adminDb.collection("adminUsers").doc(docId).get();
     const existingData = existingDoc.exists ? existingDoc.data() : null;
+    const previousRole = existingData?.role;
 
     // Guardar en Firestore
     await adminDb.collection("adminUsers").doc(docId).set(
@@ -109,10 +110,22 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         role,
         updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.email, // Agregar quién hizo el cambio
         createdAt: existingData?.createdAt || new Date().toISOString(),
       },
       { merge: true }
     );
+
+    // Registrar en historial
+    const action = existingDoc.exists ? "updated" : "created";
+    await adminDb.collection("adminUsersHistory").add({
+      action,
+      email: normalizedEmail,
+      role,
+      previousRole: existingDoc.exists ? previousRole : undefined,
+      performedBy: currentUser.email,
+      timestamp: new Date().toISOString(),
+    });
 
     return NextResponse.json(
       { success: true, email: normalizedEmail, role },
@@ -252,9 +265,22 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Obtener datos del usuario antes de eliminar
+    const userData = docSnapshot.data();
+    const userRole = userData?.role;
+
     console.log("[DELETE-USER] Eliminando documento:", docId);
     await docRef.delete();
     console.log("[DELETE-USER] ✅ Usuario eliminado correctamente");
+
+    // Registrar en historial
+    await adminDb.collection("adminUsersHistory").add({
+      action: "deleted",
+      email: normalizedEmail,
+      role: userRole,
+      performedBy: currentUser.email,
+      timestamp: new Date().toISOString(),
+    });
 
     return NextResponse.json(
       { success: true, message: "Usuario eliminado" },

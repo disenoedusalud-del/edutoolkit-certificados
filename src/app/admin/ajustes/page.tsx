@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Shield, ArrowClockwise, Gear, Palette } from "phosphor-react";
+import { ArrowLeft, Shield, ArrowClockwise, Gear, Clock } from "phosphor-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import ThemeSelector from "@/components/ThemeSelector";
+import AdminUsersHistoryModal from "@/components/AdminUsersHistoryModal";
 import type { UserRole } from "@/lib/auth";
 
 export default function AjustesPage() {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -128,6 +130,26 @@ export default function AjustesPage() {
                 </div>
               </div>
             </Link>
+
+            {/* Historial de Cambios */}
+            <button
+              onClick={() => setShowHistory(true)}
+              className="p-6 border border-theme rounded-lg hover:border-accent hover:shadow-md transition-all group bg-theme-secondary text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-accent/20 rounded-lg group-hover:bg-accent/30 transition-colors">
+                  <Clock size={24} weight="bold" className="text-accent" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-text-primary mb-1">
+                    Historial de Cambios
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    Ver quién agregó, modificó o eliminó usuarios del sistema.
+                  </p>
+                </div>
+              </div>
+            </button>
           </div>
 
           <div className="mt-6 p-4 bg-theme-tertiary rounded-lg border border-theme">
@@ -138,6 +160,12 @@ export default function AjustesPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Historial */}
+      <AdminUsersHistoryModal
+        isOpen={showHistory}
+        onClose={() => setShowHistory(false)}
+      />
     </main>
   );
 }
