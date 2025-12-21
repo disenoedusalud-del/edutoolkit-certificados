@@ -236,7 +236,7 @@ export default function CoursesPage() {
           onClick={() => setFilter("archived")}
           className={`px-4 py-2 rounded-lg transition-colors ${
             filter === "archived"
-              ? "bg-gray-600 text-white border border-theme"
+              ? "bg-theme-tertiary text-text-primary border border-theme"
               : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
           }`}
         >
@@ -292,10 +292,10 @@ export default function CoursesPage() {
                         Activo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-                        <XCircle size={14} weight="fill" />
-                        Archivado
-                      </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-theme-tertiary text-text-secondary rounded-full text-xs font-medium">
+                      <XCircle size={14} weight="fill" />
+                      Archivado
+                    </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-text-secondary text-xs">
@@ -315,9 +315,9 @@ export default function CoursesPage() {
                       {course.status === "active" ? (
                         <button
                           onClick={() => handleArchive(course)}
-                          className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors"
-                          title="Archivar curso"
-                        >
+                        className="p-1.5 text-text-secondary hover:bg-theme-tertiary rounded transition-colors border border-theme"
+                        title="Archivar curso"
+                      >
                           <Archive size={18} weight="bold" />
                         </button>
                       ) : (

@@ -109,43 +109,43 @@ export default function AdminRolesClient({ currentUserEmail }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <header className="space-y-1 border-b pb-4">
-        <h1 className="text-xl font-semibold">
+      <header className="space-y-1 border-b border-theme pb-4">
+        <h1 className="text-xl font-semibold text-text-primary">
           Gestión de usuarios administradores
         </h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-text-secondary">
           Solo usted (MASTER_ADMIN) puede ver y modificar esta sección.
         </p>
-        <p className="text-xs text-gray-500">
-          Sesión iniciada como: <strong>{currentUserEmail}</strong>
+        <p className="text-xs text-text-tertiary">
+          Sesión iniciada como: <strong className="text-text-primary">{currentUserEmail}</strong>
         </p>
       </header>
 
-      <section className="space-y-3 rounded-md border p-4">
-        <h2 className="text-sm font-semibold">Agregar o actualizar usuario</h2>
-        <p className="text-xs text-gray-600">
+      <section className="space-y-3 rounded-md border border-theme p-4 bg-theme-secondary">
+        <h2 className="text-sm font-semibold text-text-primary">Agregar o actualizar usuario</h2>
+        <p className="text-xs text-text-secondary">
           Recuerde: solo se recomienda agregar correos institucionales
           relacionados con EduSalud.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1">
-            <label className="text-xs font-medium">Correo electrónico</label>
+            <label className="text-xs font-medium text-text-primary">Correo electrónico</label>
             <input
               type="email"
               value={formEmail}
               onChange={(e) => setFormEmail(e.target.value)}
-              className="w-full rounded-md border px-2 py-1 text-sm"
+              className="w-full rounded-md border border-theme px-2 py-1 text-sm bg-theme-secondary text-text-primary outline-none focus:ring-2 focus:ring-accent"
               placeholder="nombre.apellido@unah.edu.hn"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium">Rol</label>
+            <label className="text-xs font-medium text-text-primary">Rol</label>
             <select
               value={formRole}
               onChange={(e) => setFormRole(e.target.value as AdminRole)}
-              className="w-full rounded-md border px-2 py-1 text-sm"
+              className="w-full rounded-md border border-theme px-2 py-1 text-sm bg-theme-secondary text-text-primary outline-none focus:ring-2 focus:ring-accent"
             >
               <option value="ADMIN">ADMIN (gestiona certificados)</option>
               <option value="LECTOR">
@@ -157,45 +157,45 @@ export default function AdminRolesClient({ currentUserEmail }: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-md bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-60 border border-theme btn-primary"
           >
             {saving ? "Guardando..." : "Guardar usuario"}
           </button>
 
           {error && (
-            <p className="text-sm text-red-600" role="alert">
+            <p className="text-sm text-error" role="alert">
               {error}
             </p>
           )}
           {success && (
-            <p className="text-sm text-green-600" role="status">
+            <p className="text-sm text-success" role="status">
               {success}
             </p>
           )}
         </form>
       </section>
 
-      <section className="space-y-3 rounded-md border p-4">
+      <section className="space-y-3 rounded-md border border-theme p-4 bg-theme-secondary">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Lista de administradores</h2>
+          <h2 className="text-sm font-semibold text-text-primary">Lista de administradores</h2>
           <button
             type="button"
             onClick={loadUsers}
             disabled={loading}
-            className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-60"
+            className="rounded-md border border-theme px-2 py-1 text-xs hover:bg-theme-tertiary disabled:opacity-60 bg-theme-secondary text-text-primary transition-colors"
           >
             {loading ? "Actualizando..." : "Recargar"}
           </button>
         </div>
 
         {error && !saving && (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="text-sm text-error" role="alert">
             {error}
           </p>
         )}
 
         {users.length === 0 && !loading && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-text-secondary">
             No hay usuarios administradores registrados en Firestore aún.
           </p>
         )}
@@ -203,7 +203,7 @@ export default function AdminRolesClient({ currentUserEmail }: Props) {
         {users.length > 0 && (
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600">
+              <tr className="border-b border-theme bg-theme-tertiary text-left text-xs font-semibold uppercase tracking-wide text-text-primary">
                 <th className="px-2 py-1">Correo</th>
                 <th className="px-2 py-1">Rol</th>
                 <th className="px-2 py-1">Última actualización</th>
@@ -212,15 +212,15 @@ export default function AdminRolesClient({ currentUserEmail }: Props) {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.email} className="border-b last:border-0">
-                  <td className="px-2 py-1">{u.email}</td>
-                  <td className="px-2 py-1">{u.role}</td>
-                  <td className="px-2 py-1 text-xs text-gray-500">
+                <tr key={u.email} className="border-b border-theme last:border-0 hover:bg-theme-tertiary transition-colors">
+                  <td className="px-2 py-1 text-text-primary">{u.email}</td>
+                  <td className="px-2 py-1 text-text-primary">{u.role}</td>
+                  <td className="px-2 py-1 text-xs text-text-secondary">
                     {u.updatedAt
                       ? new Date(u.updatedAt).toLocaleString("es-HN")
                       : "-"}
                   </td>
-                  <td className="px-2 py-1 text-xs text-gray-500">
+                  <td className="px-2 py-1 text-xs text-text-secondary">
                     {u.updatedBy || "-"}
                   </td>
                 </tr>

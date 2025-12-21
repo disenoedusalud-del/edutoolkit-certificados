@@ -180,6 +180,26 @@
   .bg-accent-hover:hover {
     background-color: var(--accent-hover);
   }
+
+  .text-error {
+    color: var(--error);
+  }
+
+  .text-success {
+    color: var(--success);
+  }
+
+  .bg-error {
+    background-color: var(--error);
+  }
+
+  .bg-success {
+    background-color: var(--success);
+  }
+
+  .divide-theme > * + * {
+    border-color: var(--border-color);
+  }
 }
 
 /* Estilos específicos para Neo Brutalism - Auténtico */

@@ -143,7 +143,7 @@ export default function AdminRolesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-theme-primary p-8">
       <div className="mb-4">
         <Link
           href="/admin/certificados"
@@ -161,7 +161,7 @@ export default function AdminRolesPage() {
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
           >
             <Plus size={18} weight="bold" />
             Agregar Usuario
@@ -195,7 +195,7 @@ export default function AdminRolesPage() {
               <select
                 value={formRole}
                 onChange={(e) => setFormRole(e.target.value as UserRole)}
-                className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-theme px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent bg-theme-secondary text-text-primary"
                 required
               >
                 <option value="VIEWER">VIEWER - Solo lectura</option>
@@ -207,7 +207,7 @@ export default function AdminRolesPage() {
               <button
                 type="submit"
                 disabled={formLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-60 border border-theme btn-primary"
               >
                 {formLoading ? "Guardando..." : "Guardar"}
               </button>
@@ -222,23 +222,23 @@ export default function AdminRolesPage() {
           </form>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+        <div className="bg-theme-secondary rounded-xl shadow border border-theme overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50">
+              <thead className="bg-theme-tertiary">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
                     Email
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
                     Rol
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-text-primary">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-theme">
                 {users.length === 0 ? (
                   <tr>
                     <td
@@ -270,14 +270,14 @@ export default function AdminRolesPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleEdit(user)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-1.5 text-accent hover:bg-theme-tertiary rounded transition-colors border border-theme"
                             title="Editar"
                           >
                             <Pencil size={16} weight="bold" />
                           </button>
                           <button
                             onClick={() => handleDelete(user.email)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            className="p-1.5 text-error hover:bg-theme-tertiary rounded transition-colors border border-theme"
                             title="Eliminar"
                           >
                             <Trash size={16} weight="bold" />

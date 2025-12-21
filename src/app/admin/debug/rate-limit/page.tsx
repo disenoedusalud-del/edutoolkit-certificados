@@ -173,7 +173,7 @@ export default function RateLimitDebugPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-8">
+    <main className="min-h-screen bg-theme-primary p-8">
       <div className="mb-4">
         <Link
           href="/admin/certificados"
@@ -194,24 +194,24 @@ export default function RateLimitDebugPage() {
           </p>
 
           {/* Mostrar IP actual */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mb-6 p-4 bg-theme-tertiary border border-theme rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                <h3 className="text-sm font-semibold text-text-primary mb-1">
                   Tu IP actual
                 </h3>
                 {loadingIP ? (
-                  <p className="text-sm text-blue-700">Cargando...</p>
+                  <p className="text-sm text-text-secondary">Cargando...</p>
                 ) : myIP ? (
-                  <p className="text-lg font-mono text-blue-800">{myIP}</p>
+                  <p className="text-lg font-mono text-text-primary">{myIP}</p>
                 ) : (
-                  <p className="text-sm text-blue-600">No se pudo obtener la IP</p>
+                  <p className="text-sm text-text-secondary">No se pudo obtener la IP</p>
                 )}
               </div>
               {myIP && (
                 <button
                   onClick={handleCopyIP}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm border border-theme btn-primary"
                   title="Copiar IP"
                 >
                   <Copy size={16} weight="bold" />
@@ -233,7 +233,7 @@ export default function RateLimitDebugPage() {
               <button
                 onClick={handleResetMyIP}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors border border-theme btn-primary"
               >
                 <ArrowClockwise size={18} weight="bold" />
                 {loading ? "Reseteando..." : "Resetear mi IP"}
@@ -254,12 +254,12 @@ export default function RateLimitDebugPage() {
                   value={ip}
                   onChange={(e) => setIp(e.target.value)}
                   placeholder="Ej: 192.168.1.1"
-                  className="flex-1 rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 rounded-md border border-theme px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent bg-theme-secondary text-text-primary"
                 />
                 <button
                   onClick={handleResetIP}
                   disabled={loading || !ip.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-60 transition-colors border border-theme btn-primary"
                 >
                   Resetear
                 </button>
@@ -267,7 +267,7 @@ export default function RateLimitDebugPage() {
               {myIP && (
                 <button
                   onClick={() => setIp(myIP)}
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  className="text-xs text-accent hover:text-accent-hover underline"
                 >
                   Usar mi IP actual ({myIP})
                 </button>
@@ -275,17 +275,17 @@ export default function RateLimitDebugPage() {
             </div>
 
             {/* Resetear todos */}
-            <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-              <h2 className="font-semibold text-red-700 mb-2">
+            <div className="border border-theme rounded-lg p-4 bg-theme-tertiary">
+              <h2 className="font-semibold text-error mb-2">
                 Resetear TODOS los rate limits
               </h2>
-              <p className="text-xs text-red-600 mb-3">
+              <p className="text-xs text-text-secondary mb-3">
                 ⚠️ Esto resetea el rate limit para TODOS los usuarios. Úsalo solo en emergencias.
               </p>
               <button
                 onClick={handleResetAll}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-error text-white rounded-lg hover:opacity-90 disabled:opacity-60 transition-colors border border-theme"
               >
                 <Trash size={18} weight="bold" />
                 {loading ? "Reseteando..." : "Resetear todos"}
