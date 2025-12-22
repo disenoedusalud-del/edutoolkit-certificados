@@ -360,12 +360,12 @@ export async function PUT(
         });
 
         return NextResponse.json(data, {
-        headers: {
-          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-        },
-      });
-    }
-  } catch (error) {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        });
+      }
+    } catch (error) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") {
         return NextResponse.json(
