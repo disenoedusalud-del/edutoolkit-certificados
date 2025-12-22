@@ -384,6 +384,7 @@ export async function POST(request: NextRequest) {
           courseId: finalCourseId,
           courseType: course.courseType,
           year: year,
+          month: course.month || null, // Copiar el mes del curso
           origin: origin,
           email: email ? email.trim().toLowerCase() : null,
           phone: phone ? phone.trim() : null,

@@ -207,9 +207,9 @@ export function validateCourse(data: unknown): ValidationResult {
   if (!course.id || typeof course.id !== "string") {
     errors.push("El código del curso es requerido");
   } else {
-    const codeRegex = /^[A-Z]{1,20}$/;
+    const codeRegex = /^[A-Z0-9\-]{1,20}$/;
     if (!codeRegex.test(course.id)) {
-      errors.push("El código debe tener 1-20 letras mayúsculas (A-Z)");
+      errors.push("El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones)");
     }
   }
 

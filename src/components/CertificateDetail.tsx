@@ -267,6 +267,18 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
               <label className="text-xs text-text-secondary uppercase">Año</label>
               <p className="text-text-primary">{certificate.year}</p>
             </div>
+            {certificate.month && (
+              <div>
+                <label className="text-xs text-text-secondary uppercase">Mes</label>
+                <p className="text-text-primary">
+                  {(() => {
+                    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                                   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                    return months[certificate.month! - 1];
+                  })()}
+                </p>
+              </div>
+            )}
             <div>
               <label className="text-xs text-text-secondary uppercase">Origen</label>
               <p className="text-text-primary">

@@ -106,6 +106,7 @@ export async function PUT(
       courseId: body.courseId,
       courseType: body.courseType,
       year: body.year,
+      month: body.month !== undefined ? (body.month ? Number(body.month) : null) : undefined,
       origin: body.origin || "nuevo",
       deliveryStatus: body.deliveryStatus || "en_archivo",
       contactSource: body.contactSource || "ninguno",

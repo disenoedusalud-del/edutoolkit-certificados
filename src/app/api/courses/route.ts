@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse(validation.errors);
     }
 
-    const { id, name, courseType = "Curso", year, edition = null, origin = "nuevo", status = "active" } = body;
+    const { id, name, courseType = "Curso", year, month = null, edition = null, origin = "nuevo", status = "active" } = body;
 
     // Verificar que no exista un curso con el mismo código
     const existingDoc = await adminDb.collection("courses").doc(id).get();
@@ -289,6 +289,7 @@ export async function POST(request: NextRequest) {
       name: name.trim(),
       courseType: courseType as Course["courseType"],
       year: year ? parseInt(year.toString()) : new Date().getFullYear(),
+      month: month ? parseInt(month.toString()) : null,
       edition: edition ? parseInt(edition.toString()) : null,
       origin: origin as Course["origin"],
       status,

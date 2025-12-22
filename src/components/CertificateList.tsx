@@ -48,6 +48,14 @@ const statusColors: Record<string, string> = {
   anulado: "bg-red-100 text-red-700",
 };
 
+// Función helper para obtener el nombre del mes
+const getMonthName = (monthNum: number | null | undefined): string => {
+  if (!monthNum || monthNum < 1 || monthNum > 12) return "";
+  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  return months[monthNum - 1];
+};
+
 const statusLabels: Record<string, string> = {
   en_archivo: "En archivo",
   listo_para_entrega: "Listo para entrega",
@@ -699,6 +707,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
               const courseCode = groupCerts[0].courseId ? groupCerts[0].courseId.split("-")[0] : "SIN-CODIGO";
               const courseName = groupCerts[0].courseName;
               const year = groupCerts[0].year;
+              const month = groupCerts[0].month;
               const isExpanded = expandedGroups.has(groupKey);
               
               return (
@@ -720,7 +729,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                           {courseCode} - {courseName}
                         </div>
                         <div className="text-xs text-text-secondary">
-                          Año {year} • {groupCerts.length} certificado{groupCerts.length !== 1 ? "s" : ""}
+                          {month ? `${getMonthName(month)} ` : ""}Año {year} • {groupCerts.length} certificado{groupCerts.length !== 1 ? "s" : ""}
                         </div>
                       </div>
                     </div>
@@ -908,6 +917,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
               const courseCode = groupCerts[0].courseId ? groupCerts[0].courseId.split("-")[0] : "SIN-CODIGO";
               const courseName = groupCerts[0].courseName;
               const year = groupCerts[0].year;
+              const month = groupCerts[0].month;
               
               return (
                 <button
@@ -927,6 +937,11 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                     </div>
                   </div>
                   <div className="space-y-1">
+                    {month && (
+                      <div className="text-xs text-text-secondary">
+                        Mes: <span className="font-medium text-text-primary">{getMonthName(month)}</span>
+                      </div>
+                    )}
                     <div className="text-xs text-text-secondary">
                       Año: <span className="font-medium text-text-primary">{year}</span>
                     </div>
@@ -1490,7 +1505,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                     {selectedGroupForModal.certs[0].courseId?.split("-")[0]} - {selectedGroupForModal.certs[0].courseName}
                   </h2>
                   <p className="text-sm text-text-secondary">
-                    Año {selectedGroupForModal.certs[0].year} • {selectedGroupForModal.certs.length} certificado{selectedGroupForModal.certs.length !== 1 ? "s" : ""}
+                    {selectedGroupForModal.certs[0].month ? `${getMonthName(selectedGroupForModal.certs[0].month)} ` : ""}Año {selectedGroupForModal.certs[0].year} • {selectedGroupForModal.certs.length} certificado{selectedGroupForModal.certs.length !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>

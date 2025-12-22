@@ -6,6 +6,7 @@ export interface Certificate {
   courseId: string;
   courseType: string;
   year: number;
+  month?: number | null; // mes del curso (1-12, opcional, heredado del curso)
 
   origin: "historico" | "nuevo";
 

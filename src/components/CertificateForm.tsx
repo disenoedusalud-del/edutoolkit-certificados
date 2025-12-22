@@ -37,6 +37,7 @@ export default function CertificateForm({
     courseId: certificate?.courseId || "",
     courseType: certificate?.courseType || "",
     year: certificate?.year || new Date().getFullYear(), // Se obtendrá del curso seleccionado
+    month: certificate?.month || null, // Se obtendrá del curso seleccionado
     origin: certificate?.origin || "nuevo", // Se obtendrá del curso seleccionado
     email: certificate?.email || "",
     phone: certificate?.phone || "",
@@ -137,6 +138,7 @@ export default function CertificateForm({
           courseId: autoCourseId,
           courseType: selectedCourse.courseType || "Curso", // Usar el courseType del curso
           year: courseYear, // Usar el año del curso
+          month: selectedCourse.month || null, // Usar el mes del curso
           origin: selectedCourse.origin || "nuevo", // Usar el origen del curso
         }));
       }
@@ -158,6 +160,7 @@ export default function CertificateForm({
             courseId: autoCourseId,
             courseType: selectedCourse.courseType || prev.courseType || "Curso",
             year: courseYear, // Actualizar el año del formulario con el año del curso
+            month: selectedCourse.month || null, // Actualizar el mes del formulario con el mes del curso
             origin: selectedCourse.origin || "nuevo", // Actualizar el origen del formulario con el origen del curso
           }));
         }
@@ -277,6 +280,7 @@ export default function CertificateForm({
       let finalCourseName = formData.courseName.trim();
       let finalCourseType = formData.courseType.trim();
       let finalYear = formData.year;
+      let finalMonth = formData.month;
       
       let finalOrigin = formData.origin;
       
@@ -285,6 +289,8 @@ export default function CertificateForm({
         if (selectedCourse) {
           // Usar el año del curso
           finalYear = selectedCourse.year || new Date().getFullYear();
+          // Usar el mes del curso
+          finalMonth = selectedCourse.month || null;
           // Usar el origen del curso
           finalOrigin = selectedCourse.origin || "nuevo";
           if (!finalCourseId) {
@@ -318,6 +324,7 @@ export default function CertificateForm({
         courseId: finalCourseId,
         courseType: finalCourseType,
         year: finalYear,
+        month: finalMonth,
         origin: finalOrigin,
         // Solo enviar campos de entrega si se está editando un certificado existente
         deliveryDate: certificate ? processOptionalField(formData.deliveryDate) : null,

@@ -98,7 +98,7 @@ export async function PUT(
     // 3. Obtener datos
     const { id: oldId } = await params;
     const body = await request.json();
-    const { name, courseType, year, edition, origin, status, newId } = body;
+    const { name, courseType, year, month, edition, origin, status, newId } = body;
 
     // Verificar que el curso existe
     const oldDoc = await adminDb.collection("courses").doc(oldId).get();
@@ -116,10 +116,10 @@ export async function PUT(
     // Si se está cambiando el código
     if (newId && newId !== oldId) {
       // Validar formato del nuevo código
-      const codeRegex = /^[A-Z]{1,20}$/;
+      const codeRegex = /^[A-Z0-9\-]{1,20}$/;
       if (!codeRegex.test(newId)) {
         return NextResponse.json(
-          { error: "El código debe tener 1-20 letras mayúsculas (A-Z)" },
+          { error: "El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones)" },
           { status: 400 }
         );
       }
@@ -142,6 +142,7 @@ export async function PUT(
         name: name || oldDoc.data()?.name,
         courseType: courseType || oldDoc.data()?.courseType || "Curso",
         year: year !== undefined ? parseInt(year.toString()) : (oldDoc.data()?.year || new Date().getFullYear()),
+        month: month !== undefined ? (month ? parseInt(month.toString()) : null) : (oldDoc.data()?.month || null),
         edition: edition !== undefined ? (edition ? parseInt(edition.toString()) : null) : (oldDoc.data()?.edition || null),
         origin: origin !== undefined ? origin : (oldDoc.data()?.origin || "nuevo"),
         status: status || oldDoc.data()?.status || "active",
@@ -194,6 +195,9 @@ export async function PUT(
       }
       if (year !== undefined) {
         updateData.year = parseInt(year.toString());
+      }
+      if (month !== undefined) {
+        updateData.month = month ? parseInt(month.toString()) : null;
       }
       if (edition !== undefined) {
         updateData.edition = edition ? parseInt(edition.toString()) : null;

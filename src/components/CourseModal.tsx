@@ -24,6 +24,7 @@ export default function CourseModal({
     id: course?.id || "",
     courseType: course?.courseType || "Curso",
     year: course?.year || new Date().getFullYear(),
+    month: course?.month || null,
     edition: course?.edition || null,
     origin: course?.origin || "nuevo",
   });
@@ -37,6 +38,7 @@ export default function CourseModal({
         id: course.id,
         courseType: course.courseType || "Curso",
         year: course.year || new Date().getFullYear(),
+        month: course.month || null,
         edition: course.edition || null,
         origin: course.origin || "nuevo",
       });
@@ -47,6 +49,7 @@ export default function CourseModal({
         id: "",
         courseType: "Curso",
         year: new Date().getFullYear(),
+        month: null,
         edition: null,
         origin: "nuevo",
       });
@@ -65,11 +68,11 @@ export default function CourseModal({
     if (!formData.id.trim()) {
       errors.id = "El código del curso es requerido";
     } else {
-      // Validar formato: solo letras mayúsculas, 1-20 caracteres
-      const codeRegex = /^[A-Z]{1,20}$/;
+      // Validar formato: letras mayúsculas, números y guiones, 1-20 caracteres
+      const codeRegex = /^[A-Z0-9\-]{1,20}$/;
       if (!codeRegex.test(formData.id.trim())) {
         errors.id =
-          "El código debe tener 1-20 letras mayúsculas (A-Z), sin espacios ni números";
+          "El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones), sin espacios";
       }
     }
 
@@ -99,6 +102,7 @@ export default function CourseModal({
         name: formData.name.trim(),
         courseType: formData.courseType,
         year: formData.year,
+        month: formData.month || null,
         edition: formData.edition || null,
         origin: formData.origin,
       };
@@ -153,8 +157,8 @@ export default function CourseModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-theme-secondary rounded-xl shadow-lg p-6 w-full max-w-md mx-4 border border-theme">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-4">
+      <div className="bg-theme-secondary rounded-xl shadow-lg p-6 w-full max-w-md mx-4 border border-theme my-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-text-primary">
             {course ? "Editar Curso" : "Agregar Curso Nuevo"}
@@ -206,15 +210,15 @@ export default function CourseModal({
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Código Corto (1-20 letras) <span className="text-red-500">*</span>
+              Código Corto (1-20 caracteres) <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
               value={formData.id}
               onChange={(e) => {
-                // Convertir automáticamente a mayúsculas y eliminar espacios
-                const value = e.target.value.toUpperCase().replace(/\s/g, "");
+                // Convertir automáticamente a mayúsculas, eliminar espacios, permitir números y guiones
+                const value = e.target.value.toUpperCase().replace(/\s/g, "").replace(/[^A-Z0-9\-]/g, "");
                 setFormData({ ...formData, id: value });
                 if (fieldErrors.id) {
                   setFieldErrors((prev) => {
@@ -230,13 +234,13 @@ export default function CourseModal({
                   ? "border-red-300 focus:border-red-500 focus:ring-red-500"
                   : "border-theme"
               }`}
-              placeholder="Ej: LM, ND, ECG, LACMAT"
+              placeholder="Ej: LM, ND, ECG, LM-2025, ND-1"
             />
             {fieldErrors.id && (
               <p className="text-red-600 text-xs mt-1">{fieldErrors.id}</p>
             )}
             <p className="text-xs text-text-secondary mt-1">
-              Solo letras mayúsculas (A-Z), sin espacios ni números. Mínimo 1, máximo 20 caracteres.
+              Letras mayúsculas (A-Z), números (0-9) y guiones (-). Sin espacios. Mínimo 1, máximo 20 caracteres.
             </p>
             {course && formData.id.trim().toUpperCase() !== course.id && (
               <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
@@ -286,6 +290,37 @@ export default function CourseModal({
             />
             <p className="text-xs text-text-secondary mt-1">
               Año del curso. Se usará para generar los IDs de los certificados.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Mes (opcional)
+            </label>
+            <select
+              value={formData.month || ""}
+              onChange={(e) => {
+                const value = e.target.value === "" ? null : parseInt(e.target.value);
+                setFormData({ ...formData, month: value });
+              }}
+              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+            >
+              <option value="">Seleccionar mes...</option>
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+            <p className="text-xs text-text-secondary mt-1">
+              Mes del curso (opcional). Útil para organizar cursos mensuales.
             </p>
           </div>
 
