@@ -10,16 +10,33 @@ import { extractDriveFileId } from "@/lib/driveUtils";
 import CourseModal from "./CourseModal";
 import { Plus } from "phosphor-react";
 
+// Función helper para obtener el nombre del mes
+const getMonthName = (monthNum: number | null | undefined): string => {
+  if (!monthNum || monthNum < 1 || monthNum > 12) return "";
+  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  return months[monthNum - 1];
+};
+
 interface CertificateFormProps {
   certificate?: Certificate;
   onCancel?: () => void;
   onSuccess?: () => void;
+  initialCourseData?: {
+    courseId: string; // ID del curso (ej: "LM")
+    courseName: string;
+    courseType: string;
+    year: number;
+    month?: number | null;
+    origin?: string;
+  };
 }
 
 export default function CertificateForm({
   certificate,
   onCancel,
   onSuccess,
+  initialCourseData,
 }: CertificateFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -33,12 +50,12 @@ export default function CertificateForm({
 
   const [formData, setFormData] = useState({
     fullName: certificate?.fullName || "",
-    courseName: certificate?.courseName || "",
+    courseName: certificate?.courseName || initialCourseData?.courseName || "",
     courseId: certificate?.courseId || "",
-    courseType: certificate?.courseType || "",
-    year: certificate?.year || new Date().getFullYear(), // Se obtendrá del curso seleccionado
-    month: certificate?.month || null, // Se obtendrá del curso seleccionado
-    origin: certificate?.origin || "nuevo", // Se obtendrá del curso seleccionado
+    courseType: certificate?.courseType || initialCourseData?.courseType || "",
+    year: certificate?.year || initialCourseData?.year || new Date().getFullYear(), // Se obtendrá del curso seleccionado
+    month: certificate?.month || initialCourseData?.month || null, // Se obtendrá del curso seleccionado
+    origin: certificate?.origin || initialCourseData?.origin || "nuevo", // Se obtendrá del curso seleccionado
     email: certificate?.email || "",
     phone: certificate?.phone || "",
     contactSource: certificate?.contactSource || "ninguno",
@@ -53,7 +70,7 @@ export default function CertificateForm({
     emailSent: certificate?.emailSent || false,
     whatsappSent: certificate?.whatsappSent || false,
     marketingConsent: certificate?.marketingConsent || false,
-    selectedCourseId: "", // ID del curso seleccionado del SELECT
+    selectedCourseId: initialCourseData?.courseId || "", // ID del curso seleccionado del SELECT
   });
 
   // Cargar cursos activos
@@ -71,8 +88,43 @@ export default function CertificateForm({
         console.log("Cursos cargados:", coursesArray.length, coursesArray);
         setCourses(coursesArray);
 
+        // Si hay initialCourseData, seleccionar ese curso automáticamente
+        if (initialCourseData?.courseId && coursesArray.length > 0) {
+          // Buscar el curso por ID (el courseId que viene es el código del curso, ej: "LM")
+          const matchingCourse = coursesArray.find(
+            (c: Course) => c.id === initialCourseData.courseId
+          );
+          if (matchingCourse) {
+            // Usar el año del curso o el año pasado en initialCourseData
+            const courseYear = matchingCourse.year || initialCourseData.year || new Date().getFullYear();
+            // Generar el courseId del certificado automáticamente
+            generateCourseId(matchingCourse.id, courseYear).then((autoCourseId) => {
+              setFormData((prev) => ({
+                ...prev,
+                selectedCourseId: matchingCourse.id, // Esto hará que el SELECT muestre el curso seleccionado
+                courseName: matchingCourse.name,
+                courseId: autoCourseId,
+                courseType: matchingCourse.courseType || "Curso",
+                year: courseYear,
+                month: matchingCourse.month || initialCourseData.month || null,
+                origin: matchingCourse.origin || initialCourseData.origin || "nuevo",
+              }));
+            });
+          } else {
+            // Si no se encuentra el curso, al menos prellenar con los datos que tenemos
+            console.warn("Curso no encontrado en la lista:", initialCourseData.courseId);
+            setFormData((prev) => ({
+              ...prev,
+              courseName: initialCourseData.courseName || prev.courseName,
+              courseType: initialCourseData.courseType || prev.courseType,
+              year: initialCourseData.year || prev.year,
+              month: initialCourseData.month || prev.month,
+              origin: initialCourseData.origin || prev.origin,
+            }));
+          }
+        }
         // Si hay un certificado existente, intentar encontrar el curso correspondiente
-        if (certificate?.courseName && coursesArray.length > 0) {
+        else if (certificate?.courseName && coursesArray.length > 0) {
           const matchingCourse = coursesArray.find(
             (c: Course) => c.name === certificate.courseName || c.id === certificate.courseId?.split("-")[0]
           );
@@ -97,7 +149,7 @@ export default function CertificateForm({
     };
 
     loadCourses();
-  }, [certificate]);
+  }, [certificate, initialCourseData]);
 
   const generateCourseId = async (courseCode: string, year: number): Promise<string> => {
     // Obtener el siguiente número secuencial del servidor
@@ -158,6 +210,7 @@ export default function CertificateForm({
           setFormData((prev) => ({
             ...prev,
             courseId: autoCourseId,
+            courseName: selectedCourse.name, // Asegurar que el nombre del curso esté actualizado
             courseType: selectedCourse.courseType || prev.courseType || "Curso",
             year: courseYear, // Actualizar el año del formulario con el año del curso
             month: selectedCourse.month || null, // Actualizar el mes del formulario con el mes del curso
@@ -166,7 +219,10 @@ export default function CertificateForm({
         }
       }
     };
-    updateCourseId();
+    // Solo actualizar si hay cursos cargados y hay un curso seleccionado
+    if (courses.length > 0 && formData.selectedCourseId) {
+      updateCourseId();
+    }
   }, [formData.selectedCourseId, courses]);
 
   const handleCourseCreated = async (newCourseId?: string) => {
@@ -538,77 +594,120 @@ export default function CertificateForm({
             Información del Curso
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-text-secondary mb-1">
-                Curso <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                <select
-                  required
-                  value={formData.selectedCourseId || ""}
-                  onChange={(e) => {
-                    const selectedValue = e.target.value;
-                    console.log("Curso seleccionado:", selectedValue, "Cursos disponibles:", courses);
-                    handleCourseSelect(selectedValue);
-                    if (fieldErrors.courseName) {
-                      setFieldErrors((prev) => {
-                        const newErrors = { ...prev };
-                        delete newErrors.courseName;
-                        return newErrors;
-                      });
-                    }
-                  }}
-                  disabled={loadingCourses}
-                  className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    fieldErrors.courseName
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                      : "border-theme"
-                  } ${loadingCourses ? "bg-theme-tertiary cursor-not-allowed" : ""}`}
-                >
-                  <option value="">
-                    {loadingCourses 
-                      ? "Cargando cursos..." 
-                      : courses.length === 0 
-                      ? "No hay cursos disponibles. Crea uno nuevo."
-                      : "Selecciona un curso"}
-                  </option>
-                  {Array.isArray(courses) && courses.length > 0 && courses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.name} ({course.id})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowCourseModal(true)}
-                  className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 whitespace-nowrap"
-                  title="Agregar curso nuevo"
-                >
-                  <Plus size={18} weight="bold" />
-                  Nuevo
-                </button>
-              </div>
-              {fieldErrors.courseName && (
-                <p className="text-red-600 text-xs mt-1">{fieldErrors.courseName}</p>
-              )}
-              {formData.selectedCourseId && (
-                <div className="mt-2 space-y-1">
-                  <p className="text-xs text-text-secondary">
-                    Curso seleccionado: <span className="font-medium text-text-primary">{formData.courseName}</span>
-                  </p>
-                  {formData.courseType && (
-                    <p className="text-xs text-text-secondary">
-                      Tipo: <span className="font-medium text-text-primary">{formData.courseType}</span>
-                    </p>
-                  )}
-                  {formData.courseId && (
-                    <p className="text-xs text-text-secondary">
-                      ID generado: <span className="font-mono font-medium text-text-primary">{formData.courseId}</span>
-                    </p>
-                  )}
+            {/* Si hay initialCourseData, mostrar información del curso sin permitir cambiarlo */}
+            {initialCourseData ? (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Curso
+                </label>
+                <div className="px-4 py-3 border border-theme rounded-lg bg-theme-tertiary">
+                  <div className="font-semibold text-text-primary text-base">
+                    {formData.courseName || initialCourseData.courseName}
+                  </div>
+                  <div className="text-sm text-text-secondary mt-2 space-y-1">
+                    <div>
+                      <span className="font-medium">Código:</span> {initialCourseData.courseId}
+                    </div>
+                    <div>
+                      <span className="font-medium">Año:</span> {formData.year || initialCourseData.year}
+                    </div>
+                    {formData.month && (
+                      <div>
+                        <span className="font-medium">Mes:</span> {getMonthName(formData.month)}
+                      </div>
+                    )}
+                    {formData.courseType && (
+                      <div>
+                        <span className="font-medium">Tipo:</span> {formData.courseType}
+                      </div>
+                    )}
+                    {formData.courseId && (
+                      <div className="mt-2 pt-2 border-t border-theme">
+                        <span className="font-medium">ID del Certificado:</span>{" "}
+                        <span className="font-mono text-text-primary">{formData.courseId}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+                <p className="text-xs text-text-secondary mt-2">
+                  El curso está predefinido por la carpeta seleccionada
+                </p>
+                {/* Campo oculto para mantener el selectedCourseId */}
+                <input type="hidden" value={formData.selectedCourseId || initialCourseData.courseId} />
+              </div>
+            ) : (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Curso <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    required
+                    value={formData.selectedCourseId || ""}
+                    onChange={(e) => {
+                      const selectedValue = e.target.value;
+                      console.log("Curso seleccionado:", selectedValue, "Cursos disponibles:", courses);
+                      handleCourseSelect(selectedValue);
+                      if (fieldErrors.courseName) {
+                        setFieldErrors((prev) => {
+                          const newErrors = { ...prev };
+                          delete newErrors.courseName;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    disabled={loadingCourses}
+                    className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      fieldErrors.courseName
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                        : "border-theme"
+                    } ${loadingCourses ? "bg-theme-tertiary cursor-not-allowed" : ""}`}
+                  >
+                    <option value="">
+                      {loadingCourses 
+                        ? "Cargando cursos..." 
+                        : courses.length === 0 
+                        ? "No hay cursos disponibles. Crea uno nuevo."
+                        : "Selecciona un curso"}
+                    </option>
+                    {Array.isArray(courses) && courses.length > 0 && courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.name} ({course.id})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowCourseModal(true)}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+                    title="Agregar curso nuevo"
+                  >
+                    <Plus size={18} weight="bold" />
+                    Nuevo
+                  </button>
+                </div>
+                {fieldErrors.courseName && (
+                  <p className="text-red-600 text-xs mt-1">{fieldErrors.courseName}</p>
+                )}
+                {formData.selectedCourseId && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-text-secondary">
+                      Curso seleccionado: <span className="font-medium text-text-primary">{formData.courseName}</span>
+                    </p>
+                    {formData.courseType && (
+                      <p className="text-xs text-text-secondary">
+                        Tipo: <span className="font-medium text-text-primary">{formData.courseType}</span>
+                      </p>
+                    )}
+                    {formData.courseId && (
+                      <p className="text-xs text-text-secondary">
+                        ID generado: <span className="font-mono font-medium text-text-primary">{formData.courseId}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

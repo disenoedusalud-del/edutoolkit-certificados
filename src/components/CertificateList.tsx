@@ -24,10 +24,12 @@ import {
   FolderOpen,
   MagnifyingGlass,
   Download,
+  Plus,
 } from "phosphor-react";
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
 import { useConfirm } from "@/contexts/ConfirmContext";
+import CertificateForm from "./CertificateForm";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -100,6 +102,15 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     folioCode: string;
   } | null>(null);
   const [quickEditLoading, setQuickEditLoading] = useState(false);
+  const [showAddCertificateForm, setShowAddCertificateForm] = useState(false);
+  const [initialCourseData, setInitialCourseData] = useState<{
+    courseId: string;
+    courseName: string;
+    courseType: string;
+    year: number;
+    month?: number | null;
+    origin?: string;
+  } | null>(null);
   const router = useRouter();
 
   // Detectar si hay filtros activos
@@ -748,9 +759,9 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                   </button>
                   {isExpanded && (
                     <div className="border-t border-theme">
-                      {/* Búsqueda dentro de la carpeta */}
-                      <div className="p-3 bg-theme-tertiary border-b border-theme">
-                        <div className="relative">
+                      {/* Búsqueda dentro de la carpeta y botón agregar */}
+                      <div className="p-3 bg-theme-tertiary border-b border-theme flex items-center gap-2">
+                        <div className="relative flex-1">
                           <MagnifyingGlass size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary" />
                           <input
                             type="text"
@@ -766,6 +777,25 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                             className="w-full pl-10 pr-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm bg-theme-secondary text-text-primary"
                           />
                         </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const firstCert = groupCerts[0];
+                            setInitialCourseData({
+                              courseId: courseCode,
+                              courseName: firstCert.courseName || "",
+                              courseType: firstCert.courseType || "Curso",
+                              year: firstCert.year,
+                              month: firstCert.month || null,
+                              origin: firstCert.origin || "nuevo",
+                            });
+                            setShowAddCertificateForm(true);
+                          }}
+                          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <Plus size={18} weight="bold" />
+                          Agregar Certificado
+                        </button>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
@@ -1569,12 +1599,34 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedGroupForModal(null)}
-                className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
-              >
-                <X size={20} weight="bold" className="text-text-secondary" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const firstCert = selectedGroupForModal.certs[0];
+                    const courseCode = firstCert.courseId?.split("-")[0] || "";
+                    setInitialCourseData({
+                      courseId: courseCode,
+                      courseName: firstCert.courseName || "",
+                      courseType: firstCert.courseType || "Curso",
+                      year: firstCert.year,
+                      month: firstCert.month || null,
+                      origin: firstCert.origin || "nuevo",
+                    });
+                    setShowAddCertificateForm(true);
+                  }}
+                  className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  <Plus size={18} weight="bold" />
+                  Agregar Certificado
+                </button>
+                <button
+                  onClick={() => setSelectedGroupForModal(null)}
+                  className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
+                >
+                  <X size={20} weight="bold" className="text-text-secondary" />
+                </button>
+              </div>
             </div>
 
             {/* Contenido del Modal - Tabla de certificados */}
@@ -1717,6 +1769,43 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Agregar Certificado */}
+      {showAddCertificateForm && initialCourseData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-theme-secondary rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-theme">
+            <div className="sticky top-0 bg-theme-secondary border-b border-theme px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-text-primary">
+                Agregar Nuevo Certificado
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddCertificateForm(false);
+                  setInitialCourseData(null);
+                }}
+                className="p-1 hover:bg-theme-tertiary rounded transition-colors"
+              >
+                <X size={24} className="text-text-secondary" />
+              </button>
+            </div>
+            <div className="p-6">
+              <CertificateForm
+                initialCourseData={initialCourseData}
+                onCancel={() => {
+                  setShowAddCertificateForm(false);
+                  setInitialCourseData(null);
+                }}
+                onSuccess={async () => {
+                  await loadCertificates();
+                  setShowAddCertificateForm(false);
+                  setInitialCourseData(null);
+                  toast.success("Certificado creado correctamente");
+                }}
+              />
             </div>
           </div>
         </div>
