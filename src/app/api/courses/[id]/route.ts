@@ -117,19 +117,26 @@ export async function PUT(
     // Si se está cambiando el código
     if (newId && newId !== oldId) {
       // Validar formato del nuevo código
-      const codeRegex = /^[A-Z0-9\-]{1,20}$/;
+      const codeRegex = /^[A-Z]{1,20}$/;
       if (!codeRegex.test(newId)) {
         return NextResponse.json(
-          { error: "El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones)" },
+          { error: "El código debe tener 1-20 caracteres (solo letras mayúsculas)" },
           { status: 400 }
         );
       }
 
-      // Verificar que el nuevo código no exista
-      const existingDoc = await adminDb.collection("courses").doc(newId).get();
-      if (existingDoc.exists) {
+      // Calcular el nuevo documento ID (código + edición + año)
+      const finalYear = year !== undefined ? parseInt(year.toString()) : (oldDoc.data()?.year || new Date().getFullYear());
+      const finalEdition = edition !== undefined ? (edition ? parseInt(edition.toString()) : null) : (oldDoc.data()?.edition ?? null);
+      const newDocumentId = finalEdition !== null 
+        ? `${newId}-${finalEdition}-${finalYear}` 
+        : `${newId}-${finalYear}`;
+
+      // Verificar que no exista un curso con el mismo código + edición + año
+      const existingDoc = await adminDb.collection("courses").doc(newDocumentId).get();
+      if (existingDoc.exists && newDocumentId !== oldId) {
         return NextResponse.json(
-          { error: "Ya existe un curso con este código" },
+          { error: `Ya existe un curso con el código "${newId}", edición ${finalEdition === null ? "sin edición" : finalEdition} y año ${finalYear}. La combinación código + edición + año debe ser única.` },
           { status: 400 }
         );
       }
@@ -139,23 +146,25 @@ export async function PUT(
 
       // Crear el documento con el nuevo ID
       const courseData: Course = {
-        id: newId,
+        id: newId, // El código corto (sin edición)
         name: name || oldDoc.data()?.name,
         courseType: courseType || oldDoc.data()?.courseType || "Curso",
         year: year !== undefined ? parseInt(year.toString()) : (oldDoc.data()?.year || new Date().getFullYear()),
         month: month !== undefined ? (month ? parseInt(month.toString()) : null) : (oldDoc.data()?.month || null),
-        edition: edition !== undefined ? (edition ? parseInt(edition.toString()) : null) : (oldDoc.data()?.edition || null),
+        edition: finalEdition,
         origin: origin !== undefined ? origin : (oldDoc.data()?.origin || "nuevo"),
         status: status || oldDoc.data()?.status || "active",
         createdAt: oldDoc.data()?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      // Guardar con el nuevo ID
-      await adminDb.collection("courses").doc(newId).set(courseData);
+      // Guardar con el nuevo documento ID compuesto
+      await adminDb.collection("courses").doc(newDocumentId).set(courseData);
 
-      // Eliminar el documento antiguo
-      await adminDb.collection("courses").doc(oldId).delete();
+      // Eliminar el documento antiguo si el documento ID cambió
+      if (oldId !== newDocumentId) {
+        await adminDb.collection("courses").doc(oldId).delete();
+      }
 
       // Registrar en historial unificado
       await adminDb.collection("systemHistory").add({
@@ -183,6 +192,37 @@ export async function PUT(
       // Solo actualizar nombre, tipo, año, origen y/o estado
       const oldData = oldDoc.data() as Course;
       const oldName = oldData.name;
+      const oldEdition = oldData.edition ?? null;
+      
+      // Extraer el código base del curso (el campo `id` del documento, no el documento ID)
+      // El documento ID puede ser "NAEF-2024" o "NAEF-1-2024", pero el campo `id` siempre es solo el código
+      const baseCode = oldData.id || oldId.split("-")[0];
+      const oldYear = oldData.year || new Date().getFullYear();
+      
+      // Calcular el nuevo año y edición
+      const newYear = year !== undefined ? parseInt(year.toString()) : oldYear;
+      const newEdition = edition !== undefined ? (edition ? parseInt(edition.toString()) : null) : oldEdition;
+      
+      // Calcular el nuevo documento ID (código + edición + año)
+      const newDocumentId = newEdition !== null 
+        ? `${baseCode}-${newEdition}-${newYear}` 
+        : `${baseCode}-${newYear}`;
+      
+      // Si la edición o el año cambió, verificar que no exista otro curso con la misma combinación
+      if ((edition !== undefined && newEdition !== oldEdition) || (year !== undefined && newYear !== oldYear)) {
+        const checkDocumentId = newEdition !== null 
+          ? `${baseCode}-${newEdition}-${newYear}` 
+          : `${baseCode}-${newYear}`;
+        
+        // Verificar que no exista otro curso con el mismo código + edición + año
+        const existingDoc = await adminDb.collection("courses").doc(checkDocumentId).get();
+        if (existingDoc.exists && checkDocumentId !== oldId) {
+          return NextResponse.json(
+            { error: `Ya existe un curso con el código "${baseCode}", edición ${newEdition === null ? "sin edición" : newEdition} y año ${newYear}. La combinación código + edición + año debe ser única.` },
+            { status: 400 }
+          );
+        }
+      }
       
       if (name !== undefined) {
         updateData.name = name.trim();
@@ -262,25 +302,64 @@ export async function PUT(
         updateData.status = status;
       }
 
-      await adminDb.collection("courses").doc(oldId).update(updateData);
+      // Si la edición o el año cambió, mover el documento al nuevo ID
+      if (((edition !== undefined && newEdition !== oldEdition) || (year !== undefined && newYear !== oldYear)) && newDocumentId !== oldId) {
+        // Obtener todos los datos actuales
+        const currentData = oldDoc.data() as Course;
+        const fullData: Course = {
+          ...currentData,
+          ...updateData,
+        };
+        
+        // Crear el documento con el nuevo ID
+        await adminDb.collection("courses").doc(newDocumentId).set(fullData);
+        
+        // Eliminar el documento antiguo
+        await adminDb.collection("courses").doc(oldId).delete();
+        
+        const data = { id: newDocumentId, ...fullData } as Course;
+        
+        // Registrar en historial unificado
+        await adminDb.collection("systemHistory").add({
+          action: "updated",
+          entityType: "course",
+          entityId: newDocumentId,
+          entityName: data.name || newDocumentId,
+          performedBy: currentUser.email,
+          timestamp: new Date().toISOString(),
+          details: {
+            oldId,
+            newId: newDocumentId,
+            changes: updateData,
+          },
+        });
+        
+        return NextResponse.json(data, {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        });
+      } else {
+        // Si no cambió la edición ni el año, actualizar normalmente
+        await adminDb.collection("courses").doc(oldId).update(updateData);
 
-      const updatedDoc = await adminDb.collection("courses").doc(oldId).get();
-      const data = { id: updatedDoc.id, ...updatedDoc.data() } as Course;
+        const updatedDoc = await adminDb.collection("courses").doc(oldId).get();
+        const data = { id: updatedDoc.id, ...updatedDoc.data() } as Course;
 
-      // Registrar en historial unificado
-      await adminDb.collection("systemHistory").add({
-        action: "updated",
-        entityType: "course",
-        entityId: oldId,
-        entityName: data.name || oldId,
-        performedBy: currentUser.email,
-        timestamp: new Date().toISOString(),
-        details: {
-          changes: updateData,
-        },
-      });
+        // Registrar en historial unificado
+        await adminDb.collection("systemHistory").add({
+          action: "updated",
+          entityType: "course",
+          entityId: oldId,
+          entityName: data.name || oldId,
+          performedBy: currentUser.email,
+          timestamp: new Date().toISOString(),
+          details: {
+            changes: updateData,
+          },
+        });
 
-      return NextResponse.json(data, {
+        return NextResponse.json(data, {
         headers: {
           "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
         },

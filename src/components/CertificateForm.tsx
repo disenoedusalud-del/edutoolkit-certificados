@@ -28,6 +28,7 @@ interface CertificateFormProps {
     courseType: string;
     year: number;
     month?: number | null;
+    edition?: number | null; // Número de edición del curso
     origin?: string;
   };
 }
@@ -97,8 +98,24 @@ export default function CertificateForm({
           if (matchingCourse) {
             // Usar el año del curso o el año pasado en initialCourseData
             const courseYear = matchingCourse.year || initialCourseData.year || new Date().getFullYear();
-            // Generar el courseId del certificado automáticamente
-            generateCourseId(matchingCourse.id, courseYear).then((autoCourseId) => {
+            // PRIORIDAD ABSOLUTA: Usar la edición de initialCourseData (viene del certificado existente en la carpeta)
+            // Esta edición tiene prioridad porque viene directamente del certificado que está en esa carpeta
+            // NO usar la edición del curso, solo la del certificado existente
+            const courseEdition = initialCourseData.edition !== undefined && initialCourseData.edition !== null 
+              ? initialCourseData.edition 
+              : null; // Si no hay edición en initialCourseData, no usar edición (no usar la del curso)
+            
+            console.log("[CertificateForm] Generando ID desde carpeta:", {
+              courseId: matchingCourse.id,
+              courseCode: matchingCourse.id.split("-")[0],
+              year: courseYear,
+              editionFromInitial: initialCourseData.edition,
+              editionFromCourse: matchingCourse.edition,
+              finalEdition: courseEdition,
+              note: "Usando edición de initialCourseData (certificado existente), NO del curso"
+            });
+            // Generar el courseId del certificado automáticamente, incluyendo la edición si existe
+            generateCourseId(matchingCourse.id, courseYear, courseEdition).then((autoCourseId) => {
               setFormData((prev) => ({
                 ...prev,
                 selectedCourseId: matchingCourse.id, // Esto hará que el SELECT muestre el curso seleccionado
@@ -151,21 +168,39 @@ export default function CertificateForm({
     loadCourses();
   }, [certificate, initialCourseData]);
 
-  const generateCourseId = async (courseCode: string, year: number): Promise<string> => {
+  const generateCourseId = async (courseCode: string, year: number, edition?: number | null): Promise<string> => {
+    // Extraer solo el código base del curso (sin edición si está incluida en el ID)
+    // El courseCode puede venir como "NAEF" o "NAEF-2", necesitamos solo "NAEF"
+    const baseCourseCode = courseCode.split("-")[0];
+    
+    console.log("[generateCourseId] Generando ID:", {
+      courseCode,
+      baseCourseCode,
+      year,
+      edition,
+      url: `/api/certificates/next-sequence?courseCode=${encodeURIComponent(baseCourseCode)}&year=${year}${edition ? `&edition=${edition}` : ""}`
+    });
+    
     // Obtener el siguiente número secuencial del servidor
     try {
-      const response = await fetch(
-        `/api/certificates/next-sequence?courseCode=${encodeURIComponent(courseCode)}&year=${year}`
-      );
+      let url = `/api/certificates/next-sequence?courseCode=${encodeURIComponent(baseCourseCode)}&year=${year}`;
+      if (edition !== undefined && edition !== null) {
+        url += `&edition=${edition}`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        return data.formattedId || `${courseCode}-${year}-01`;
+        console.log("[generateCourseId] Respuesta del servidor:", data);
+        return data.formattedId || (edition ? `${baseCourseCode}-${edition}-${year}-01` : `${baseCourseCode}-${year}-01`);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("[generateCourseId] Error en respuesta:", response.status, errorData);
       }
     } catch (error) {
       console.error("Error obteniendo siguiente número secuencial:", error);
     }
     // Fallback: usar 01 si hay error
-    return `${courseCode}-${year}-01`;
+    return edition ? `${baseCourseCode}-${edition}-${year}-01` : `${baseCourseCode}-${year}-01`;
   };
 
   const handleCourseSelect = async (courseId: string) => {
@@ -181,8 +216,28 @@ export default function CertificateForm({
       if (selectedCourse) {
         // Usar el año del curso en lugar del año del formulario
         const courseYear = selectedCourse.year || new Date().getFullYear();
-        // Generar courseId automáticamente con el siguiente número secuencial
-        const autoCourseId = await generateCourseId(selectedCourse.id, courseYear);
+        
+        // Extraer edición del course.id si está incluida (formato: "NAEF-2")
+        // Si el course.id tiene formato "CODIGO-EDICION", extraer la edición de ahí
+        // Si no, usar course.edition
+        let courseEdition: number | null = null;
+        const courseIdParts = selectedCourse.id.split("-");
+        if (courseIdParts.length >= 2) {
+          // Verificar si la segunda parte es un número (edición)
+          const possibleEdition = parseInt(courseIdParts[1], 10);
+          if (!isNaN(possibleEdition) && possibleEdition > 0 && possibleEdition < 100) {
+            // Es probable que sea una edición
+            courseEdition = possibleEdition;
+            console.log("[handleCourseSelect] Edición extraída del course.id:", courseEdition);
+          }
+        }
+        // Si no se encontró edición en el ID, usar course.edition
+        if (courseEdition === null) {
+          courseEdition = selectedCourse.edition || null;
+        }
+        
+        // Generar courseId automáticamente con el siguiente número secuencial, incluyendo edición si existe
+        const autoCourseId = await generateCourseId(selectedCourse.id, courseYear, courseEdition);
         setFormData((prev) => ({
           ...prev,
           selectedCourseId: courseId,
@@ -206,7 +261,25 @@ export default function CertificateForm({
         if (selectedCourse) {
           // Usar el año del curso
           const courseYear = selectedCourse.year || new Date().getFullYear();
-          const autoCourseId = await generateCourseId(selectedCourse.id, courseYear);
+          
+          // Extraer edición del course.id si está incluida (formato: "NAEF-2")
+          let courseEdition: number | null = null;
+          const courseIdParts = selectedCourse.id.split("-");
+          if (courseIdParts.length >= 2) {
+            // Verificar si la segunda parte es un número (edición)
+            const possibleEdition = parseInt(courseIdParts[1], 10);
+            if (!isNaN(possibleEdition) && possibleEdition > 0 && possibleEdition < 100) {
+              // Es probable que sea una edición
+              courseEdition = possibleEdition;
+            }
+          }
+          // Si no se encontró edición en el ID, usar course.edition
+          if (courseEdition === null) {
+            courseEdition = selectedCourse.edition || null;
+          }
+          
+          // Generar courseId incluyendo edición si existe
+          const autoCourseId = await generateCourseId(selectedCourse.id, courseYear, courseEdition);
           setFormData((prev) => ({
             ...prev,
             courseId: autoCourseId,
@@ -372,8 +445,29 @@ export default function CertificateForm({
         finalOrigin = formData.origin || initialCourseData.origin || "nuevo";
         
         // Si no hay courseId generado, generarlo ahora
+        // Necesitamos obtener el curso completo para incluir la edición
         if (!finalCourseId) {
-          finalCourseId = await generateCourseId(initialCourseData.courseId, finalYear);
+          const matchingCourse = courses.find((c) => c.id === initialCourseData.courseId);
+          // PRIORIDAD ABSOLUTA: Usar la edición de initialCourseData (viene del certificado existente en la carpeta)
+          // Esta edición tiene prioridad absoluta porque viene directamente del certificado que está en esa carpeta
+          // NO usar la edición del curso, solo la del certificado existente
+          const courseEdition = initialCourseData.edition !== undefined && initialCourseData.edition !== null
+            ? initialCourseData.edition
+            : null; // Si no hay edición en initialCourseData, no usar edición (no usar la del curso)
+          
+          console.log("[CertificateForm] Generando ID en handleSubmit:", {
+            initialCourseData,
+            matchingCourse: matchingCourse ? { id: matchingCourse.id, edition: matchingCourse.edition } : null,
+            courseEdition,
+            finalYear
+          });
+          
+          if (matchingCourse) {
+            finalCourseId = await generateCourseId(matchingCourse.id, finalYear, courseEdition);
+          } else {
+            // Si no encontramos el curso, usar la edición de initialCourseData si existe
+            finalCourseId = await generateCourseId(initialCourseData.courseId, finalYear, courseEdition);
+          }
         }
       } 
       // Si hay un curso seleccionado (modo normal), usar esos datos
@@ -387,7 +481,23 @@ export default function CertificateForm({
           // Usar el origen del curso
           finalOrigin = selectedCourse.origin || "nuevo";
           if (!finalCourseId) {
-            finalCourseId = await generateCourseId(selectedCourse.id, finalYear);
+            // Extraer edición del course.id si está incluida (formato: "NAEF-2")
+            let courseEdition: number | null = null;
+            const courseIdParts = selectedCourse.id.split("-");
+            if (courseIdParts.length >= 2) {
+              // Verificar si la segunda parte es un número (edición)
+              const possibleEdition = parseInt(courseIdParts[1], 10);
+              if (!isNaN(possibleEdition) && possibleEdition > 0 && possibleEdition < 100) {
+                // Es probable que sea una edición
+                courseEdition = possibleEdition;
+              }
+            }
+            // Si no se encontró edición en el ID, usar course.edition
+            if (courseEdition === null) {
+              courseEdition = selectedCourse.edition || null;
+            }
+            // Generar courseId incluyendo edición si existe
+            finalCourseId = await generateCourseId(selectedCourse.id, finalYear, courseEdition);
           }
           if (!finalCourseName) {
             finalCourseName = selectedCourse.name;

@@ -81,11 +81,11 @@ export default function CourseModal({
     if (!formData.id.trim()) {
       errors.id = "El código del curso es requerido";
     } else {
-      // Validar formato: letras mayúsculas, números y guiones, 1-20 caracteres
-      const codeRegex = /^[A-Z0-9\-]{1,20}$/;
+      // Validar formato: solo letras mayúsculas, 1-20 caracteres
+      const codeRegex = /^[A-Z]{1,20}$/;
       if (!codeRegex.test(formData.id.trim())) {
         errors.id =
-          "El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones), sin espacios";
+          "El código debe tener 1-20 caracteres (solo letras mayúsculas), sin espacios";
       }
     }
 
@@ -252,8 +252,8 @@ export default function CourseModal({
                   required
                   value={formData.id}
                   onChange={(e) => {
-                    // Convertir automáticamente a mayúsculas, eliminar espacios, permitir números y guiones
-                    const value = e.target.value.toUpperCase().replace(/\s/g, "").replace(/[^A-Z0-9\-]/g, "");
+                    // Convertir automáticamente a mayúsculas, eliminar espacios, solo letras
+                    const value = e.target.value.toUpperCase().replace(/\s/g, "").replace(/[^A-Z]/g, "");
                     setFormData({ ...formData, id: value });
                     if (fieldErrors.id) {
                       setFieldErrors((prev) => {

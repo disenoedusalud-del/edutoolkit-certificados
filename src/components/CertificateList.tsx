@@ -781,12 +781,34 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                           onClick={(e) => {
                             e.stopPropagation();
                             const firstCert = groupCerts[0];
+                            // Extraer edición del courseId si existe (formato: CODIGO-EDICION-AÑO-NUMERO)
+                            let edition: number | null = null;
+                            if (firstCert.courseId) {
+                              const parts = firstCert.courseId.split("-");
+                              console.log("[CertificateList] Extrayendo edición de courseId:", {
+                                courseId: firstCert.courseId,
+                                parts,
+                                partsLength: parts.length
+                              });
+                              // Si tiene 4 partes: CODIGO-EDICION-AÑO-NUMERO
+                              // Si tiene 3 partes: CODIGO-AÑO-NUMERO (sin edición)
+                              if (parts.length === 4) {
+                                const editionNum = parseInt(parts[1], 10);
+                                if (!isNaN(editionNum)) {
+                                  edition = editionNum;
+                                  console.log("[CertificateList] Edición extraída:", edition);
+                                }
+                              } else {
+                                console.log("[CertificateList] No se encontró edición (formato sin edición)");
+                              }
+                            }
                             setInitialCourseData({
                               courseId: courseCode,
                               courseName: firstCert.courseName || "",
                               courseType: firstCert.courseType || "Curso",
                               year: firstCert.year,
                               month: firstCert.month || null,
+                              edition: edition,
                               origin: firstCert.origin || "nuevo",
                             });
                             setShowAddCertificateForm(true);
@@ -1605,12 +1627,34 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                     e.stopPropagation();
                     const firstCert = selectedGroupForModal.certs[0];
                     const courseCode = firstCert.courseId?.split("-")[0] || "";
+                    // Extraer edición del courseId si existe (formato: CODIGO-EDICION-AÑO-NUMERO)
+                    let edition: number | null = null;
+                    if (firstCert.courseId) {
+                      const parts = firstCert.courseId.split("-");
+                      console.log("[CertificateList] Extrayendo edición de courseId (modal):", {
+                        courseId: firstCert.courseId,
+                        parts,
+                        partsLength: parts.length
+                      });
+                      // Si tiene 4 partes: CODIGO-EDICION-AÑO-NUMERO
+                      // Si tiene 3 partes: CODIGO-AÑO-NUMERO (sin edición)
+                      if (parts.length === 4) {
+                        const editionNum = parseInt(parts[1], 10);
+                        if (!isNaN(editionNum)) {
+                          edition = editionNum;
+                          console.log("[CertificateList] Edición extraída (modal):", edition);
+                        }
+                      } else {
+                        console.log("[CertificateList] No se encontró edición (formato sin edición)");
+                      }
+                    }
                     setInitialCourseData({
                       courseId: courseCode,
                       courseName: firstCert.courseName || "",
                       courseType: firstCert.courseType || "Curso",
                       year: firstCert.year,
                       month: firstCert.month || null,
+                      edition: edition,
                       origin: firstCert.origin || "nuevo",
                     });
                     setShowAddCertificateForm(true);

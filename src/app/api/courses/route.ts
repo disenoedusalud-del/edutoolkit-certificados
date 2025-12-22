@@ -216,11 +216,19 @@ export async function POST(request: NextRequest) {
 
     const { id, name, courseType = "Curso", year, month = null, edition = null, origin = "nuevo", status = "active" } = body;
 
-    // Verificar que no exista un curso con el mismo código
-    const existingDoc = await adminDb.collection("courses").doc(id).get();
+    // El documento ID será el código + edición (si existe) + año para garantizar unicidad
+    // Ejemplo: "NAEF-2024" (sin edición), "NAEF-1-2024", "NAEF-2-2025" (con edición)
+    const finalYear = year ? parseInt(year.toString()) : new Date().getFullYear();
+    const finalEdition = edition ? parseInt(edition.toString()) : null;
+    const documentId = finalEdition !== null 
+      ? `${id}-${finalEdition}-${finalYear}` 
+      : `${id}-${finalYear}`;
+
+    // Verificar que no exista un curso con el mismo código + edición + año
+    const existingDoc = await adminDb.collection("courses").doc(documentId).get();
     if (existingDoc.exists) {
       return NextResponse.json(
-        { error: "Ya existe un curso con este código" },
+        { error: `Ya existe un curso con el código "${id}", edición ${finalEdition === null ? "sin edición" : finalEdition} y año ${finalYear}. La combinación código + edición + año debe ser única.` },
         { status: 400 }
       );
     }
@@ -285,12 +293,12 @@ export async function POST(request: NextRequest) {
     }
 
     const courseData: Course = {
-      id,
+      id, // El código corto (sin edición ni año)
       name: name.trim(),
       courseType: courseType as Course["courseType"],
-      year: year ? parseInt(year.toString()) : new Date().getFullYear(),
+      year: finalYear,
       month: month ? parseInt(month.toString()) : null,
-      edition: edition ? parseInt(edition.toString()) : null,
+      edition: finalEdition,
       origin: origin as Course["origin"],
       status,
       driveFolderId,
@@ -298,15 +306,16 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    await adminDb.collection("courses").doc(id).set(courseData);
+    // Guardar el curso con el documento ID compuesto (código-edición)
+    await adminDb.collection("courses").doc(documentId).set(courseData);
     
-    console.log("Curso creado:", courseData);
+    console.log("Curso creado:", { documentId, ...courseData });
 
     // Registrar en historial unificado
     await adminDb.collection("systemHistory").add({
       action: "created",
       entityType: "course",
-      entityId: id,
+      entityId: documentId,
       entityName: name.trim(),
       performedBy: currentUser.email,
       timestamp: new Date().toISOString(),
@@ -314,10 +323,12 @@ export async function POST(request: NextRequest) {
         courseType,
         year: courseData.year,
         status,
+        code: id,
+        edition: finalEdition,
       },
     });
 
-    return NextResponse.json(courseData, {
+    return NextResponse.json({ id: documentId, ...courseData }, {
       status: 201,
       headers: {
         "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
