@@ -109,6 +109,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     courseType: string;
     year: number;
     month?: number | null;
+    edition?: number | null;
     origin?: string;
   } | null>(null);
   const router = useRouter();
@@ -122,9 +123,28 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     try {
       setLoading(true);
       
-      // Si no hay filtros activos, usar paginación del backend
-      if (!hasActiveFilters) {
-        // Usar paginación del backend
+      // Para la vista agrupada o cuadrícula, siempre cargar TODOS los certificados
+      // para poder agruparlos correctamente por edición
+      if (viewMode === "grouped" || viewMode === "grid") {
+        setUsingBackendPagination(false);
+        const res = await fetch("/api/certificates?limit=10000"); // Cargar todos (límite alto)
+        const data = await res.json();
+        
+        if (Array.isArray(data)) {
+          // Formato antiguo: array directo
+          setCerts(data);
+        } else if (data.error) {
+          console.error("Error from API:", data.error);
+          setCerts([]);
+        } else if (data.data && Array.isArray(data.data)) {
+          // Formato nuevo con paginación
+          setCerts(data.data);
+        } else {
+          setCerts([]);
+        }
+        setPagination(null);
+      } else if (!hasActiveFilters) {
+        // Vista lista sin filtros: usar paginación del backend
         setUsingBackendPagination(true);
         const res = await fetch(`/api/certificates?page=${page}&limit=${ITEMS_PER_PAGE}`);
         const data = await res.json();
@@ -145,7 +165,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
       } else {
         // Hay filtros activos, cargar TODOS los certificados (sin paginación) para filtrar en memoria
         setUsingBackendPagination(false);
-        const res = await fetch("/api/certificates"); // Sin parámetros = todos los certificados
+        const res = await fetch("/api/certificates?limit=10000"); // Cargar todos (límite alto)
         const data = await res.json();
         
         if (Array.isArray(data)) {
@@ -156,9 +176,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
           setCerts([]);
         } else if (data.data && Array.isArray(data.data)) {
           // Formato nuevo con paginación, pero necesitamos todos
-          // Si hay paginación, necesitamos hacer múltiples requests o cargar todos de otra forma
-          // Por ahora, cargamos solo la primera página y mostramos advertencia
-          console.warn("Filtros activos pero API devolvió paginación. Cargando solo primera página.");
           setCerts(data.data);
         } else {
           setCerts([]);
@@ -185,7 +202,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   useEffect(() => {
     loadCertificates(currentPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, hasActiveFilters]);
+  }, [currentPage, hasActiveFilters, viewMode]);
 
   // Filtrar y ordenar certificados
   const filteredCerts = useMemo(() => {
@@ -241,12 +258,29 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     return filtered;
   }, [certs, searchTerm, statusFilter, yearFilter, sortField, sortDirection]);
 
-  // Agrupar certificados por curso y año
+  // Agrupar certificados por curso, edición y año
   const groupedCerts = useMemo(() => {
     const groups: Record<string, Certificate[]> = {};
     filteredCerts.forEach((cert) => {
       const courseCode = cert.courseId ? cert.courseId.split("-")[0] : "SIN-CODIGO";
-      const groupKey = `${courseCode}-${cert.courseName}-${cert.year}`;
+      
+      // Extraer edición del courseId si existe (formato: CODIGO-EDICION-AÑO-NUMERO)
+      let edition: number | null = null;
+      if (cert.courseId) {
+        const parts = cert.courseId.split("-");
+        // Si tiene formato CODIGO-EDICION-AÑO-NUMERO (4 partes)
+        if (parts.length === 4) {
+          const editionNum = parseInt(parts[1], 10);
+          if (!isNaN(editionNum) && editionNum > 0) {
+            edition = editionNum;
+          }
+        }
+      }
+      
+      // Incluir edición en el groupKey para separar grupos por edición
+      const editionSuffix = edition !== null ? `-ED${edition}` : "";
+      const groupKey = `${courseCode}-${cert.courseName}-${cert.year}${editionSuffix}`;
+      
       if (!groups[groupKey]) {
         groups[groupKey] = [];
       }
