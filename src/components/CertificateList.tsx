@@ -127,19 +127,30 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
       // para poder agruparlos correctamente por edición
       if (viewMode === "grouped" || viewMode === "grid") {
         setUsingBackendPagination(false);
+        console.log("[CertificateList] Cargando todos los certificados para vista agrupada/cuadrícula");
         const res = await fetch("/api/certificates?limit=10000"); // Cargar todos (límite alto)
         const data = await res.json();
         
+        console.log("[CertificateList] Respuesta de API:", {
+          isArray: Array.isArray(data),
+          hasData: !!data.data,
+          dataLength: Array.isArray(data) ? data.length : (data.data?.length || 0),
+          hasError: !!data.error
+        });
+        
         if (Array.isArray(data)) {
           // Formato antiguo: array directo
+          console.log(`[CertificateList] Certificados cargados (array directo): ${data.length}`);
           setCerts(data);
         } else if (data.error) {
           console.error("Error from API:", data.error);
           setCerts([]);
         } else if (data.data && Array.isArray(data.data)) {
           // Formato nuevo con paginación
+          console.log(`[CertificateList] Certificados cargados (con paginación): ${data.data.length}`);
           setCerts(data.data);
         } else {
+          console.warn("[CertificateList] Formato de respuesta desconocido:", data);
           setCerts([]);
         }
         setPagination(null);

@@ -41,12 +41,15 @@ export async function GET(request: NextRequest) {
     // Si solo hay limit sin page, y el limit es alto (>= 1000), retornar todos
     if (!pageParam && limitParam) {
       const limit = parseInt(limitParam, 10);
-      if (limit >= 1000) {
+      if (!isNaN(limit) && limit >= 1000) {
+        logger.info("Cargando todos los certificados (limit >= 1000 sin page)", { limit });
         const snapshot = await adminDb.collection("certificates").get();
         const data = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
+        
+        logger.info(`Certificados cargados: ${data.length} totales`);
 
         return NextResponse.json(data, {
           headers: {
