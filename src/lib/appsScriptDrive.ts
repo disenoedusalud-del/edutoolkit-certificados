@@ -182,6 +182,81 @@ export async function getOrCreateFolderInAppsScriptDrive(args: {
 }
 
 /**
+ * Renombrar una carpeta en Google Drive usando Apps Script
+ */
+export async function renameFolderInAppsScriptDrive(args: {
+  folderId: string;
+  newName: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const url = process.env.APPS_SCRIPT_UPLOAD_URL;
+  const token = process.env.APPS_SCRIPT_UPLOAD_TOKEN;
+
+  if (!url) {
+    throw new Error("Falta APPS_SCRIPT_UPLOAD_URL en .env.local");
+  }
+  if (!token) {
+    throw new Error("Falta APPS_SCRIPT_UPLOAD_TOKEN en .env.local");
+  }
+
+  console.log("[RENAME-FOLDER-AS] Renaming folder...", {
+    folderId: args.folderId,
+    newName: args.newName,
+  });
+
+  const requestBody = {
+    action: "renameFolder",
+    folderId: args.folderId,
+    newName: args.newName,
+  };
+
+  try {
+    const res = await fetch(`${url}?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    const text = await res.text();
+
+    let json: any = null;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      console.error("[RENAME-FOLDER-AS] Respuesta no-JSON de Apps Script:", text.slice(0, 200));
+      return {
+        ok: false,
+        error: `Respuesta no-JSON de Apps Script: ${text.slice(0, 200)}`,
+      };
+    }
+
+    if (!res.ok || !json?.ok) {
+      console.error("[RENAME-FOLDER-AS] Error en respuesta:", {
+        status: res.status,
+        error: json?.error,
+        text: text.slice(0, 200),
+      });
+      return {
+        ok: false,
+        error: json?.error || `HTTP ${res.status}: ${text.slice(0, 200)}`,
+      };
+    }
+
+    console.log("[RENAME-FOLDER-AS] Folder renamed successfully");
+
+    return { ok: true };
+  } catch (error) {
+    console.error("[RENAME-FOLDER-AS] Error en fetch:", error);
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : `Error desconocido: ${String(error)}`,
+    };
+  }
+}
+
+/**
  * Crear una carpeta en Google Drive usando Apps Script
  * (Siempre crea una nueva carpeta, incluso si ya existe una con el mismo nombre)
  */

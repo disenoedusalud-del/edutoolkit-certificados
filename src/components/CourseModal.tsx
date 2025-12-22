@@ -30,6 +30,19 @@ export default function CourseModal({
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Debug: verificar que el curso se está pasando correctamente
+  useEffect(() => {
+    if (course) {
+      console.log("[CourseModal] Curso recibido para edición:", {
+        id: course.id,
+        name: course.name,
+        hasId: !!course.id,
+      });
+    } else {
+      console.log("[CourseModal] Modo creación - no hay curso");
+    }
+  }, [course]);
+
   useEffect(() => {
     if (course) {
       // Modo edición: cargar datos del curso
@@ -93,10 +106,23 @@ export default function CourseModal({
     setLoading(true);
 
     try {
-      const url = course
+      // Validar que si estamos editando, el curso existe y tiene ID
+      if (course && !course.id) {
+        throw new Error("Error: El curso a editar no tiene un ID válido");
+      }
+
+      const url = course && course.id
         ? `/api/courses/${course.id}`
         : "/api/courses";
-      const method = course ? "PUT" : "POST";
+      const method = course && course.id ? "PUT" : "POST";
+
+      console.log("[CourseModal] Guardando curso:", {
+        isEdit: !!course,
+        courseId: course?.id,
+        url,
+        method,
+        formDataId: formData.id,
+      });
 
       const payload: any = {
         name: formData.name.trim(),
@@ -108,14 +134,15 @@ export default function CourseModal({
       };
 
       // Si es un curso nuevo, incluir id
-      if (!course) {
+      if (!course || !course.id) {
+        if (!formData.id.trim()) {
+          throw new Error("El código del curso es requerido");
+        }
         payload.id = formData.id.trim().toUpperCase();
       }
 
-      // Si es edición y el código cambió, incluir newId para actualizar
-      if (course && formData.id.trim().toUpperCase() !== course.id) {
-        payload.newId = formData.id.trim().toUpperCase();
-      }
+      // Nota: En modo edición, el código no se puede cambiar (está deshabilitado en el formulario)
+      // Si en el futuro se necesita cambiar el código, se puede agregar una funcionalidad especial
 
       const response = await fetch(url, {
         method,
@@ -212,41 +239,48 @@ export default function CourseModal({
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Código Corto (1-20 caracteres) <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              required
-              value={formData.id}
-              onChange={(e) => {
-                // Convertir automáticamente a mayúsculas, eliminar espacios, permitir números y guiones
-                const value = e.target.value.toUpperCase().replace(/\s/g, "").replace(/[^A-Z0-9\-]/g, "");
-                setFormData({ ...formData, id: value });
-                if (fieldErrors.id) {
-                  setFieldErrors((prev) => {
-                    const newErrors = { ...prev };
-                    delete newErrors.id;
-                    return newErrors;
-                  });
-                }
-              }}
-              maxLength={20}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono ${
-                fieldErrors.id
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                  : "border-theme"
-              }`}
-              placeholder="Ej: LM, ND, ECG, LM-2025, ND-1"
-            />
-            {fieldErrors.id && (
-              <p className="text-red-600 text-xs mt-1">{fieldErrors.id}</p>
+            {course ? (
+              // En modo edición: mostrar el código como texto (no editable)
+              <div className="w-full px-3 py-2 border border-theme rounded-lg bg-theme-tertiary text-text-primary font-mono">
+                {formData.id}
+              </div>
+            ) : (
+              // En modo creación: permitir editar
+              <>
+                <input
+                  type="text"
+                  required
+                  value={formData.id}
+                  onChange={(e) => {
+                    // Convertir automáticamente a mayúsculas, eliminar espacios, permitir números y guiones
+                    const value = e.target.value.toUpperCase().replace(/\s/g, "").replace(/[^A-Z0-9\-]/g, "");
+                    setFormData({ ...formData, id: value });
+                    if (fieldErrors.id) {
+                      setFieldErrors((prev) => {
+                        const newErrors = { ...prev };
+                        delete newErrors.id;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  maxLength={20}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono ${
+                    fieldErrors.id
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                      : "border-theme"
+                  }`}
+                  placeholder="Ej: LM, ND, ECG, LM-2025, ND-1"
+                />
+                {fieldErrors.id && (
+                  <p className="text-red-600 text-xs mt-1">{fieldErrors.id}</p>
+                )}
+              </>
             )}
             <p className="text-xs text-text-secondary mt-1">
-              Letras mayúsculas (A-Z), números (0-9) y guiones (-). Sin espacios. Mínimo 1, máximo 20 caracteres.
+              {course 
+                ? "El código del curso no se puede cambiar después de crearlo."
+                : "Letras mayúsculas (A-Z), números (0-9) y guiones (-). Sin espacios. Mínimo 1, máximo 20 caracteres."}
             </p>
-            {course && formData.id.trim().toUpperCase() !== course.id && (
-              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                ⚠️ Advertencia: Cambiar el código actualizará automáticamente todos los certificados relacionados.
-              </div>
-            )}
           </div>
 
           <div>

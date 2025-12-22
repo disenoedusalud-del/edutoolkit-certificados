@@ -171,3 +171,16 @@ export async function isAuthorizedEmail(email: string): Promise<boolean> {
   return allowed.includes(normalizedEmail);
 }
 
+/**
+ * Verifica si un email es MASTER_ADMIN
+ */
+export function isMasterAdminEmail(email: string): boolean {
+  const normalizedEmail = email.toLowerCase().trim();
+  const masterEmails = (process.env.MASTER_ADMIN_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  
+  return masterEmails.includes(normalizedEmail);
+}
+

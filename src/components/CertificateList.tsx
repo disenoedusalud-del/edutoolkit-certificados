@@ -96,6 +96,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     deliveryStatus: string;
     deliveryDate: string;
     deliveredTo: string;
+    physicalLocation: string;
+    folioCode: string;
   } | null>(null);
   const [quickEditLoading, setQuickEditLoading] = useState(false);
   const router = useRouter();
@@ -1035,6 +1037,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                         deliveryStatus: c.deliveryStatus || "en_archivo",
                         deliveryDate: c.deliveryDate ? new Date(c.deliveryDate).toISOString().split("T")[0] : "",
                         deliveredTo: c.deliveredTo || "",
+                        physicalLocation: c.physicalLocation || "",
+                        folioCode: c.folioCode || "",
                       });
                     }}
                   >
@@ -1334,6 +1338,22 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                     <p className="text-text-primary text-sm">{quickViewCert.phone}</p>
                   </div>
                 )}
+                {quickViewCert.physicalLocation && (
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase mb-1">
+                      Ubicación Física
+                    </label>
+                    <p className="text-text-primary text-sm">{quickViewCert.physicalLocation}</p>
+                  </div>
+                )}
+                {quickViewCert.folioCode && (
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase mb-1">
+                      Código de Folio
+                    </label>
+                    <p className="text-text-primary font-mono text-sm">{quickViewCert.folioCode}</p>
+                  </div>
+                )}
                 {quickViewCert.driveFileId && (
                   <div className="md:col-span-2">
                     <label className="block text-xs text-text-secondary uppercase mb-2">
@@ -1426,6 +1446,40 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                       className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
+                      Ubicación Física
+                    </label>
+                    <input
+                      type="text"
+                      value={quickEditData.physicalLocation}
+                      onChange={(e) =>
+                        setQuickEditData({
+                          ...quickEditData,
+                          physicalLocation: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: Archivo A, Estante 3, etc."
+                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">
+                      Código de Folio
+                    </label>
+                    <input
+                      type="text"
+                      value={quickEditData.folioCode}
+                      onChange={(e) =>
+                        setQuickEditData({
+                          ...quickEditData,
+                          folioCode: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: FOL-2025-001"
+                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1453,6 +1507,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                           deliveryStatus: quickEditData.deliveryStatus,
                           deliveryDate: quickEditData.deliveryDate || null,
                           deliveredTo: quickEditData.deliveredTo || null,
+                          physicalLocation: quickEditData.physicalLocation || null,
+                          folioCode: quickEditData.folioCode || null,
                         }),
                       });
 

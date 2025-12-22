@@ -1,8 +1,8 @@
 // src/app/api/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebaseAdmin";
-import { isAuthorizedEmail } from "@/lib/auth";
-import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { isAuthorizedEmail, isMasterAdminEmail } from "@/lib/auth";
+import { rateLimit, rateLimitResponse, RATE_LIMITS, resetRateLimitForIP } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -15,11 +15,8 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Rate limiting estricto para login (prevenir fuerza bruta)
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.AUTH);
-    if (!rateLimitResult.success) {
-      return rateLimitResponse(rateLimitResult.resetTime);
-    }
-
-    // 2. Validar entrada
+    
+    // 2. Validar entrada (necesitamos el token para verificar si es MASTER_ADMIN)
     const { idToken } = await request.json();
 
     if (!idToken) {
@@ -39,6 +36,26 @@ export async function POST(request: NextRequest) {
         { error: "No se pudo obtener el correo del usuario" },
         { status: 400 }
       );
+    }
+
+    // 4. Si el rate limit falló pero el usuario es MASTER_ADMIN, resetear el rate limit y permitir el login
+    if (!rateLimitResult.success && isMasterAdminEmail(userEmail)) {
+      // Obtener IP del request
+      const forwarded = request.headers.get("x-forwarded-for");
+      const realIP = request.headers.get("x-real-ip");
+      const requestIP = forwarded?.split(",")[0].trim() || realIP || "unknown";
+      
+      // Resetear el rate limit para esta IP
+      await resetRateLimitForIP(requestIP);
+      logger.info("Rate limit reseteado automáticamente para MASTER_ADMIN", { 
+        email: userEmail, 
+        ip: requestIP 
+      });
+      
+      // Continuar con el login (no retornar error de rate limit)
+    } else if (!rateLimitResult.success) {
+      // Si no es MASTER_ADMIN y el rate limit falló, retornar error
+      return rateLimitResponse(rateLimitResult.resetTime);
     }
 
     // 4. Verificar si el email está autorizado (misma lógica que registro)

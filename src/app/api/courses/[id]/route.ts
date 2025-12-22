@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Course } from "@/types/Course";
 import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { renameFolderInAppsScriptDrive } from "@/lib/appsScriptDrive";
 
 export async function GET(
   request: NextRequest,
@@ -180,8 +181,43 @@ export async function PUT(
       });
     } else {
       // Solo actualizar nombre, tipo, año, origen y/o estado
+      const oldData = oldDoc.data() as Course;
+      const oldName = oldData.name;
+      
       if (name !== undefined) {
         updateData.name = name.trim();
+        
+        // Si el nombre cambió, actualizar todos los certificados relacionados
+        if (name.trim() !== oldName) {
+          await updateCertificatesWithNewCourseName(oldId, name.trim());
+        }
+        
+        // Si el nombre cambió y hay una carpeta de Drive, renombrarla
+        if (name.trim() !== oldName && oldData.driveFolderId) {
+          try {
+            const newFolderName = `${oldId} - ${name.trim()}`;
+            console.log("[UPDATE-COURSE] Renombrando carpeta de Drive:", {
+              folderId: oldData.driveFolderId,
+              oldName: `${oldId} - ${oldName}`,
+              newName: newFolderName,
+            });
+            
+            const renameResult = await renameFolderInAppsScriptDrive({
+              folderId: oldData.driveFolderId,
+              newName: newFolderName,
+            });
+            
+            if (!renameResult.ok) {
+              console.error("[UPDATE-COURSE] ⚠️ Error renombrando carpeta:", renameResult.error);
+              // No fallar la actualización del curso si falla el renombrado de la carpeta
+            } else {
+              console.log("[UPDATE-COURSE] ✅ Carpeta renombrada correctamente");
+            }
+          } catch (folderError) {
+            console.error("[UPDATE-COURSE] ⚠️ Error al renombrar carpeta:", folderError);
+            // No fallar la actualización del curso si falla el renombrado de la carpeta
+          }
+        }
       }
       if (courseType !== undefined) {
         const validCourseTypes = ["Curso", "Diplomado", "Webinar", "Taller", "Seminario"];
@@ -192,6 +228,11 @@ export async function PUT(
           );
         }
         updateData.courseType = courseType as Course["courseType"];
+        
+        // Si el tipo de curso cambió, actualizar todos los certificados relacionados
+        if (courseType !== oldData.courseType) {
+          await updateCertificatesWithNewCourseType(oldId, courseType as Course["courseType"]);
+        }
       }
       if (year !== undefined) {
         updateData.year = parseInt(year.toString());
@@ -380,6 +421,106 @@ export async function DELETE(
       { error: "Error al eliminar el curso" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Actualiza el nombre del curso en todos los certificados relacionados
+ */
+async function updateCertificatesWithNewCourseName(
+  courseCode: string,
+  newCourseName: string
+): Promise<number> {
+  try {
+    // Buscar todos los certificados que usen este código de curso
+    const certificatesSnapshot = await adminDb
+      .collection("certificates")
+      .get();
+
+    const batch = adminDb.batch();
+    let updateCount = 0;
+
+    certificatesSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      let needsUpdate = false;
+      const updates: any = {};
+
+      // Actualizar courseName si el courseId empieza con el código del curso
+      if (data.courseId && typeof data.courseId === "string") {
+        if (data.courseId.startsWith(courseCode + "-")) {
+          updates.courseName = newCourseName;
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        updates.updatedAt = new Date().toISOString();
+        batch.update(doc.ref, updates);
+        updateCount++;
+      }
+    });
+
+    if (updateCount > 0) {
+      await batch.commit();
+      console.log(
+        `[UPDATE-COURSE] Actualizados ${updateCount} certificados con nuevo nombre: "${newCourseName}"`
+      );
+    }
+
+    return updateCount;
+  } catch (error) {
+    console.error("[UPDATE-COURSE] Error actualizando nombres en certificados:", error);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza el tipo de curso en todos los certificados relacionados
+ */
+async function updateCertificatesWithNewCourseType(
+  courseCode: string,
+  newCourseType: Course["courseType"]
+): Promise<number> {
+  try {
+    // Buscar todos los certificados que usen este código de curso
+    const certificatesSnapshot = await adminDb
+      .collection("certificates")
+      .get();
+
+    const batch = adminDb.batch();
+    let updateCount = 0;
+
+    certificatesSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      let needsUpdate = false;
+      const updates: any = {};
+
+      // Actualizar courseType si el courseId empieza con el código del curso
+      if (data.courseId && typeof data.courseId === "string") {
+        if (data.courseId.startsWith(courseCode + "-")) {
+          updates.courseType = newCourseType;
+          needsUpdate = true;
+        }
+      }
+
+      if (needsUpdate) {
+        updates.updatedAt = new Date().toISOString();
+        batch.update(doc.ref, updates);
+        updateCount++;
+      }
+    });
+
+    if (updateCount > 0) {
+      await batch.commit();
+      console.log(
+        `[UPDATE-COURSE] Actualizados ${updateCount} certificados con nuevo tipo: "${newCourseType}"`
+      );
+    }
+
+    return updateCount;
+  } catch (error) {
+    console.error("[UPDATE-COURSE] Error actualizando tipos en certificados:", error);
+    throw error;
   }
 }
 
