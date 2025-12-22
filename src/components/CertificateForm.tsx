@@ -264,16 +264,32 @@ export default function CertificateForm({
       errors.fullName = "El nombre completo es requerido";
     }
 
-    if (!formData.selectedCourseId && !formData.courseName.trim()) {
-      errors.courseName = "Debes seleccionar un curso o ingresar el nombre manualmente";
-    }
-
-    // El courseId se genera automáticamente, pero validamos que exista
-    // Si hay un curso seleccionado pero no hay courseId, se generará antes de enviar
-    if (!formData.courseId.trim() && formData.selectedCourseId) {
-      const selectedCourse = courses.find((c) => c.id === formData.selectedCourseId);
-      if (selectedCourse && !formData.courseName.trim()) {
+    // Si hay initialCourseData, validar de forma diferente (el curso ya está predefinido)
+    if (initialCourseData) {
+      // Solo necesitamos que haya courseName (puede venir de formData o initialCourseData)
+      const courseName = formData.courseName.trim() || initialCourseData.courseName || "";
+      if (!courseName) {
         errors.courseName = "El nombre del curso es requerido";
+      }
+      // El courseId se generará automáticamente si falta, no es un error crítico
+      // Solo validamos que tengamos los datos necesarios para generarlo
+      if (!formData.courseId.trim() && !initialCourseData.courseId) {
+        // No es un error crítico, se generará en handleSubmit
+        console.warn("courseId no generado todavía, se generará en handleSubmit");
+      }
+    } else {
+      // Validación normal cuando no viene de una carpeta
+      if (!formData.selectedCourseId && !formData.courseName.trim()) {
+        errors.courseName = "Debes seleccionar un curso o ingresar el nombre manualmente";
+      }
+
+      // El courseId se genera automáticamente, pero validamos que exista
+      // Si hay un curso seleccionado pero no hay courseId, se generará antes de enviar
+      if (!formData.courseId.trim() && formData.selectedCourseId) {
+        const selectedCourse = courses.find((c) => c.id === formData.selectedCourseId);
+        if (selectedCourse && !formData.courseName.trim()) {
+          errors.courseName = "El nombre del curso es requerido";
+        }
       }
     }
 
@@ -306,7 +322,15 @@ export default function CertificateForm({
     setFieldErrors({});
 
     if (!validateForm()) {
-      toast.error("Por favor, corrige los errores en el formulario");
+      // Mostrar errores específicos
+      const errorMessages = Object.values(fieldErrors);
+      if (errorMessages.length > 0) {
+        toast.error(`Errores en el formulario: ${errorMessages.join(", ")}`);
+      } else {
+        toast.error("Por favor, corrige los errores en el formulario");
+      }
+      console.log("Errores de validación:", fieldErrors);
+      console.log("Estado del formulario:", formData);
       return;
     }
 
@@ -331,16 +355,29 @@ export default function CertificateForm({
         ? extractDriveFileId(currentDriveFileId) 
         : null;
 
-      // Asegurar que courseId, courseName y courseType estén llenos si hay un curso seleccionado
+      // Asegurar que courseId, courseName y courseType estén llenos
       let finalCourseId = formData.courseId.trim();
       let finalCourseName = formData.courseName.trim();
       let finalCourseType = formData.courseType.trim();
       let finalYear = formData.year;
       let finalMonth = formData.month;
-      
       let finalOrigin = formData.origin;
       
-      if (formData.selectedCourseId && (!finalCourseId || !finalCourseName || !finalCourseType)) {
+      // Si hay initialCourseData, usar esos datos directamente
+      if (initialCourseData) {
+        finalCourseName = formData.courseName.trim() || initialCourseData.courseName;
+        finalCourseType = formData.courseType.trim() || initialCourseData.courseType || "Curso";
+        finalYear = formData.year || initialCourseData.year || new Date().getFullYear();
+        finalMonth = formData.month || initialCourseData.month || null;
+        finalOrigin = formData.origin || initialCourseData.origin || "nuevo";
+        
+        // Si no hay courseId generado, generarlo ahora
+        if (!finalCourseId) {
+          finalCourseId = await generateCourseId(initialCourseData.courseId, finalYear);
+        }
+      } 
+      // Si hay un curso seleccionado (modo normal), usar esos datos
+      else if (formData.selectedCourseId && (!finalCourseId || !finalCourseName || !finalCourseType)) {
         const selectedCourse = courses.find((c) => c.id === formData.selectedCourseId);
         if (selectedCourse) {
           // Usar el año del curso
