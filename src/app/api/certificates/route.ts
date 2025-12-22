@@ -193,45 +193,22 @@ export async function POST(request: NextRequest) {
       marketingConsent = false,
     } = body;
 
+    // El courseId ya viene generado correctamente desde el frontend con la edición incluida
+    // No necesitamos recalcularlo aquí, solo validarlo
     let finalCourseId = courseId.trim();
-    const courseIdPattern = /^(.+)-(\d{4})-(\d+)$/;
-    const match = finalCourseId.match(courseIdPattern);
-
-    if (match) {
-      const [, courseCode, courseYear, currentNumber] = match;
-      const courseYearNum = parseInt(courseYear);
-
-      if (courseYearNum === year) {
-        const prefix = `${courseCode}-${year}-`;
-        const certificatesSnapshot = await adminDb
-          .collection("certificates")
-          .where("courseId", ">=", prefix)
-          .where("courseId", "<", prefix + "\uf8ff")
-          .get();
-
-        const escapedCourseCode = courseCode.replace(
-          /[.*+?^${}()|[\]\\]/g,
-          "\\$&"
-        );
-
-        const existingNumbers = certificatesSnapshot.docs
-          .map((doc) => {
-            const data = doc.data() as any;
-            const certCourseId = data.courseId || "";
-            const certMatch = certCourseId.match(
-              new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`)
-            );
-            return certMatch ? parseInt(certMatch[1]) : 0;
-          })
-          .filter((num) => num > 0);
-
-        const maxNumber =
-          existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-        const nextNumber = maxNumber + 1;
-        finalCourseId = `${courseCode}-${year}-${nextNumber
-          .toString()
-          .padStart(2, "0")}`;
-      }
+    
+    // Validar que el courseId tenga el formato correcto
+    // Puede ser: CODIGO-AÑO-NUMERO o CODIGO-EDICION-AÑO-NUMERO
+    const courseIdPatternWithEdition = /^(.+)-(\d+)-(\d{4})-(\d+)$/; // CODIGO-EDICION-AÑO-NUMERO
+    const courseIdPatternWithoutEdition = /^(.+)-(\d{4})-(\d+)$/; // CODIGO-AÑO-NUMERO
+    
+    const matchWithEdition = finalCourseId.match(courseIdPatternWithEdition);
+    const matchWithoutEdition = finalCourseId.match(courseIdPatternWithoutEdition);
+    
+    // Si el courseId no tiene el formato correcto, usar el que viene del frontend tal cual
+    // El frontend ya se encarga de generar el ID correcto con la edición
+    if (!matchWithEdition && !matchWithoutEdition) {
+      console.warn("[POST-certificates] courseId no tiene formato esperado, usando tal cual:", finalCourseId);
     }
 
     const certificateData: Omit<Certificate, "id"> = {
