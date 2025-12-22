@@ -38,6 +38,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Si solo hay limit sin page, y el limit es alto (>= 1000), retornar todos
+    if (!pageParam && limitParam) {
+      const limit = parseInt(limitParam, 10);
+      if (limit >= 1000) {
+        const snapshot = await adminDb.collection("certificates").get();
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+
+        return NextResponse.json(data, {
+          headers: {
+            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          },
+        });
+      }
+    }
+
     // 4. Paginación: parsear y validar parámetros
     const page = Math.max(1, parseInt(pageParam || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(limitParam || "50", 10))); // Max 100, default 50
