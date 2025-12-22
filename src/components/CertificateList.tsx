@@ -820,6 +820,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                                     deliveryStatus: c.deliveryStatus || "en_archivo",
                                     deliveryDate: c.deliveryDate ? new Date(c.deliveryDate).toISOString().split("T")[0] : "",
                                     deliveredTo: c.deliveredTo || "",
+                                    physicalLocation: c.physicalLocation || "",
+                                    folioCode: c.folioCode || "",
                                   });
                                 }}
                               >
@@ -1172,6 +1174,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                         deliveryStatus: cert.deliveryStatus || "en_archivo",
                         deliveryDate: cert.deliveryDate ? new Date(cert.deliveryDate).toISOString().split("T")[0] : "",
                         deliveredTo: cert.deliveredTo || "",
+                        physicalLocation: cert.physicalLocation || "",
+                        folioCode: cert.folioCode || "",
                       });
                       setOpenMenuId(null);
                       setMenuPosition(null);
@@ -1652,8 +1656,10 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                                     setQuickViewCert(cert);
                                     setQuickEditData({
                                       deliveryStatus: cert.deliveryStatus || "en_archivo",
-                                      deliveryDate: cert.deliveryDate || "",
+                                      deliveryDate: cert.deliveryDate ? new Date(cert.deliveryDate).toISOString().split("T")[0] : "",
                                       deliveredTo: cert.deliveredTo || "",
+                                      physicalLocation: cert.physicalLocation || "",
+                                      folioCode: cert.folioCode || "",
                                     });
                                     setOpenMenuId(null);
                                   }}
