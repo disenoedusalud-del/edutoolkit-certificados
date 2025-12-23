@@ -4,16 +4,6 @@ import { Course } from "@/types/Course";
 import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 
-// Versión simplificada y sintácticamente segura del handler de cursos individuales.
-// Mantiene:
-// - GET: obtener un curso por id.
-// - PUT: actualizar campos básicos de un curso existente.
-// No incluye (de momento) la lógica avanzada de:
-// - renombrar carpeta en Drive
-// - mover documentos por combinación código + edición + año
-// Eso se puede re-incorporar luego, pero ahora priorizamos que el build pase
-// y que la app vuelva a estar operativa en Vercel.
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +26,28 @@ export async function GET(
       );
     }
 
-    const data = { id: doc.id, ...doc.data() } as Course;
+    // Contar certificados asociados (si se solicita)
+    const { searchParams } = new URL(request.url);
+    const includeCertificateCount = searchParams.get("includeCertificateCount") === "true";
+
+    let certificateCount = 0;
+    if (includeCertificateCount) {
+      const certificatesSnapshot = await adminDb
+        .collection("certificates")
+        .get();
+      
+      certificateCount = certificatesSnapshot.docs.filter((certDoc) => {
+        const certData = certDoc.data();
+        const certCourseId = certData.courseId || "";
+        return certCourseId.startsWith(id + "-");
+      }).length;
+    }
+
+    const data = { 
+      id: doc.id, 
+      ...doc.data(),
+      ...(includeCertificateCount && { certificateCount })
+    } as Course;
 
     return NextResponse.json(data, {
       headers: {
@@ -124,7 +135,7 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error("[COURSE-PUT] Error actualizando curso (simplificado):", error);
+    console.error("[COURSE-PUT] Error actualizando curso:", error);
     return NextResponse.json(
       { error: "Error al actualizar el curso" },
       { status: 500 }
@@ -199,7 +210,7 @@ export async function DELETE(
       console.log(`[DELETE-COURSE] ✅ ${certificateCount} certificados eliminados`);
     }
 
-    // Obtener datos del curso antes de eliminar para el historial (courseData ya está definido arriba)
+    // Obtener datos del curso antes de eliminar para el historial
     const courseName = courseData?.name || id;
 
     // Eliminar el curso
@@ -257,5 +268,4 @@ export async function DELETE(
     );
   }
 }
-
 
