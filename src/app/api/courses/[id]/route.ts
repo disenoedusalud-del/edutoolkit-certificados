@@ -142,7 +142,7 @@ export async function DELETE(
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    const currentUser = await requireRole("MASTER_ADMIN");
+    const currentUser = await requireRole("ADMIN");
     const { id } = await params;
     const doc = await adminDb.collection("courses").doc(id).get();
 
@@ -226,7 +226,7 @@ export async function DELETE(
       }
       if (error.message === "FORBIDDEN") {
         return NextResponse.json(
-          { error: "No tienes permisos para eliminar cursos. Solo MASTER_ADMIN puede eliminar cursos." },
+          { error: "No tienes permisos para eliminar cursos. Solo ADMIN puede eliminar cursos." },
           { status: 403 }
         );
       }
