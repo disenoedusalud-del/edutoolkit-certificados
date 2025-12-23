@@ -366,28 +366,28 @@ export async function PUT(
         });
       }
     } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === "UNAUTHORIZED") {
-        return NextResponse.json(
-          { error: "No autenticado" },
-          { status: 401 }
-        );
+      if (error instanceof Error) {
+        if (error.message === "UNAUTHORIZED") {
+          return NextResponse.json(
+            { error: "No autenticado" },
+            { status: 401 }
+          );
+        }
+        if (error.message === "FORBIDDEN") {
+          return NextResponse.json(
+            { error: "No tienes permisos para editar cursos" },
+            { status: 403 }
+          );
+        }
       }
-      if (error.message === "FORBIDDEN") {
-        return NextResponse.json(
-          { error: "No tienes permisos para editar cursos" },
-          { status: 403 }
-        );
-      }
-    }
 
-    console.error("Error updating course:", error);
-    return NextResponse.json(
-      { error: "Error al actualizar el curso" },
-      { status: 500 }
-    );
+      console.error("Error updating course:", error);
+      return NextResponse.json(
+        { error: "Error al actualizar el curso" },
+        { status: 500 }
+      );
+    }
   }
-}
 
 export async function DELETE(
   request: NextRequest,
