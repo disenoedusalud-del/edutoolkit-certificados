@@ -98,12 +98,28 @@ export default function CertificateForm({
           if (matchingCourse) {
             // Usar el año del curso o el año pasado en initialCourseData
             const courseYear = matchingCourse.year || initialCourseData.year || new Date().getFullYear();
-            // PRIORIDAD ABSOLUTA: Usar la edición de initialCourseData (viene del certificado existente en la carpeta)
-            // Esta edición tiene prioridad porque viene directamente del certificado que está en esa carpeta
-            // NO usar la edición del curso, solo la del certificado existente
-            const courseEdition = initialCourseData.edition !== undefined && initialCourseData.edition !== null 
-              ? initialCourseData.edition 
-              : null; // Si no hay edición en initialCourseData, no usar edición (no usar la del curso)
+            
+            // Lógica de edición:
+            // 1) Si initialCourseData.edition viene del certificado de la carpeta, usarla.
+            // 2) Si NO viene (certificados viejos sin edición en el ID), usar la edición del curso
+            //    (derivada de matchingCourse.id o matchingCourse.edition).
+            let courseEdition: number | null = null;
+            if (initialCourseData.edition !== undefined && initialCourseData.edition !== null) {
+              courseEdition = initialCourseData.edition;
+            } else {
+              // Intentar extraer edición del id del curso, ej: "NAEF-2"
+              const idParts = matchingCourse.id.split("-");
+              if (idParts.length >= 2) {
+                const possibleEdition = parseInt(idParts[1], 10);
+                if (!isNaN(possibleEdition) && possibleEdition > 0 && possibleEdition < 100) {
+                  courseEdition = possibleEdition;
+                }
+              }
+              // Si no se encontró en el id, usar matchingCourse.edition
+              if (courseEdition === null && matchingCourse.edition) {
+                courseEdition = matchingCourse.edition;
+              }
+            }
             
             console.log("[CertificateForm] Generando ID desde carpeta:", {
               courseId: matchingCourse.id,
@@ -112,7 +128,7 @@ export default function CertificateForm({
               editionFromInitial: initialCourseData.edition,
               editionFromCourse: matchingCourse.edition,
               finalEdition: courseEdition,
-              note: "Usando edición de initialCourseData (certificado existente), NO del curso"
+              note: "Si hay edición en initialCourseData se respeta; si no, se usa la del curso"
             });
             // Generar el courseId del certificado automáticamente, incluyendo la edición si existe
             generateCourseId(matchingCourse.id, courseYear, courseEdition).then((autoCourseId) => {
@@ -448,12 +464,26 @@ export default function CertificateForm({
         // Necesitamos obtener el curso completo para incluir la edición
         if (!finalCourseId) {
           const matchingCourse = courses.find((c) => c.id === initialCourseData.courseId);
-          // PRIORIDAD ABSOLUTA: Usar la edición de initialCourseData (viene del certificado existente en la carpeta)
-          // Esta edición tiene prioridad absoluta porque viene directamente del certificado que está en esa carpeta
-          // NO usar la edición del curso, solo la del certificado existente
-          const courseEdition = initialCourseData.edition !== undefined && initialCourseData.edition !== null
-            ? initialCourseData.edition
-            : null; // Si no hay edición en initialCourseData, no usar edición (no usar la del curso)
+          
+          // Lógica de edición AL GUARDAR:
+          // 1) Si initialCourseData.edition viene del certificado de la carpeta, usarla.
+          // 2) Si NO viene (certificados viejos sin edición en el ID), usar la edición del curso
+          //    (derivada de matchingCourse.id o matchingCourse.edition).
+          let courseEdition: number | null = null;
+          if (initialCourseData.edition !== undefined && initialCourseData.edition !== null) {
+            courseEdition = initialCourseData.edition;
+          } else if (matchingCourse) {
+            const idParts = matchingCourse.id.split("-");
+            if (idParts.length >= 2) {
+              const possibleEdition = parseInt(idParts[1], 10);
+              if (!isNaN(possibleEdition) && possibleEdition > 0 && possibleEdition < 100) {
+                courseEdition = possibleEdition;
+              }
+            }
+            if (courseEdition === null && matchingCourse.edition) {
+              courseEdition = matchingCourse.edition;
+            }
+          }
           
           console.log("[CertificateForm] Generando ID en handleSubmit:", {
             initialCourseData,
