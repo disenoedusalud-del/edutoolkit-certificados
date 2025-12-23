@@ -274,23 +274,27 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     const groups: Record<string, Certificate[]> = {};
     filteredCerts.forEach((cert) => {
       const courseCode = cert.courseId ? cert.courseId.split("-")[0] : "SIN-CODIGO";
-      
-      // Extraer edición del courseId si existe (formato: CODIGO-EDICION-AÑO-NUMERO)
-      let edition: number | null = null;
+      let groupKey: string;
+
+      // Usar el prefijo del courseId (código + edición + año) como clave de carpeta,
+      // para que TODOS los certificados con el mismo ID base caigan en la misma carpeta,
+      // aunque cambie ligeramente el nombre del curso u otros campos.
       if (cert.courseId) {
         const parts = cert.courseId.split("-");
-        // Si tiene formato CODIGO-EDICION-AÑO-NUMERO (4 partes)
-        if (parts.length === 4) {
-          const editionNum = parseInt(parts[1], 10);
-          if (!isNaN(editionNum) && editionNum > 0) {
-            edition = editionNum;
-          }
+        // Formatos esperados:
+        // - CODIGO-AÑO-NN        (3 partes)
+        // - CODIGO-EDICION-AÑO-NN (4 partes)
+        if (parts.length >= 3) {
+          // Tomamos todo menos el último segmento (el correlativo NN)
+          groupKey = parts.slice(0, parts.length - 1).join("-");
+        } else {
+          // Fallback por si llega un formato raro
+          groupKey = `${courseCode}-${cert.year}`;
         }
+      } else {
+        // Si no hay courseId, agrupar solo por código y año
+        groupKey = `${courseCode}-${cert.year}`;
       }
-      
-      // Incluir edición en el groupKey para separar grupos por edición
-      const editionSuffix = edition !== null ? `-ED${edition}` : "";
-      const groupKey = `${courseCode}-${cert.courseName}-${cert.year}${editionSuffix}`;
       
       if (!groups[groupKey]) {
         groups[groupKey] = [];
