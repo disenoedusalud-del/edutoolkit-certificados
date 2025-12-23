@@ -573,15 +573,20 @@ export default function CertificateForm({
           ? "Certificado actualizado correctamente"
           : "Certificado creado correctamente"
       );
-      
-      // Si hay un callback onSuccess (para modo edición), llamarlo
-      if (onSuccess && certificate) {
-        // Estamos en modo edición, el componente padre manejará salir del modo edición
-        onSuccess();
+
+      // Si el padre pasó onSuccess (por ejemplo, desde una carpeta / modal),
+      // darle prioridad para que él decida qué hacer (cerrar modal, recargar lista, etc.)
+      if (onSuccess) {
+        try {
+          await onSuccess();
+        } catch (callbackError) {
+          console.error("Error en onSuccess del padre:", callbackError);
+        }
         return;
       }
-      
-      // Si es un certificado nuevo, navegar a la página de detalle
+
+      // Comportamiento por defecto:
+      // Si es un certificado nuevo SIN onSuccess, navegar a la página de detalle
       if (!certificate) {
         try {
           router.push(`/admin/certificados/${data.id}`);
