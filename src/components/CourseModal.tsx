@@ -60,7 +60,7 @@ export default function CourseModal({
 
   const generateAutoId = (name: string, year: number, edition: number | null) => {
     // Palabras a ignorar en el acrónimo
-    const stopWords = ["de", "del", "la", "el", "los", "las", "en", "y", "para", "por", "con", "un", "una"];
+    const stopWords = ["de", "del", "la", "el", "los", "las", "en", "y", "para", "por", "con", "un", "una", "al", "a"];
 
     const initials = name
       .trim()
