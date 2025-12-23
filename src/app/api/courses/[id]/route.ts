@@ -144,16 +144,31 @@ export async function DELETE(
 
     const currentUser = await requireRole("ADMIN");
     const { id } = await params;
+    
+    console.log("[DELETE-COURSE] Intentando eliminar curso:", id);
+    
     const doc = await adminDb.collection("courses").doc(id).get();
 
     if (!doc.exists) {
+      console.log("[DELETE-COURSE] ❌ Curso no encontrado:", id);
       return NextResponse.json(
         { error: "Curso no encontrado" },
         { status: 404 }
       );
     }
 
+    const courseData = doc.data();
+    console.log("[DELETE-COURSE] Curso encontrado:", {
+      id,
+      name: courseData?.name,
+      courseId: courseData?.id
+    });
+
     // Contar certificados asociados al curso
+    // El ID del curso puede ser "NAEF-2-2019" o "NAEF", necesitamos extraer el código base
+    const baseCode = id.split("-")[0]; // Extraer solo el código base (ej: "NAEF" de "NAEF-2-2019")
+    console.log("[DELETE-COURSE] Buscando certificados con código base:", baseCode);
+    
     const certificatesSnapshot = await adminDb
       .collection("certificates")
       .get();
@@ -161,8 +176,12 @@ export async function DELETE(
     const associatedCertificates = certificatesSnapshot.docs.filter((certDoc) => {
       const certData = certDoc.data();
       const certCourseId = certData.courseId || "";
-      // Verificar si el courseId del certificado empieza con el código del curso
-      return certCourseId.startsWith(id + "-");
+      // Verificar si el courseId del certificado empieza con el código base del curso
+      const matches = certCourseId.startsWith(baseCode + "-");
+      if (matches) {
+        console.log("[DELETE-COURSE] Certificado asociado encontrado:", certCourseId);
+      }
+      return matches;
     });
 
     const certificateCount = associatedCertificates.length;
