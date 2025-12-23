@@ -132,4 +132,112 @@ export async function PUT(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
+    if (!rateLimitResult.success) {
+      return rateLimitResponse(rateLimitResult.resetTime);
+    }
+
+    const currentUser = await requireRole("MASTER_ADMIN");
+    const { id } = await params;
+    const doc = await adminDb.collection("courses").doc(id).get();
+
+    if (!doc.exists) {
+      return NextResponse.json(
+        { error: "Curso no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    // Contar certificados asociados al curso
+    const certificatesSnapshot = await adminDb
+      .collection("certificates")
+      .get();
+
+    const associatedCertificates = certificatesSnapshot.docs.filter((certDoc) => {
+      const certData = certDoc.data();
+      const certCourseId = certData.courseId || "";
+      // Verificar si el courseId del certificado empieza con el código del curso
+      return certCourseId.startsWith(id + "-");
+    });
+
+    const certificateCount = associatedCertificates.length;
+
+    // Eliminar todos los certificados asociados
+    if (certificateCount > 0) {
+      console.log(`[DELETE-COURSE] Eliminando ${certificateCount} certificados asociados al curso ${id}`);
+      
+      const batch = adminDb.batch();
+      associatedCertificates.forEach((certDoc) => {
+        batch.delete(certDoc.ref);
+      });
+      await batch.commit();
+      
+      console.log(`[DELETE-COURSE] ✅ ${certificateCount} certificados eliminados`);
+    }
+
+    // Obtener datos del curso antes de eliminar para el historial
+    const courseData = doc.data();
+    const courseName = courseData?.name || id;
+
+    // Eliminar el curso
+    await adminDb.collection("courses").doc(id).delete();
+
+    console.log(`[DELETE-COURSE] ✅ Curso ${id} eliminado`);
+
+    // Registrar en historial unificado
+    await adminDb.collection("systemHistory").add({
+      action: "deleted",
+      entityType: "course",
+      entityId: id,
+      entityName: courseName,
+      performedBy: currentUser.email,
+      timestamp: new Date().toISOString(),
+      details: {
+        deletedCertificates: certificateCount,
+        courseType: courseData?.courseType,
+        year: courseData?.year,
+      },
+    });
+
+    return NextResponse.json(
+      { 
+        success: true, 
+        message: "Curso eliminado correctamente",
+        deletedCertificates: certificateCount
+      },
+      {
+        headers: {
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+        },
+      }
+    );
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "UNAUTHORIZED") {
+        return NextResponse.json(
+          { error: "No autenticado" },
+          { status: 401 }
+        );
+      }
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          { error: "No tienes permisos para eliminar cursos. Solo MASTER_ADMIN puede eliminar cursos." },
+          { status: 403 }
+        );
+      }
+    }
+
+    console.error("[COURSE-DELETE] Error eliminando curso:", error);
+    return NextResponse.json(
+      { error: "Error al eliminar el curso" },
+      { status: 500 }
+    );
+  }
+}
+
 
