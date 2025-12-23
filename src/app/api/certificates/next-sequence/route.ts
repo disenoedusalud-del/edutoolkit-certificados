@@ -5,16 +5,13 @@ import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Rate limiting
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
     if (!rateLimitResult.success) {
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    // 2. Verificar autenticación
     await requireRole("VIEWER");
 
-    // 3. Obtener parámetros
     const { searchParams } = new URL(request.url);
     const courseCode = searchParams.get("courseCode");
     const yearParam = searchParams.get("year");
@@ -22,13 +19,26 @@ export async function GET(request: NextRequest) {
 
     if (!courseCode || !yearParam) {
       return NextResponse.json(
-        { error: "courseCode y year son requeridos" },
+        { error: "Se requieren courseCode y year" },
         { status: 400 }
       );
     }
 
     const year = parseInt(yearParam, 10);
+    if (isNaN(year)) {
+      return NextResponse.json(
+        { error: "El año debe ser un número válido" },
+        { status: 400 }
+      );
+    }
+
     const edition = editionParam ? parseInt(editionParam, 10) : null;
+    if (editionParam && (isNaN(edition!) || edition! <= 0)) {
+      return NextResponse.json(
+        { error: "La edición debe ser un número válido mayor que 0" },
+        { status: 400 }
+      );
+    }
 
     console.log("[next-sequence] Parámetros recibidos:", {
       courseCode,
@@ -37,37 +47,31 @@ export async function GET(request: NextRequest) {
       edition
     });
 
-    // 4. Construir el prefijo del courseId
-    // Si hay edición: CODIGO-EDICION-AÑO-NUMERO (ej: NAEF-2-2019-01)
-    // Si no hay edición: CODIGO-AÑO-NUMERO (ej: NAEF-2019-01)
+    // Construir el prefijo para buscar certificados
     const prefix = edition 
       ? `${courseCode}-${edition}-${year}-`
       : `${courseCode}-${year}-`;
 
-    // 5. Buscar certificados existentes con ese prefijo
-    // Usar un rango más amplio para asegurar que encontremos todos los certificados
+    console.log("[next-sequence] Prefijo de búsqueda:", prefix);
+
+    // Buscar todos los certificados que empiecen con este prefijo
     const certificatesSnapshot = await adminDb
       .collection("certificates")
       .where("courseId", ">=", prefix)
       .where("courseId", "<", prefix + "\uf8ff")
       .get();
 
-    console.log("[next-sequence] Certificados encontrados con prefijo:", {
-      prefix,
-      count: certificatesSnapshot.docs.length,
-      courseIds: certificatesSnapshot.docs.map(d => d.data().courseId)
-    });
+    console.log("[next-sequence] Certificados encontrados:", certificatesSnapshot.docs.length);
 
-    // 6. Extraer números secuenciales existentes
+    // Escapar caracteres especiales para regex
     const escapedCourseCode = courseCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    
-    // Patrón regex según si hay edición o no
+
+    // Patrón regex para extraer el número secuencial
     const pattern = edition
       ? new RegExp(`^${escapedCourseCode}-${edition}-${year}-(\\d+)$`)
       : new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`);
 
-    console.log("[next-sequence] Patrón regex:", pattern.toString());
-
+    // Extraer todos los números existentes
     const existingNumbers = certificatesSnapshot.docs
       .map((doc) => {
         const data = doc.data() as any;
@@ -81,7 +85,7 @@ export async function GET(request: NextRequest) {
       })
       .filter((num) => num > 0);
 
-    // 7. Calcular el siguiente número
+    // Calcular el siguiente número
     const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
     const nextNumber = maxNumber + 1;
 
@@ -93,7 +97,7 @@ export async function GET(request: NextRequest) {
       nextNumber
     });
 
-    // 8. Construir el formattedId
+    // Construir el formattedId
     const formattedId = edition
       ? `${courseCode}-${edition}-${year}-${nextNumber.toString().padStart(2, "0")}`
       : `${courseCode}-${year}-${nextNumber.toString().padStart(2, "0")}`;
