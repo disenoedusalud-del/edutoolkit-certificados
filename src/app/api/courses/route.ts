@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ id: documentId, ...courseData }, {
+    return NextResponse.json({ ...courseData, id: documentId }, {
       status: 201,
       headers: {
         "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
