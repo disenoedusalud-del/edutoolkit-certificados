@@ -52,14 +52,14 @@ export function validateRequiredString(
       errors: [`${fieldName} es requerido y no puede estar vacío`],
     };
   }
-  
+
   if (value.length > 500) {
     return {
       valid: false,
       errors: [`${fieldName} no puede exceder 500 caracteres`],
     };
   }
-  
+
   return { valid: true, errors: [] };
 }
 
@@ -207,9 +207,9 @@ export function validateCourse(data: unknown): ValidationResult {
   if (!course.id || typeof course.id !== "string") {
     errors.push("El código del curso es requerido");
   } else {
-    const codeRegex = /^[A-Z]{1,20}$/;
+    const codeRegex = /^[A-Z0-9\-]{1,20}$/;
     if (!codeRegex.test(course.id)) {
-      errors.push("El código debe tener 1-20 caracteres (solo letras mayúsculas)");
+      errors.push("El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones)");
     }
   }
 
@@ -218,7 +218,7 @@ export function validateCourse(data: unknown): ValidationResult {
   if (!nameResult.valid) errors.push(...nameResult.errors);
 
   // Validar courseType
-  const validTypes = ["Curso", "Diplomado", "Webinar", "Taller", "Seminario"];
+  const validTypes = ["Curso", "Diplomado", "Webinar", "Taller", "Seminario", "Congreso", "Simposio"];
   if (course.courseType && !validTypes.includes(course.courseType)) {
     errors.push(`Tipo de curso inválido. Debe ser uno de: ${validTypes.join(", ")}`);
   }
@@ -231,6 +231,19 @@ export function validateCourse(data: unknown): ValidationResult {
   // Validar status
   if (course.status && !["active", "archived"].includes(course.status)) {
     errors.push("El estado debe ser 'active' o 'archived'");
+  }
+
+  // Validar mes si está presente
+  if (course.month !== null && course.month !== undefined) {
+    const monthNum = Number(course.month);
+    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+      errors.push("El mes debe ser un número entre 1 y 12");
+    }
+
+    // Si hay mes, debe haber edición
+    if (course.edition === null || course.edition === undefined) {
+      errors.push("Si se especifica un mes, también debe especificarse una edición");
+    }
   }
 
   // Validar edition si está presente

@@ -38,27 +38,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Si solo hay limit sin page, y el limit es alto (>= 1000), retornar todos
-    if (!pageParam && limitParam) {
-      const limit = parseInt(limitParam, 10);
-      if (!isNaN(limit) && limit >= 1000) {
-        logger.info("Cargando todos los certificados (limit >= 1000 sin page)", { limit });
-        const snapshot = await adminDb.collection("certificates").get();
-        const data = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-        
-        logger.info(`Certificados cargados: ${data.length} totales`);
-
-        return NextResponse.json(data, {
-          headers: {
-            "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
-          },
-        });
-      }
-    }
-
     // 4. Paginación: parsear y validar parámetros
     const page = Math.max(1, parseInt(pageParam || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(limitParam || "50", 10))); // Max 100, default 50
@@ -70,7 +49,7 @@ export async function GET(request: NextRequest) {
     // 6. Obtener documentos paginados
     // Usar el mismo patrón que en /api/courses
     const certificatesRef = adminDb.collection("certificates");
-    
+
     // Intentar ordenar por createdAt, pero si falla (por falta de índice o campo), obtener sin ordenar
     try {
       const orderedQuery = certificatesRef.orderBy("createdAt", "desc");
@@ -101,29 +80,29 @@ export async function GET(request: NextRequest) {
       );
     } catch (orderError: any) {
       // Si falla el ordenamiento, obtener sin ordenar y paginar en memoria
-      logger.warn("No se pudo ordenar certificados, obteniendo sin orden", { 
-        error: orderError.message, 
-        endpoint: "/api/certificates" 
+      logger.warn("No se pudo ordenar certificados, obteniendo sin orden", {
+        error: orderError.message,
+        endpoint: "/api/certificates"
       });
-      
+
       const allSnapshot = await adminDb.collection("certificates").get();
       const allDocs = allSnapshot.docs.map((d) => ({
         id: d.id,
         ...d.data(),
-      })) as Array<{ id: string; createdAt?: string; [key: string]: any }>;
-      
+      })) as Array<{ id: string; createdAt?: string;[key: string]: any }>;
+
       // Ordenar en memoria por createdAt si existe
       allDocs.sort((a, b) => {
         const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return bDate - aDate; // Descendente
       });
-      
+
       // Paginar en memoria
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
       const data = allDocs.slice(startIndex, endIndex);
-      
+
       const totalPages = Math.ceil(total / limit);
 
       return NextResponse.json(
@@ -187,7 +166,7 @@ export async function POST(request: NextRequest) {
     // 3. Validar entrada
     const body = await request.json();
     const validation = validateCertificate(body);
-    
+
     if (!validation.valid) {
       return validationErrorResponse(validation.errors);
     }
@@ -214,52 +193,117 @@ export async function POST(request: NextRequest) {
       marketingConsent = false,
     } = body;
 
-    // El courseId ya viene generado correctamente desde el frontend con la edición incluida
-    // No necesitamos recalcularlo aquí, solo validarlo
-    let finalCourseId = courseId.trim();
-    
-    // Validar que el courseId tenga el formato correcto
-    // Puede ser: CODIGO-AÑO-NUMERO o CODIGO-EDICION-AÑO-NUMERO
-    const courseIdPatternWithEdition = /^(.+)-(\d+)-(\d{4})-(\d+)$/; // CODIGO-EDICION-AÑO-NUMERO
-    const courseIdPatternWithoutEdition = /^(.+)-(\d{4})-(\d+)$/; // CODIGO-AÑO-NUMERO
-    
-    const matchWithEdition = finalCourseId.match(courseIdPatternWithEdition);
-    const matchWithoutEdition = finalCourseId.match(courseIdPatternWithoutEdition);
-    
-    // Si el courseId no tiene el formato correcto, usar el que viene del frontend tal cual
-    // El frontend ya se encarga de generar el ID correcto con la edición
-    if (!matchWithEdition && !matchWithoutEdition) {
-      console.warn("[POST-certificates] courseId no tiene formato esperado, usando tal cual:", finalCourseId);
-    }
+    // Normalizar nombre: Trim y Title Case
+    const normalizedFullName = fullName.trim().replace(/\w\S*/g, (txt: string) => {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
 
-    const certificateData: Omit<Certificate, "id"> = {
-      fullName: fullName.trim(),
-      courseName: courseName.trim(),
-      courseId: finalCourseId,
-      courseType: courseType.trim(),
-      year: Number(year),
-      month: month ? Number(month) : null,
-      origin,
-      email: email ? email.trim().toLowerCase() : null,
-      phone: phone ? phone.trim() : null,
-      contactSource,
-      driveFileId,
-      deliveryStatus,
-      deliveryDate,
-      deliveredTo,
-      physicalLocation,
-      folioCode,
-      emailSent: Boolean(emailSent),
-      whatsappSent: Boolean(whatsappSent),
-      marketingConsent: Boolean(marketingConsent),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Ejecutar lógica crítica dentro de una transacción para evitar duplicados y condiciones de carrera
+    const result = await adminDb.runTransaction(async (transaction) => {
+      let finalCourseId = courseId.trim();
+      const courseIdPattern = /^(.+)-(\d{4})-(\d+)$/;
+      const match = finalCourseId.match(courseIdPattern);
 
-    const docRef = await adminDb.collection("certificates").add(certificateData);
+      // Si el courseId tiene formato de secuencia (ej: CURSO-2023-01), recalculamos la secuencia
+      // para asegurar que sea correcta y única
+      if (match) {
+        const [, courseCode, courseYear,] = match;
+        const courseYearNum = parseInt(courseYear);
+
+        // Solo recalcular si el año coincide con el año del certificado
+        if (courseYearNum === year) {
+          const prefix = `${courseCode}-${year}-`;
+
+          // 1. Buscamos certificados del mismo curso (por prefijo)
+          const certificatesQuery = adminDb
+            .collection("certificates")
+            .where("courseId", ">=", prefix)
+            .where("courseId", "<", prefix + "\uf8ff");
+
+          const certificatesSnapshot = await transaction.get(certificatesQuery);
+
+          // 2. VERIFICACIÓN DE DUPLICADOS:
+          // Chequear si ya existe un certificado para esta persona en este curso
+          // Filtramos en memoria es eficiente porque un curso no tendrá millones de alumnos
+          const duplicateCert = certificatesSnapshot.docs.find(doc => {
+            const data = doc.data();
+            return data.fullName.toLowerCase() === normalizedFullName.toLowerCase();
+          });
+
+          if (duplicateCert) {
+            throw new Error(`DUPLICATE: Ya existe un certificado para "${normalizedFullName}" en este curso (ID: ${duplicateCert.id})`);
+          }
+
+          const escapedCourseCode = courseCode.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+
+          // 3. Calcular siguiente número de secuencia
+          const existingNumbers = certificatesSnapshot.docs
+            .map((doc) => {
+              const data = doc.data() as any;
+              const certCourseId = data.courseId || "";
+              const certMatch = certCourseId.match(
+                new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`)
+              );
+              return certMatch ? parseInt(certMatch[1]) : 0;
+            })
+            .filter((num) => num > 0);
+
+          const maxNumber =
+            existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+          const nextNumber = maxNumber + 1;
+
+          finalCourseId = `${courseCode}-${year}-${nextNumber
+            .toString()
+            .padStart(2, "0")}`;
+        }
+      } else {
+        // Si el courseId NO tiene formato de secuencia (ej: es un código manual o nuevo),
+        // Aún así deberíamos verificar duplicados por nombre + courseId exacto
+        const duplicatesQuery = adminDb.collection("certificates")
+          .where("courseId", "==", finalCourseId)
+          .where("fullName", "==", normalizedFullName);
+
+        const duplicatesSnapshot = await transaction.get(duplicatesQuery);
+        if (!duplicatesSnapshot.empty) {
+          throw new Error(`DUPLICATE: Ya existe un certificado para "${normalizedFullName}" con el ID de curso "${finalCourseId}"`);
+        }
+      }
+
+      const certificateData: Omit<Certificate, "id"> = {
+        fullName: normalizedFullName, // Usar nombre normalizado
+        courseName: courseName.trim(),
+        courseId: finalCourseId,
+        courseType: courseType.trim(),
+        year: Number(year),
+        month: month ? Number(month) : null,
+        origin,
+        email: email ? email.trim().toLowerCase() : null,
+        phone: phone ? phone.trim() : null,
+        contactSource,
+        driveFileId,
+        deliveryStatus,
+        deliveryDate,
+        deliveredTo,
+        physicalLocation,
+        folioCode,
+        emailSent: Boolean(emailSent),
+        whatsappSent: Boolean(whatsappSent),
+        marketingConsent: Boolean(marketingConsent),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const newDocRef = adminDb.collection("certificates").doc();
+      transaction.set(newDocRef, certificateData);
+
+      return { id: newDocRef.id, ...certificateData };
+    });
 
     return NextResponse.json(
-      { id: docRef.id, ...certificateData },
+      result,
       {
         status: 201,
         headers: {
@@ -269,6 +313,12 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     if (error instanceof Error) {
+      if (error.message.startsWith("DUPLICATE:")) {
+        return NextResponse.json(
+          { error: error.message.replace("DUPLICATE: ", "") },
+          { status: 409 } // 409 Conflict
+        );
+      }
       if (error.message === "UNAUTHORIZED") {
         return NextResponse.json(
           { error: "No autenticado" },

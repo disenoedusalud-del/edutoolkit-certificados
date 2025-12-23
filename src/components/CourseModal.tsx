@@ -30,19 +30,6 @@ export default function CourseModal({
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Debug: verificar que el curso se está pasando correctamente
-  useEffect(() => {
-    if (course) {
-      console.log("[CourseModal] Curso recibido para edición:", {
-        id: course.id,
-        name: course.name,
-        hasId: !!course.id,
-      });
-    } else {
-      console.log("[CourseModal] Modo creación - no hay curso");
-    }
-  }, [course]);
-
   useEffect(() => {
     if (course) {
       // Modo edición: cargar datos del curso
@@ -71,6 +58,34 @@ export default function CourseModal({
     setFieldErrors({});
   }, [course]);
 
+  const generateAutoId = (name: string, year: number, edition: number | null) => {
+    // Palabras a ignorar en el acrónimo
+    const stopWords = ["de", "del", "la", "el", "los", "las", "en", "y", "para", "por", "con", "un", "una"];
+
+    const initials = name
+      .trim()
+      .split(/\s+/) // Dividir por espacios
+      .filter((word) => word.length > 0 && !stopWords.includes(word.toLowerCase())) // Ignorar palabras cortas/conectores
+      .map((word) => word.charAt(0)) // Tomar primera letra
+      .join("")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "") // Solo letras y números
+      .substring(0, 8); // Máximo 8 caracteres para el prefijo
+
+    let newId = "";
+    if (initials.length > 0) {
+      newId = `${initials}-${year}`;
+    } else if (name.length > 0) {
+      newId = `${name.charAt(0).toUpperCase()}-${year}`;
+    }
+
+    if (edition && newId) {
+      newId += `-${edition}`;
+    }
+
+    return newId;
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
@@ -81,11 +96,33 @@ export default function CourseModal({
     if (!formData.id.trim()) {
       errors.id = "El código del curso es requerido";
     } else {
-      // Validar formato: solo letras mayúsculas, 1-20 caracteres
-      const codeRegex = /^[A-Z]{1,20}$/;
+      // Validar formato: letras mayúsculas, números y guiones, 1-20 caracteres
+      const codeRegex = /^[A-Z0-9\-]{1,20}$/;
       if (!codeRegex.test(formData.id.trim())) {
         errors.id =
-          "El código debe tener 1-20 caracteres (solo letras mayúsculas), sin espacios";
+          "El código debe tener 1-20 caracteres (letras mayúsculas, números y guiones), sin espacios";
+      }
+    }
+
+    // Validar que si hay mes, también haya edición
+    if (formData.month !== null && formData.month !== undefined) {
+      if (formData.edition === null || formData.edition === undefined) {
+        errors.edition = "Si se especifica un mes, también debe especificarse una edición";
+      }
+    }
+
+    // Validar mes si está presente
+    if (formData.month !== null && formData.month !== undefined) {
+      const monthNum = typeof formData.month === "number" ? formData.month : parseInt(String(formData.month));
+      if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        errors.month = "El mes debe ser un número entre 1 y 12";
+      }
+    }
+
+    // Validar edición si está presente
+    if (formData.edition !== null && formData.edition !== undefined) {
+      if (typeof formData.edition !== "number" || formData.edition < 1) {
+        errors.edition = "La edición debe ser un número mayor a 0";
       }
     }
 
@@ -106,23 +143,10 @@ export default function CourseModal({
     setLoading(true);
 
     try {
-      // Validar que si estamos editando, el curso existe y tiene ID
-      if (course && !course.id) {
-        throw new Error("Error: El curso a editar no tiene un ID válido");
-      }
-
-      const url = course && course.id
+      const url = course
         ? `/api/courses/${course.id}`
         : "/api/courses";
-      const method = course && course.id ? "PUT" : "POST";
-
-      console.log("[CourseModal] Guardando curso:", {
-        isEdit: !!course,
-        courseId: course?.id,
-        url,
-        method,
-        formDataId: formData.id,
-      });
+      const method = course ? "PUT" : "POST";
 
       const payload: any = {
         name: formData.name.trim(),
@@ -134,15 +158,14 @@ export default function CourseModal({
       };
 
       // Si es un curso nuevo, incluir id
-      if (!course || !course.id) {
-        if (!formData.id.trim()) {
-          throw new Error("El código del curso es requerido");
-        }
+      if (!course) {
         payload.id = formData.id.trim().toUpperCase();
       }
 
-      // Nota: En modo edición, el código no se puede cambiar (está deshabilitado en el formulario)
-      // Si en el futuro se necesita cambiar el código, se puede agregar una funcionalidad especial
+      // Si es edición y el código cambió, incluir newId para actualizar
+      if (course && formData.id.trim().toUpperCase() !== course.id) {
+        payload.newId = formData.id.trim().toUpperCase();
+      }
 
       const response = await fetch(url, {
         method,
@@ -158,19 +181,19 @@ export default function CourseModal({
       }
 
       const result = await response.json();
-      
+
       toast.success(
         course
           ? "Curso actualizado correctamente"
           : "Curso creado correctamente"
       );
-      
+
       // Pasar el ID del curso creado (o el actualizado si cambió el código)
       const courseId = result.id || formData.id.trim().toUpperCase();
-      
+
       // Llamar a onSuccess primero para que recargue los cursos
       await onSuccess(course ? undefined : courseId);
-      
+
       // Cerrar el modal después de que se complete la recarga
       onClose();
     } catch (err: any) {
@@ -205,6 +228,8 @@ export default function CourseModal({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
               Nombre del Curso <span className="text-red-500">*</span>
@@ -214,7 +239,15 @@ export default function CourseModal({
               required
               value={formData.name}
               onChange={(e) => {
-                setFormData({ ...formData, name: e.target.value });
+                const newName = e.target.value;
+                setFormData((prev) => {
+                  const updated = { ...prev, name: newName };
+                  if (!course) {
+                    updated.id = generateAutoId(updated.name, updated.year, updated.edition);
+                  }
+                  return updated;
+                });
+
                 if (fieldErrors.name) {
                   setFieldErrors((prev) => {
                     const newErrors = { ...prev };
@@ -223,11 +256,10 @@ export default function CourseModal({
                   });
                 }
               }}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                fieldErrors.name
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                  : "border-theme"
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${fieldErrors.name
+                ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                : "border-theme"
+                }`}
               placeholder="Ej: Lactancia Materna"
             />
             {fieldErrors.name && (
@@ -235,53 +267,7 @@ export default function CourseModal({
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">
-              Código Corto (1-20 caracteres) <span className="text-red-500">*</span>
-            </label>
-            {course ? (
-              // En modo edición: mostrar el código como texto (no editable)
-              <div className="w-full px-3 py-2 border border-theme rounded-lg bg-theme-tertiary text-text-primary font-mono">
-                {formData.id}
-              </div>
-            ) : (
-              // En modo creación: permitir editar
-              <>
-                <input
-                  type="text"
-                  required
-                  value={formData.id}
-                  onChange={(e) => {
-                    // Convertir automáticamente a mayúsculas, eliminar espacios, solo letras
-                    const value = e.target.value.toUpperCase().replace(/\s/g, "").replace(/[^A-Z]/g, "");
-                    setFormData({ ...formData, id: value });
-                    if (fieldErrors.id) {
-                      setFieldErrors((prev) => {
-                        const newErrors = { ...prev };
-                        delete newErrors.id;
-                        return newErrors;
-                      });
-                    }
-                  }}
-                  maxLength={20}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono ${
-                    fieldErrors.id
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                      : "border-theme"
-                  }`}
-                  placeholder="Ej: LM, ND, ECG, LM-2025, ND-1"
-                />
-                {fieldErrors.id && (
-                  <p className="text-red-600 text-xs mt-1">{fieldErrors.id}</p>
-                )}
-              </>
-            )}
-            <p className="text-xs text-text-secondary mt-1">
-              {course 
-                ? "El código del curso no se puede cambiar después de crearlo."
-                : "Letras mayúsculas (A-Z), números (0-9) y guiones (-). Sin espacios. Mínimo 1, máximo 20 caracteres."}
-            </p>
-          </div>
+
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
@@ -300,15 +286,14 @@ export default function CourseModal({
               <option value="Webinar">Webinar</option>
               <option value="Taller">Taller</option>
               <option value="Seminario">Seminario</option>
+              <option value="Congreso">Congreso</option>
+              <option value="Simposio">Simposio</option>
             </select>
-            <p className="text-xs text-text-secondary mt-1">
-              Selecciona el tipo de curso que se aplicará a todos los certificados de este curso.
-            </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Año <span className="text-red-500">*</span>
+              Año {course && <span className="text-xs text-orange-600 font-normal">(No editable)</span>}
             </label>
             <input
               type="number"
@@ -316,30 +301,58 @@ export default function CourseModal({
               min="2000"
               max={new Date().getFullYear() + 1}
               value={formData.year}
+              disabled={!!course}
               onChange={(e) => {
-                setFormData({ ...formData, year: parseInt(e.target.value) || new Date().getFullYear() });
+                const newYear = parseInt(e.target.value) || new Date().getFullYear();
+                setFormData((prev) => {
+                  const updated = { ...prev, year: newYear };
+                  if (!course) {
+                    updated.id = generateAutoId(updated.name, updated.year, updated.edition);
+                  }
+                  return updated;
+                });
               }}
-              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+              className={`w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary ${course ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+                }`}
               placeholder="Ej: 2025"
             />
             <p className="text-xs text-text-secondary mt-1">
-              Año del curso. Se usará para generar los IDs de los certificados.
+              {course
+                ? "El año no se puede editar para mantener la integridad con la carpeta de archivos en Drive."
+                : "Año del curso. Se usará para generar los IDs y la estructura de carpetas."}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Mes (opcional)
+              Mes {formData.month ? <span className="text-red-500">*</span> : "(opcional)"} {course && formData.month && <span className="text-xs text-orange-600 font-normal">(No editable)</span>}
             </label>
             <select
               value={formData.month || ""}
+              disabled={!!course && formData.month !== null}
               onChange={(e) => {
                 const value = e.target.value === "" ? null : parseInt(e.target.value);
                 setFormData({ ...formData, month: value });
+                // Si se elimina el mes, también eliminar la edición
+                if (value === null && formData.edition !== null) {
+                  setFormData((prev) => ({ ...prev, month: null, edition: null }));
+                }
+                // Limpiar error de edición si se elimina el mes
+                if (value === null && fieldErrors.edition) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.edition;
+                    return newErrors;
+                  });
+                }
               }}
-              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary ${fieldErrors.month
+                ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                : "border-theme"
+                } ${course && formData.month !== null ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
             >
               <option value="">Seleccionar mes...</option>
+              {/* Opciones de meses */}
               <option value="1">Enero</option>
               <option value="2">Febrero</option>
               <option value="3">Marzo</option>
@@ -353,28 +366,54 @@ export default function CourseModal({
               <option value="11">Noviembre</option>
               <option value="12">Diciembre</option>
             </select>
+            {fieldErrors.month && (
+              <p className="text-red-600 text-xs mt-1">{fieldErrors.month}</p>
+            )}
             <p className="text-xs text-text-secondary mt-1">
-              Mes del curso (opcional). Útil para organizar cursos mensuales.
+              {course && formData.month
+                ? "El mes define la estructura y no se puede editar."
+                : "Mes del curso (opcional)."}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1">
-              Edición (opcional)
+              Edición {formData.month ? <span className="text-red-500">*</span> : "(opcional)"}
             </label>
             <input
               type="number"
               min="1"
+              required={formData.month !== null && formData.month !== undefined}
               value={formData.edition || ""}
               onChange={(e) => {
                 const value = e.target.value === "" ? null : parseInt(e.target.value);
-                setFormData({ ...formData, edition: value });
+                setFormData((prev) => {
+                  const updated = { ...prev, edition: value };
+                  if (!course) {
+                    updated.id = generateAutoId(updated.name, updated.year, updated.edition);
+                  }
+                  return updated;
+                });
+                // Limpiar error si se completa
+                if (value !== null && fieldErrors.edition) {
+                  setFieldErrors((prev) => {
+                    const newErrors = { ...prev };
+                    delete newErrors.edition;
+                    return newErrors;
+                  });
+                }
               }}
-              className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary ${fieldErrors.edition
+                ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                : "border-theme"
+                }`}
               placeholder="Ej: 1, 2, 3, 4..."
             />
+            {fieldErrors.edition && (
+              <p className="text-red-600 text-xs mt-1">{fieldErrors.edition}</p>
+            )}
             <p className="text-xs text-text-secondary mt-1">
-              Número de edición del curso (opcional). Ej: 1 para primera edición, 2 para segunda, etc.
+              Número de edición del curso. {formData.month ? "Requerido cuando se especifica un mes." : "Opcional. Ej: 1 para primera edición, 2 para segunda, etc."}
             </p>
           </div>
 
@@ -398,6 +437,33 @@ export default function CourseModal({
             </p>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">
+              Código Corto (ID) <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                required
+                value={formData.id}
+                onChange={(e) => {
+                  // Forzar mayúsculas y caracteres permitidos
+                  const value = e.target.value.toUpperCase().replace(/[^A-Z0-9\-]/g, "");
+                  setFormData((prev) => ({ ...prev, id: value }));
+                }}
+                maxLength={20}
+                className={`flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono tracking-wider ${fieldErrors.id
+                  ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                  : "border-theme"
+                  }`}
+                placeholder="Ej: LM-2025"
+              />
+            </div>
+            <p className="text-xs text-text-secondary mt-1">
+              Único para cada curso. Se usa en los certificados. (Ej: LM-2025)
+            </p>
+          </div>
+
           <div className="flex gap-4 justify-end pt-4 border-t">
             <button
               type="button"
@@ -415,8 +481,8 @@ export default function CourseModal({
               {loading
                 ? "Guardando..."
                 : course
-                ? "Actualizar"
-                : "Crear"}{" "}
+                  ? "Actualizar"
+                  : "Crear"}{" "}
               Curso
             </button>
           </div>
