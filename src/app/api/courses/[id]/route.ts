@@ -199,8 +199,7 @@ export async function DELETE(
       console.log(`[DELETE-COURSE] ✅ ${certificateCount} certificados eliminados`);
     }
 
-    // Obtener datos del curso antes de eliminar para el historial
-    const courseData = doc.data();
+    // Obtener datos del curso antes de eliminar para el historial (courseData ya está definido arriba)
     const courseName = courseData?.name || id;
 
     // Eliminar el curso
