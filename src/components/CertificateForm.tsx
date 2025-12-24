@@ -60,6 +60,42 @@ export default function CertificateForm({
     selectedCourseId: initialCourseId || "", // ID del curso seleccionado del SELECT
   });
 
+  // Función helper para extraer el prefijo base del curso (sin año ni edición)
+  const extractCoursePrefix = (courseId: string): string => {
+    // Buscar el primer patrón que sea un año (4 dígitos) o un número después de un guión
+    // Ejemplos: "NAEF-2019-1" → "NAEF", "NAEF-2019" → "NAEF", "NAEF" → "NAEF"
+    const yearMatch = courseId.match(/^([^-]+?)(?:-\d{4}|$)/);
+    if (yearMatch) {
+      return yearMatch[1];
+    }
+    // Si no hay patrón de año, devolver todo hasta el primer guión o todo si no hay guiones
+    const firstDashIndex = courseId.indexOf('-');
+    return firstDashIndex > 0 ? courseId.substring(0, firstDashIndex) : courseId;
+  };
+
+  const generateCourseId = async (courseId: string, year: number, edition: number | null = null): Promise<string> => {
+    // Extraer solo el prefijo base del curso (sin año ni edición)
+    const courseCode = extractCoursePrefix(courseId);
+    
+    // Obtener el siguiente número secuencial del servidor
+    try {
+      let url = `/api/certificates/next-sequence?courseCode=${encodeURIComponent(courseCode)}&year=${year}`;
+      if (edition !== null && edition !== undefined) {
+        url += `&edition=${edition}`;
+      }
+
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        return data.formattedId || (edition ? `${courseCode}-${edition}-${year}-01` : `${courseCode}-${year}-01`);
+      }
+    } catch (error) {
+      console.error("Error obteniendo siguiente número secuencial:", error);
+    }
+    // Fallback: usar 01 si hay error
+    return edition ? `${courseCode}-${edition}-${year}-01` : `${courseCode}-${year}-01`;
+  };
+
   // Cargar cursos activos
   useEffect(() => {
     const loadCourses = async () => {
@@ -112,29 +148,11 @@ export default function CertificateForm({
           }
           
           if (matchingCourse) {
-            let autoId = matchingCourse.id;
             const courseYear = matchingCourse.year || new Date().getFullYear();
             const courseEdition = matchingCourse.edition || null;
-
-            try {
-              let url = `/api/certificates/next-sequence?courseCode=${encodeURIComponent(matchingCourse.id)}&year=${courseYear}`;
-              if (courseEdition) url += `&edition=${courseEdition}`;
-              const idRes = await fetch(url);
-              if (idRes.ok) {
-                const idData = await idRes.json();
-                autoId = idData.formattedId;
-              } else {
-                // Fallback format
-                autoId = courseEdition 
-                  ? `${matchingCourse.id}-${courseEdition}-${courseYear}-01` 
-                  : `${matchingCourse.id}-${courseYear}-01`;
-              }
-            } catch (e) {
-              console.error("Error generando ID:", e);
-              autoId = courseEdition 
-                ? `${matchingCourse.id}-${courseEdition}-${courseYear}-01` 
-                : `${matchingCourse.id}-${courseYear}-01`;
-            }
+            
+            // Generar el ID usando la función que extrae el prefijo base
+            const autoId = await generateCourseId(matchingCourse.id, courseYear, courseEdition);
 
             setFormData((prev) => ({
               ...prev,
@@ -164,26 +182,6 @@ export default function CertificateForm({
 
     loadCourses();
   }, [certificate, initialCourseId]); // Agregar initialCourseId a las dependencias
-
-  const generateCourseId = async (courseCode: string, year: number, edition: number | null = null): Promise<string> => {
-    // Obtener el siguiente número secuencial del servidor
-    try {
-      let url = `/api/certificates/next-sequence?courseCode=${encodeURIComponent(courseCode)}&year=${year}`;
-      if (edition !== null && edition !== undefined) {
-        url += `&edition=${edition}`;
-      }
-
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        return data.formattedId || (edition ? `${courseCode}-${edition}-${year}-01` : `${courseCode}-${year}-01`);
-      }
-    } catch (error) {
-      console.error("Error obteniendo siguiente número secuencial:", error);
-    }
-    // Fallback: usar 01 si hay error
-    return edition ? `${courseCode}-${edition}-${year}-01` : `${courseCode}-${year}-01`;
-  };
 
   const handleCourseSelect = async (courseId: string) => {
     // Siempre actualizar el selectedCourseId primero para que el SELECT se actualice
