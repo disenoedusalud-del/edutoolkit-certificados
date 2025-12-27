@@ -356,7 +356,17 @@ export async function POST(request: NextRequest) {
 
         if (!yearFolderResult.ok || !yearFolderResult.folderId) {
           console.error("[CREATE-COURSE] ⚠️ Error obteniendo/creando carpeta del año:", yearFolderResult.error);
-          // Continuar sin carpeta del año, intentar crear directamente en la carpeta principal
+          // Intentar crear directamente en la carpeta principal como fallback
+          const courseFolderName = `${id} - ${name.trim()}`;
+          const courseFolderResult = await getOrCreateFolderInAppsScriptDrive({
+            folderName: courseFolderName,
+            parentFolderId: parentFolderId,
+          });
+
+          if (courseFolderResult.ok && courseFolderResult.folderId) {
+            driveFolderId = courseFolderResult.folderId;
+            console.log("[CREATE-COURSE] ✅ Carpeta del curso creada en raíz (fallback):", driveFolderId);
+          }
         } else {
           const yearFolderId = yearFolderResult.folderId;
           console.log("[CREATE-COURSE] ✅ Carpeta del año:", {
@@ -365,15 +375,7 @@ export async function POST(request: NextRequest) {
             created: yearFolderResult.created,
           });
 
-          // Paso 2: Crear la carpeta del curso dentro de la carpeta del año
-          // Usar el código original (id) para el nombre de la carpeta, no el ID del documento
           const courseFolderName = `${id} - ${name.trim()}`;
-
-          console.log("[CREATE-COURSE] Creando carpeta del curso:", {
-            folderName: courseFolderName,
-            parentFolderId: yearFolderId,
-          });
-
           const courseFolderResult = await getOrCreateFolderInAppsScriptDrive({
             folderName: courseFolderName,
             parentFolderId: yearFolderId,
@@ -381,10 +383,9 @@ export async function POST(request: NextRequest) {
 
           if (courseFolderResult.ok && courseFolderResult.folderId) {
             driveFolderId = courseFolderResult.folderId;
-            console.log("[CREATE-COURSE] ✅ Carpeta del curso obtenida/creada:", driveFolderId);
+            console.log("[CREATE-COURSE] ✅ Carpeta del curso creada en año:", driveFolderId);
           } else {
             console.error("[CREATE-COURSE] ⚠️ Error obteniendo/creando carpeta del curso:", courseFolderResult.error);
-            // No fallar la creación del curso si falla la carpeta, solo loguear
           }
         }
       } catch (folderError) {

@@ -111,7 +111,7 @@ export default function CertificateForm({
       }));
 
       toast.success(
-        selectedCourse?.driveFolderId
+        targetFolderId
           ? "Archivo subido correctamente a la carpeta del curso"
           : "Archivo subido correctamente (carpeta raíz)"
       );

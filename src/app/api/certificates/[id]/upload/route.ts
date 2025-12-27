@@ -67,70 +67,121 @@ export async function POST(
     const certificateData = doc.data();
     const fileName = file.name || `${certificateData?.fullName || "certificado"}_${certificateData?.courseId || id}.pdf`;
 
-    // 10. Obtener folderId: primero intentar la carpeta del curso, sino usar la carpeta general
+    // 10. Determinar la carpeta de destino (folderId)
     let folderId: string | null = null;
+    let targetCourseDoc: any = null;
 
-    console.log("[UPLOAD-AS] Datos del certificado:", {
-      certificateId: id,
-      courseId: certificateData?.courseId,
+    console.log("[UPLOAD-AS] Buscando carpeta para el curso:", {
       courseName: certificateData?.courseName,
+      year: certificateData?.year,
+      courseId: certificateData?.courseId
     });
 
-    // Intentar obtener la carpeta del curso
-    if (certificateData?.courseId) {
-      try {
-        // El courseId del certificado puede ser "LM-2025-01" (con año y número)
-        // Necesitamos extraer el código del curso (ej: "LM") para buscar en Firestore
-        let courseCode = certificateData.courseId;
-        
-        // Si el courseId tiene formato "CODIGO-AÑO-NUMERO", extraer solo el código
-        const courseIdPattern = /^([A-Z0-9]+)-(\d{4})-(\d+)$/;
-        const match = courseCode.match(courseIdPattern);
+    try {
+      // 10.1 Intentar buscar por el documento del curso
+      // Primero, si tenemos el courseId con formato "CODIGO-AÑO-NUMERO", extraemos el CODIGO
+      let courseCode = certificateData?.courseId;
+      if (courseCode) {
+        const match = courseCode.match(/^([^-]+)-(\d{4})-\d+$/);
         if (match) {
-          courseCode = match[1]; // Extraer solo el código (ej: "LM" de "LM-2025-01")
-          console.log("[UPLOAD-AS] CourseId del certificado:", certificateData.courseId, "→ Código extraído:", courseCode);
+          courseCode = match[1];
         }
-        
-        console.log("[UPLOAD-AS] Buscando curso con código:", courseCode);
-        const courseDoc = await adminDb.collection("courses").doc(courseCode).get();
-        
+
+        // Buscar por ID de documento o campo 'id'
+        const courseRef = adminDb.collection("courses").doc(courseCode);
+        const courseDoc = await courseRef.get();
+
         if (courseDoc.exists) {
-          const courseData = courseDoc.data();
-          console.log("[UPLOAD-AS] Curso encontrado:", {
-            courseId: courseDoc.id,
-            courseName: courseData?.name,
-            driveFolderId: courseData?.driveFolderId,
-          });
-          
-          if (courseData?.driveFolderId) {
-            folderId = courseData.driveFolderId;
-            console.log("[UPLOAD-AS] ✅ Usando carpeta del curso:", {
-              courseCode: courseCode,
-              courseName: courseData?.name,
-              folderId,
-            });
-          } else {
-            console.warn("[UPLOAD-AS] ⚠️ El curso no tiene driveFolderId configurado:", {
-              courseId: courseCode,
-              courseName: courseData?.name,
-            });
-          }
+          targetCourseDoc = courseDoc;
         } else {
-          console.warn("[UPLOAD-AS] ⚠️ Curso no encontrado en Firestore:", courseCode);
+          // Buscar por campo 'id' y año para ser más precisos
+          const coursesSnapshot = await adminDb.collection("courses")
+            .where("id", "==", courseCode)
+            .where("year", "==", certificateData?.year || new Date().getFullYear())
+            .limit(1)
+            .get();
+
+          if (!coursesSnapshot.empty) {
+            targetCourseDoc = coursesSnapshot.docs[0];
+          }
         }
-      } catch (courseError) {
-        console.error("[UPLOAD-AS] ❌ Error obteniendo carpeta del curso:", courseError);
       }
-    } else {
-      console.warn("[UPLOAD-AS] ⚠️ El certificado no tiene courseId configurado");
+
+      // 10.2 Si no se encontró por código, intentar por nombre y año
+      if (!targetCourseDoc && certificateData?.courseName && certificateData?.year) {
+        const coursesSnapshot = await adminDb.collection("courses")
+          .where("name", "==", certificateData.courseName)
+          .where("year", "==", certificateData.year)
+          .limit(1)
+          .get();
+
+        if (!coursesSnapshot.empty) {
+          targetCourseDoc = coursesSnapshot.docs[0];
+        }
+      }
+
+      // 10.3 Si encontramos el curso, usar su driveFolderId o CREARLA si falta
+      if (targetCourseDoc) {
+        const courseData = targetCourseDoc.data();
+
+        if (courseData?.driveFolderId) {
+          folderId = courseData.driveFolderId;
+          console.log("[UPLOAD-AS] ✅ Usando carpeta vinculada al curso:", folderId);
+        } else {
+          // Si el curso no tiene carpeta, intentar crear la estructura jerárquica (Año / Curso)
+          console.log("[UPLOAD-AS] 📁 El curso no tiene carpeta, intentando crear estructura Año/Curso...");
+
+          const parentFolderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID;
+          if (parentFolderId) {
+            const courseYear = courseData?.year || certificateData?.year || new Date().getFullYear();
+            const courseName = courseData?.name || certificateData?.courseName || "Sin nombre";
+            const courseId = courseData?.id || targetCourseDoc.id;
+
+            // 1. Carpeta del año
+            const { getOrCreateFolderInAppsScriptDrive } = await import("@/lib/appsScriptDrive");
+            const yearResult = await getOrCreateFolderInAppsScriptDrive({
+              folderName: courseYear.toString(),
+              parentFolderId
+            });
+
+            if (yearResult.ok && yearResult.folderId) {
+              // 2. Carpeta del curso
+              const courseFolderName = `${courseId} - ${courseName.trim()}`;
+              const courseResult = await getOrCreateFolderInAppsScriptDrive({
+                folderName: courseFolderName,
+                parentFolderId: yearResult.folderId
+              });
+
+              if (courseResult.ok && courseResult.folderId) {
+                folderId = courseResult.folderId;
+                // Actualizar curso en DB
+                await targetCourseDoc.ref.update({
+                  driveFolderId: folderId,
+                  updatedAt: new Date().toISOString()
+                });
+                console.log("[UPLOAD-AS] ✅ Carpeta creada y vinculada al curso:", folderId);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[UPLOAD-AS] Error buscando/creando carpeta del curso:", error);
     }
 
-    // Si no hay carpeta del curso, usar la carpeta general
+    // 10.4 Fallback: Si después de todo no hay folderId, usar la carpeta general (root) solo si existe
     if (!folderId) {
       folderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID || null;
       if (folderId) {
-        console.log("[UPLOAD-AS] ⚠️ Usando carpeta general (fallback):", folderId);
+        console.warn("[UPLOAD-AS] ⚠️ Usando carpeta general como fallback (no se encontró/creó carpeta de curso)");
       }
+    }
+
+    if (!folderId) {
+      return NextResponse.json(
+        { error: "No se encontró ni pudo crear una carpeta de destino en Drive para este curso." },
+        { status: 500 }
+      );
     }
 
     if (!folderId) {
@@ -200,7 +251,7 @@ export async function POST(
           { status: 403 }
         );
       }
-      
+
       // Error específico de Apps Script
       if (error.message.includes("APPS_SCRIPT_UPLOAD_URL") || error.message.includes("APPS_SCRIPT_UPLOAD_TOKEN")) {
         return NextResponse.json(
