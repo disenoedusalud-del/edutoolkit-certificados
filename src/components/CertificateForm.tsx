@@ -8,7 +8,7 @@ import { toast } from "@/lib/toast";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { extractDriveFileId } from "@/lib/driveUtils";
 import CourseModal from "./CourseModal";
-import { Plus, FolderOpen } from "phosphor-react";
+import { Plus, FolderOpen, Upload, FilePdf } from "phosphor-react";
 
 interface CertificateFormProps {
   certificate?: Certificate;
@@ -34,6 +34,70 @@ export default function CertificateForm({
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [showCourseModal, setShowCourseModal] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      toast.error("Solo se permiten archivos PDF");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+
+      // Determinar nombre del archivo
+      // Idealmente: {ID_CURSO}-{NOMBRE}.pdf para mantener orden
+      const filename = formData.courseId
+        ? `${formData.courseId}_${formData.fullName.replace(/\s+/g, "_")}.pdf`
+        : file.name;
+
+      uploadData.append("fileName", filename);
+
+      // Buscar la carpeta del curso seleccionado
+      const selectedCourse = courses.find(c => c.id === formData.selectedCourseId);
+
+      if (selectedCourse?.driveFolderId) {
+        uploadData.append("folderId", selectedCourse.driveFolderId);
+      } else {
+        // Aviso opcional, o simplemente dejar que vaya al root/default
+        const confirm = window.confirm("El curso seleccionado no tiene carpeta en Drive configurada. El archivo se subirá a la carpeta raíz del sistema. ¿Continuar?");
+        if (!confirm) {
+          setUploadingFile(false);
+          e.target.value = "";
+          return;
+        }
+      }
+
+      const res = await fetch("/api/upload", { method: "POST", body: uploadData });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error);
+
+      setFormData(prev => ({
+        ...prev,
+        driveFileId: data.fileId
+      }));
+
+      toast.success(
+        selectedCourse?.driveFolderId
+          ? "Archivo subido correctamente a la carpeta del curso"
+          : "Archivo subido correctamente (carpeta raíz)"
+      );
+
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast.error(err.message || "Error al subir archivo");
+    } finally {
+      setUploadingFile(false);
+      // Limpiar el input para permitir subir el mismo archivo de nuevo si falla
+      e.target.value = "";
+    }
+  };
 
   const [formData, setFormData] = useState({
     fullName: certificate?.fullName || "",
@@ -869,49 +933,74 @@ export default function CertificateForm({
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
-                  ID de Archivo en Drive
+                  ID de Archivo en Drive (o subir PDF)
                 </label>
-                <input
-                  type="text"
-                  value={formData.driveFileId || ""}
-                  onChange={(e) => {
-                    // Permitir que el usuario escriba libremente
-                    setFormData({
-                      ...formData,
-                      driveFileId: e.target.value
-                    });
-                  }}
-                  onBlur={(e) => {
-                    // Al perder el foco, procesar y extraer el ID si es una URL
-                    const value = e.target.value.trim();
-                    if (value) {
-                      const extractedId = extractDriveFileId(value);
-                      if (extractedId && extractedId !== value) {
-                        setFormData({
-                          ...formData,
-                          driveFileId: extractedId
-                        });
-                        toast.info("ID de Drive extraído de la URL");
-                      } else if (extractedId) {
-                        // Si ya es un ID válido, asegurar que se guarde
-                        setFormData({
-                          ...formData,
-                          driveFileId: extractedId
-                        });
-                      }
-                    } else {
-                      // Si está vacío, asegurar que sea null
+
+                <div className="mb-3">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="cert-upload"
+                    disabled={uploadingFile}
+                  />
+                  <label
+                    htmlFor="cert-upload"
+                    className={`flex items-center justify-center w-full px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingFile
+                      ? "bg-theme-tertiary border-theme cursor-wait"
+                      : "border-blue-300 hover:border-blue-500 hover:bg-blue-50"
+                      }`}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      {uploadingFile ? (
+                        <>
+                          <LoadingSpinner size={24} className="text-blue-500" />
+                          <span className="text-sm text-blue-600 font-medium">Subiendo archivo a Drive...</span>
+                          <span className="text-xs text-text-secondary">Por favor espera</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 text-blue-600">
+                            <Upload size={20} weight="bold" />
+                            <span className="font-medium">Subir Certificado PDF</span>
+                          </div>
+                          <span className="text-xs text-text-secondary text-center">
+                            Se subirá automáticamente a la carpeta del curso en Drive
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </label>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.driveFileId || ""}
+                    onChange={(e) => {
                       setFormData({
                         ...formData,
-                        driveFileId: ""
+                        driveFileId: e.target.value
                       });
-                    }
-                  }}
-                  placeholder="ID o URL de Google Drive (ej: https://drive.google.com/file/d/1a2b3c4d5e6f7g8h9i0j/view)"
-                  className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
-                />
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value.trim();
+                      if (value) {
+                        const extractedId = extractDriveFileId(value);
+                        if (extractedId && extractedId !== value) {
+                          setFormData({ ...formData, driveFileId: extractedId });
+                          toast.info("ID de Drive extraído de la URL");
+                        }
+                      }
+                    }}
+                    placeholder="ID o URL de Google Drive (o usa el botón de subir arriba)"
+                    className="w-full px-3 py-2 pl-9 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+                  />
+                  <FilePdf size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+                </div>
                 <p className="text-xs text-text-secondary mt-1">
-                  Puedes pegar el ID del archivo o la URL completa de Google Drive. El sistema extraerá automáticamente el ID al guardar.
+                  Puedes subir el archivo usando el botón de arriba O pegar el ID/URL manualmente.
                 </p>
               </div>
               <div className="md:col-span-2 space-y-3 pt-2">
@@ -980,7 +1069,7 @@ export default function CertificateForm({
             Certificado
           </button>
         </div>
-      </form>
+      </form >
       {showCourseModal && (
         <CourseModal
           course={null}
@@ -993,7 +1082,8 @@ export default function CertificateForm({
             await handleCourseCreated(newCourseId);
           }}
         />
-      )}
+      )
+      }
     </>
   );
 }
