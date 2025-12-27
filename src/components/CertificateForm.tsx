@@ -58,6 +58,10 @@ export default function CertificateForm({
 
       uploadData.append("fileName", filename);
 
+      if (formData.driveFileId) {
+        uploadData.append("oldFileId", formData.driveFileId);
+      }
+
       let targetFolderId = "";
 
       // Buscar el curso seleccionado
@@ -990,10 +994,14 @@ export default function CertificateForm({
                         <>
                           <div className="flex items-center gap-2 text-blue-600">
                             <Upload size={20} weight="bold" />
-                            <span className="font-medium">Subir Certificado PDF</span>
+                            <span className="font-medium">
+                              {formData.driveFileId ? "Reemplazar Certificado PDF" : "Subir Certificado PDF"}
+                            </span>
                           </div>
                           <span className="text-xs text-text-secondary text-center">
-                            Se subirá automáticamente a la carpeta del curso en Drive
+                            {formData.driveFileId
+                              ? "Al subir uno nuevo, se reemplazará el ID actual"
+                              : "Se subirá automáticamente a la carpeta del curso en Drive"}
                           </span>
                         </>
                       )}

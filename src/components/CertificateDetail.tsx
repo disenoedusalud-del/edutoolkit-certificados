@@ -26,7 +26,7 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
   const loadCertificate = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/certificates/${id}`);
+      const res = await fetch(`/api/certificates/${id}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error("Error al cargar el certificado");
       }
@@ -272,8 +272,8 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                 <label className="text-xs text-text-secondary uppercase">Mes</label>
                 <p className="text-text-primary">
                   {(() => {
-                    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                                   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
                     return months[certificate.month! - 1];
                   })()}
                 </p>
@@ -298,9 +298,8 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
               <label className="text-xs text-text-secondary uppercase">Estado</label>
               <p className="mt-1">
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    statusColors[certificate.deliveryStatus] || "bg-gray-100 text-gray-700"
-                  }`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[certificate.deliveryStatus] || "bg-gray-100 text-gray-700"
+                    }`}
                 >
                   {statusLabels[certificate.deliveryStatus] || certificate.deliveryStatus}
                 </span>
@@ -345,8 +344,8 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                 {certificate.contactSource === "inscripcion"
                   ? "Inscripción"
                   : certificate.contactSource === "retiro_presencial"
-                  ? "Retiro Presencial"
-                  : "Ninguno"}
+                    ? "Retiro Presencial"
+                    : "Ninguno"}
               </p>
             </div>
             <div className="flex gap-4">
@@ -434,9 +433,8 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
               <div>
                 <label
                   htmlFor={`file-upload-${id}`}
-                  className={`px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors inline-flex items-center gap-1 cursor-pointer ${
-                    uploading ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={`px-3 py-1.5 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors inline-flex items-center gap-1 cursor-pointer ${uploading ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                 >
                   <Upload size={14} weight="bold" />
                   {uploading ? "Subiendo..." : certificate.driveFileId ? "Reemplazar PDF" : "Subir PDF"}

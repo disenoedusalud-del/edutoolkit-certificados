@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
-import { uploadPdfToAppsScriptDrive } from "@/lib/appsScriptDrive";
+import { uploadPdfToAppsScriptDrive, deleteFileFromAppsScriptDrive } from "@/lib/appsScriptDrive";
 
 export async function POST(
   request: NextRequest,
@@ -179,14 +179,7 @@ export async function POST(
 
     if (!folderId) {
       return NextResponse.json(
-        { error: "No se encontró ni pudo crear una carpeta de destino en Drive para este curso." },
-        { status: 500 }
-      );
-    }
-
-    if (!folderId) {
-      return NextResponse.json(
-        { error: "No se encontró carpeta para subir el archivo. Verifica que el curso tenga una carpeta configurada o que DRIVE_CERTIFICATES_FOLDER_ID esté configurado." },
+        { error: "No se encontró ni pudo crear una carpeta de destino en Drive para este curso. Verifica que el curso tenga una carpeta configurada o que DRIVE_CERTIFICATES_FOLDER_ID esté configurado en el servidor." },
         { status: 500 }
       );
     }
@@ -216,6 +209,23 @@ export async function POST(
     }
 
     console.log("[UPLOAD-AS] ✅ Uploaded fileId=", uploadResult.fileId, "Apps Script OK");
+
+    // 11.5 Eliminar archivo anterior si existe (Lógica de reemplazo)
+    const oldFileId = certificateData?.driveFileId;
+    if (oldFileId && typeof oldFileId === 'string' && oldFileId.trim() !== '' && oldFileId !== uploadResult.fileId) {
+      console.log("[UPLOAD-AS] 🗑️ Eliminando archivo anterior:", oldFileId);
+      try {
+        const deleteResult = await deleteFileFromAppsScriptDrive(oldFileId);
+        if (deleteResult.ok) {
+          console.log("[UPLOAD-AS] ✅ Archivo anterior eliminado correctamente");
+        } else {
+          console.warn("[UPLOAD-AS] ⚠️ No se pudo eliminar el archivo anterior:", deleteResult.error);
+        }
+      } catch (delError) {
+        console.error("[UPLOAD-AS] ❌ Error intentando eliminar archivo anterior:", delError);
+        // No fallamos la operación principal si falla la eliminación del viejo
+      }
+    }
 
     // 12. Actualizar el certificado con el driveFileId y driveWebViewLink
     await adminDb.collection("certificates").doc(id).update({

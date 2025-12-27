@@ -29,6 +29,9 @@ Copia y pega este código completo en tu proyecto de Apps Script:
  */
 function uploadPdf(folderId, fileName, base64) {
   try {
+    if (!folderId || typeof folderId !== 'string' || folderId.replace(/\s/g, "") === "") {
+      return { ok: false, error: "El ID de la carpeta (folderId) es inválido, no es texto o está vacío" };
+    }
     var folder = DriveApp.getFolderById(folderId);
     var blob = Utilities.newBlob(Utilities.base64Decode(base64), "application/pdf", fileName);
     var file = folder.createFile(blob);
@@ -46,6 +49,22 @@ function uploadPdf(folderId, fileName, base64) {
       ok: false,
       error: error.toString()
     };
+  }
+}
+
+/**
+ * Función para probar la conectividad desde el editor de Apps Script.
+ * Selecciona esta función en el menú superior y dale a 'Ejecutar'.
+ */
+function probarConectividad() {
+  Logger.log("Probando acceso a Google Drive...");
+  try {
+    var folders = DriveApp.getFolders();
+    if (folders.hasNext()) {
+      Logger.log("✅ Conexión exitosa. El script tiene acceso a Drive.");
+    }
+  } catch (e) {
+    Logger.log("❌ Error de acceso: " + e.toString());
   }
 }
 
@@ -117,6 +136,9 @@ function getOrCreateFolder(folderName, parentFolderId) {
  */
 function renameFolder(folderId, newName) {
   try {
+    if (!folderId || typeof folderId !== 'string' || folderId.replace(/\s/g, "") === "") {
+      return { ok: false, error: "ID de carpeta inválido para renombrar" };
+    }
     var folder = DriveApp.getFolderById(folderId);
     folder.setName(newName);
     
@@ -140,6 +162,9 @@ function renameFolder(folderId, newName) {
  */
 function deleteFolder(folderId) {
   try {
+    if (!folderId || typeof folderId !== 'string' || folderId.replace(/\s/g, "") === "") {
+      return { ok: false, error: "ID de carpeta inválido para eliminar" };
+    }
     var folder = DriveApp.getFolderById(folderId);
     
     // Eliminar todos los archivos dentro de la carpeta primero
@@ -165,6 +190,30 @@ function deleteFolder(folderId) {
     };
   } catch (error) {
     Logger.log("Error eliminando carpeta: " + error.toString());
+    return {
+      ok: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Elimina un archivo en Google Drive
+ */
+function deleteFile(fileId) {
+  try {
+    if (!fileId || typeof fileId !== 'string' || fileId.replace(/\s/g, "") === "") {
+      return { ok: false, error: "ID de archivo inválido para eliminar" };
+    }
+    var file = DriveApp.getFileById(fileId);
+    file.setTrashed(true);
+    
+    return {
+      ok: true,
+      fileId: fileId
+    };
+  } catch (error) {
+    Logger.log("Error eliminando archivo: " + error.toString());
     return {
       ok: false,
       error: error.toString()
@@ -305,6 +354,24 @@ function doPost(e) {
     }
     
     var result = deleteFolder(folderId);
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // ============================================
+  // ACCIÓN: deleteFile
+  // ============================================
+  if (action === "deleteFile") {
+    var fileId = postData.fileId;
+    
+    if (!fileId) {
+      return ContentService.createTextOutput(JSON.stringify({
+        ok: false,
+        error: "fileId es requerido"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var result = deleteFile(fileId);
     return ContentService.createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
   }

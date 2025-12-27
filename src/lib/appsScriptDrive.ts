@@ -434,3 +434,51 @@ export async function createFolderInAppsScriptDrive(args: {
   }
 }
 
+/**
+ * Eliminar un archivo en Google Drive usando Apps Script
+ */
+export async function deleteFileFromAppsScriptDrive(fileId: string): Promise<{ ok: boolean; error?: string }> {
+  const url = process.env.APPS_SCRIPT_UPLOAD_URL;
+  const token = process.env.APPS_SCRIPT_UPLOAD_TOKEN;
+
+  if (!url) {
+    throw new Error("Falta APPS_SCRIPT_UPLOAD_URL en .env.local");
+  }
+  if (!token) {
+    throw new Error("Falta APPS_SCRIPT_UPLOAD_TOKEN en .env.local");
+  }
+
+  console.log("[DELETE-FILE-AS] 🗑️ Iniciando eliminación de archivo...", { fileId });
+
+  try {
+    const res = await fetch(`${url}?token=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "deleteFile",
+        fileId: fileId,
+      }),
+    });
+
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      return { ok: false, error: `Respuesta no-JSON de Apps Script: ${text.slice(0, 200)}` };
+    }
+
+    if (!res.ok || !json?.ok) {
+      return { ok: false, error: json?.error || `HTTP ${res.status}: ${text.slice(0, 200)}` };
+    }
+
+    console.log("[DELETE-FILE-AS] ✅ Archivo eliminado exitosamente");
+    return { ok: true };
+  } catch (error) {
+    console.error("[DELETE-FILE-AS] ❌ Error en fetch:", error);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : `Error desconocido: ${String(error)}`,
+    };
+  }
+}

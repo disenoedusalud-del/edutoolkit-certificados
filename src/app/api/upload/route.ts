@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
         const file = formData.get("file") as File;
         const folderId = formData.get("folderId") as string;
         const fileName = formData.get("fileName") as string;
+        const oldFileId = formData.get("oldFileId") as string;
 
         if (!file) {
             return NextResponse.json(
@@ -45,6 +46,18 @@ export async function POST(request: NextRequest) {
 
         if (!result.ok) {
             throw new Error(result.error || "Error desconocido al subir el archivo mediante Apps Script");
+        }
+
+        // Si se subió con éxito y había un archivo anterior, intentar eliminarlo
+        if (oldFileId && result.fileId && oldFileId !== result.fileId) {
+            console.log("[API-UPLOAD] 🗑️ Eliminando archivo anterior:", oldFileId);
+            try {
+                const { deleteFileFromAppsScriptDrive } = await import("@/lib/appsScriptDrive");
+                await deleteFileFromAppsScriptDrive(oldFileId);
+            } catch (delError) {
+                console.error("[API-UPLOAD] Error eliminando archivo viejo:", delError);
+                // No fallamos la petición si falla el borrado
+            }
         }
 
         return NextResponse.json({
