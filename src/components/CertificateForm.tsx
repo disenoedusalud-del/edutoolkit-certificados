@@ -58,14 +58,41 @@ export default function CertificateForm({
 
       uploadData.append("fileName", filename);
 
-      // Buscar la carpeta del curso seleccionado
+      let targetFolderId = "";
+
+      // Buscar el curso seleccionado
       const selectedCourse = courses.find(c => c.id === formData.selectedCourseId);
 
-      if (selectedCourse?.driveFolderId) {
-        uploadData.append("folderId", selectedCourse.driveFolderId);
+      if (selectedCourse) {
+        if (selectedCourse.driveFolderId) {
+          targetFolderId = selectedCourse.driveFolderId;
+        } else {
+          // Si el curso no tiene carpeta, intentar crearla automáticamente
+          try {
+            console.log("[UPLOAD] Curso sin carpeta, intentando crearla...");
+            const ensureRes = await fetch(`/api/courses/${encodeURIComponent(selectedCourse.id)}/ensure-folder`, { method: "POST" });
+            const ensureData = await ensureRes.json();
+
+            if (ensureRes.ok && ensureData.folderId) {
+              targetFolderId = ensureData.folderId;
+              // Actualizar el estado local de cursos para que la próxima vez ya la tenga
+              setCourses(prev => prev.map(c => c.id === selectedCourse.id ? { ...c, driveFolderId: ensureData.folderId } : c));
+              console.log("[UPLOAD] Carpeta creada y vinculada:", targetFolderId);
+            }
+          } catch (ensureErr) {
+            console.error("[UPLOAD] Error intentando asegurar carpeta:", ensureErr);
+          }
+        }
+      }
+
+      if (targetFolderId) {
+        uploadData.append("folderId", targetFolderId);
       } else {
-        // Aviso opcional, o simplemente dejar que vaya al root/default
-        const confirm = window.confirm("El curso seleccionado no tiene carpeta en Drive configurada. El archivo se subirá a la carpeta raíz del sistema. ¿Continuar?");
+        // Fallback: usar carpeta raíz o avisar
+        const confirm = window.confirm(
+          "No pudimos encontrar o crear una carpeta específica para este curso en Drive. " +
+          "El archivo se subirá a la carpeta raíz del sistema. ¿Deseas continuar?"
+        );
         if (!confirm) {
           setUploadingFile(false);
           e.target.value = "";

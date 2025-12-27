@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
         // Usar el campo 'id' del documento (código original) si existe, sino usar el ID del documento
         const data: CourseRow[] = snapshot.docs.map((d) => {
           const docData = d.data();
-          // El campo 'id' del documento contiene el código original que el usuario ingresó
-          return { ...docData, id: docData.id || d.id } as CourseRow;
+          // Retornar d.id como el ID único del curso para evitar colisiones entre años
+          return { ...docData, id: d.id } as CourseRow;
         });
         return NextResponse.json(Array.isArray(data) ? data : [], {
           headers: {
@@ -61,21 +61,21 @@ export async function GET(request: NextRequest) {
       } catch (orderError: any) {
         // Si falla el ordenamiento (probablemente falta índice), obtener sin ordenar
         logger.warn("No se pudo ordenar cursos, obteniendo sin orden", { error: orderError.message, endpoint: "/api/courses" });
-        
+
         // Reconstruir la query con el filtro pero sin orderBy
         let queryWithoutOrder: Query<DocumentData> = coursesRef as Query<DocumentData>;
         if (status === "active" || status === "archived") {
           queryWithoutOrder = queryWithoutOrder.where("status", "==", status);
         }
-        
+
         const snapshot = await queryWithoutOrder.get();
         // Usar el campo 'id' del documento (código original) si existe, sino usar el ID del documento
         const data: CourseRow[] = snapshot.docs.map((d) => {
           const docData = d.data();
-          // El campo 'id' del documento contiene el código original que el usuario ingresó
-          return { ...docData, id: docData.id || d.id } as CourseRow;
+          // Retornar d.id como el ID único del curso
+          return { ...docData, id: d.id } as CourseRow;
         });
-        
+
         // Filtrar por status en memoria si es necesario (por si acaso)
         let filteredData: CourseRow[] = data;
         if (status === "active" || status === "archived") {
@@ -84,12 +84,12 @@ export async function GET(request: NextRequest) {
             return courseStatus === status;
           });
         }
-        
+
         // Ordenar manualmente en memoria
-        const sortedData: CourseRow[] = Array.isArray(filteredData) 
+        const sortedData: CourseRow[] = Array.isArray(filteredData)
           ? filteredData.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
           : [];
-        
+
         return NextResponse.json(sortedData, {
           headers: {
             "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
@@ -119,11 +119,11 @@ export async function GET(request: NextRequest) {
       // Asegurar que el ID del documento siempre tenga prioridad sobre el campo 'id' del documento
       const data: CourseRow[] = snapshot.docs.map((d) => {
         const docData = d.data();
-        return { ...docData, id: d.id } as CourseRow; // El ID del documento siempre sobrescribe cualquier campo 'id' interno
+        return { ...docData, id: d.id } as CourseRow;
       });
-      
+
       const totalPages = Math.ceil(total / limit);
-      
+
       return NextResponse.json(
         {
           data,
@@ -143,19 +143,19 @@ export async function GET(request: NextRequest) {
     } catch (orderError: any) {
       // Si falla el ordenamiento, obtener sin ordenar y aplicar paginación en memoria
       logger.warn("No se pudo ordenar cursos con paginación, obteniendo sin orden", { error: orderError.message, endpoint: "/api/courses", page, limit });
-      
+
       let queryWithoutOrder: Query<DocumentData> = coursesRef as Query<DocumentData>;
       if (status === "active" || status === "archived") {
         queryWithoutOrder = queryWithoutOrder.where("status", "==", status);
       }
-      
+
       const snapshot = await queryWithoutOrder.get();
       // Asegurar que el ID del documento siempre tenga prioridad sobre el campo 'id' del documento
       let data: CourseRow[] = snapshot.docs.map((d) => {
         const docData = d.data();
         return { ...docData, id: d.id } as CourseRow; // El ID del documento siempre sobrescribe cualquier campo 'id' interno
       });
-      
+
       // Filtrar por status en memoria si es necesario
       if (status === "active" || status === "archived") {
         data = data.filter((course: CourseRow) => {
@@ -163,16 +163,16 @@ export async function GET(request: NextRequest) {
           return courseStatus === status;
         });
       }
-      
+
       // Ordenar manualmente en memoria
-      const sortedData: CourseRow[] = Array.isArray(data) 
+      const sortedData: CourseRow[] = Array.isArray(data)
         ? data.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
         : [];
-      
+
       // Aplicar paginación en memoria
       const paginatedData = sortedData.slice(offset, offset + limit);
       const totalPages = Math.ceil(sortedData.length / limit);
-      
+
       return NextResponse.json(
         {
           data: paginatedData,
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
     // 3. Validar entrada
     const body = await request.json();
     const validation = validateCourse(body);
-    
+
     if (!validation.valid) {
       return validationErrorResponse(validation.errors);
     }
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
     const courseYear = year ? parseInt(year.toString()) : new Date().getFullYear();
     const courseMonth = month !== null && month !== undefined ? parseInt(month.toString()) : null;
     const courseEdition = edition !== null && edition !== undefined ? parseInt(edition.toString()) : null;
-    
+
     // Buscar cursos con el mismo nombre y año (Firestore permite hasta 2 condiciones where)
     const coursesWithSameNameAndYear = await adminDb.collection("courses")
       .where("name", "==", name.trim())
@@ -260,26 +260,26 @@ export async function POST(request: NextRequest) {
       const data = doc.data();
       const docMonth = data.month !== undefined ? data.month : null;
       const docEdition = data.edition !== undefined ? data.edition : null;
-      
+
       // Comparar mes (null === null es true)
       const monthMatches = courseMonth === docMonth;
       // Comparar edición (null === null es true)
       const editionMatches = courseEdition === docEdition;
-      
+
       return monthMatches && editionMatches;
     });
-    
+
     if (existingCourses.length > 0) {
       const existingDoc = existingCourses[0];
       const existingCourse = existingDoc.data();
       const existingId = existingDoc.id;
-      
+
       // Construir mensaje descriptivo
       const monthText = courseMonth ? `, mes ${courseMonth}` : "";
       const editionText = courseEdition ? `, edición ${courseEdition}` : "";
-      
+
       return NextResponse.json(
-        { 
+        {
           error: `Ya existe un curso con el mismo nombre, año${monthText}${editionText}. Curso existente: "${existingCourse.name}" (ID: ${existingId})`,
           existingCourseId: existingId,
           conflictDetails: {
@@ -300,33 +300,33 @@ export async function POST(request: NextRequest) {
     // El código se guarda en el campo "id" del documento, y el ID del documento será único
     let finalDocId = id;
     let existingDoc = await adminDb.collection("courses").doc(finalDocId).get();
-    
+
     // Si el documento ya existe, verificar si es duplicado exacto
     if (existingDoc.exists) {
       const existingCourse = existingDoc.data();
-      const isDuplicate = 
+      const isDuplicate =
         existingCourse?.name === name.trim() &&
         existingCourse?.year === (year ? parseInt(year.toString()) : new Date().getFullYear()) &&
         (existingCourse?.month || null) === (month !== null && month !== undefined ? parseInt(month.toString()) : null) &&
         (existingCourse?.edition || null) === (edition !== null && edition !== undefined ? parseInt(edition.toString()) : null);
-      
+
       if (isDuplicate) {
         return NextResponse.json(
           { error: "Ya existe un curso con esta combinación exacta de nombre, año, mes y edición." },
           { status: 400 }
         );
       }
-      
+
       // Si no es duplicado exacto pero el ID existe, generar un ID único para el documento
       // usando un hash basado en nombre+año+mes+edición
       const courseYear = year ? parseInt(year.toString()) : new Date().getFullYear();
       const courseMonth = month !== null && month !== undefined ? parseInt(month.toString()) : null;
       const courseEdition = edition !== null && edition !== undefined ? parseInt(edition.toString()) : null;
-      
+
       // Generar un ID único basado en la combinación
       const uniqueSuffix = `${courseYear}${courseMonth ? `-${courseMonth}` : ''}${courseEdition ? `-E${courseEdition}` : ''}`;
       finalDocId = `${id}-${uniqueSuffix}`;
-      
+
       // Verificar que este nuevo ID no exista
       existingDoc = await adminDb.collection("courses").doc(finalDocId).get();
       if (existingDoc.exists) {
@@ -342,7 +342,7 @@ export async function POST(request: NextRequest) {
     if (parentFolderId) {
       try {
         const courseYear = year ? parseInt(year.toString()) : new Date().getFullYear();
-        
+
         // Paso 1: Obtener o crear la carpeta del año
         console.log("[CREATE-COURSE] Obteniendo o creando carpeta del año:", {
           year: courseYear,
@@ -368,7 +368,7 @@ export async function POST(request: NextRequest) {
           // Paso 2: Crear la carpeta del curso dentro de la carpeta del año
           // Usar el código original (id) para el nombre de la carpeta, no el ID del documento
           const courseFolderName = `${id} - ${name.trim()}`;
-          
+
           console.log("[CREATE-COURSE] Creando carpeta del curso:", {
             folderName: courseFolderName,
             parentFolderId: yearFolderId,
@@ -413,7 +413,7 @@ export async function POST(request: NextRequest) {
 
     // Usar finalDocId como ID del documento (puede ser diferente del código si hay conflicto)
     await adminDb.collection("courses").doc(finalDocId).set(courseData);
-    
+
     console.log("Curso creado:", courseData);
 
     // Registrar en historial unificado
