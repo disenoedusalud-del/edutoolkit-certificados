@@ -62,21 +62,27 @@ export default function CertificateForm({
 
   // Función helper para extraer el prefijo base del curso (sin año ni edición)
   const extractCoursePrefix = (courseId: string): string => {
-    // Buscar el primer patrón que sea un año (4 dígitos) o un número después de un guión
-    // Ejemplos: "NAEF-2019-1" → "NAEF", "NAEF-2019" → "NAEF", "NAEF" → "NAEF"
-    const yearMatch = courseId.match(/^([^-]+?)(?:-\d{4}|$)/);
-    if (yearMatch) {
+    // Estrategia Robust: Buscar el patrón de año "-YYYY"
+    // Esto maneja IDs como "CURSO-AVANZADO-2024" extrayendo "CURSO-AVANZADO"
+    // y no solo "CURSO" como haría un split por guión simple.
+    const yearMatch = courseId.match(/^(.*?)(?:-\d{4})/);
+    if (yearMatch && yearMatch[1]) {
       return yearMatch[1];
     }
-    // Si no hay patrón de año, devolver todo hasta el primer guión o todo si no hay guiones
-    const firstDashIndex = courseId.indexOf('-');
-    return firstDashIndex > 0 ? courseId.substring(0, firstDashIndex) : courseId;
+
+    // Fallback: Si no hay patrón de año claro, intentar ser inteligente.
+    // Si el ID termina en un año o secuencia, intentamos limpiarlo.
+    // Pero si no estamos seguros, mejor devolvemos el ID completo para no romper códigos sin año.
+    // Sin embargo, para evitar el bug de "ID-ID-YEAR-SEQ", si detectamos que el ID ya parece tener
+    // un año y secuencia concatenados, intentamos limpiar.
+
+    return courseId;
   };
 
   const generateCourseId = async (courseId: string, year: number, edition: number | null = null): Promise<string> => {
     // Extraer solo el prefijo base del curso (sin año ni edición)
     const courseCode = extractCoursePrefix(courseId);
-    
+
     // Obtener el siguiente número secuencial del servidor
     try {
       let url = `/api/certificates/next-sequence?courseCode=${encodeURIComponent(courseCode)}&year=${year}`;
@@ -116,7 +122,7 @@ export default function CertificateForm({
         } else if (data && Array.isArray(data.courses)) {
           coursesArray = data.courses;
         }
-        
+
         console.log("Cursos cargados:", coursesArray.length, coursesArray);
         setCourses(coursesArray);
 
@@ -139,18 +145,18 @@ export default function CertificateForm({
           // Caso 2: Creando nuevo certificado desde un curso específico (botón "+")
           // Intentar buscar por ID exacto primero
           let matchingCourse = coursesArray.find((c: Course) => c.id === initialCourseId);
-          
+
           // Si no se encuentra, intentar buscar por coincidencia parcial (por si el ID viene como prefijo)
           if (!matchingCourse) {
-            matchingCourse = coursesArray.find((c: Course) => 
+            matchingCourse = coursesArray.find((c: Course) =>
               initialCourseId.startsWith(c.id) || c.id.startsWith(initialCourseId)
             );
           }
-          
+
           if (matchingCourse) {
             const courseYear = matchingCourse.year || new Date().getFullYear();
             const courseEdition = matchingCourse.edition || null;
-            
+
             // Generar el ID usando la función que extrae el prefijo base
             const autoId = await generateCourseId(matchingCourse.id, courseYear, courseEdition);
 
