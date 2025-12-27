@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
     console.log("[AUTH][SESSION][POST] Usuario autenticado:", decoded.uid, decoded.email);
 
     // Crear cookie de sesión con Firebase Admin (session cookie, no idToken)
+    // createSessionCookie espera milisegundos
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_EXPIRES_IN_SECONDS,
+      expiresIn: SESSION_EXPIRES_IN_SECONDS * 1000,
     });
 
     console.log("[AUTH][SESSION][POST] ✅ Session cookie creada exitosamente, expira en 7 días");
