@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import type { Certificate } from "@/types/Certificate";
 import type { Course } from "@/types/Course";
 import { logger } from "@/lib/logger";
+import { getOrCreateFolderInAppsScriptDrive } from "@/lib/appsScriptDrive";
 
 // Función auxiliar para generar código de curso
 function generateCourseCode(courseName: string): string {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     // Leer archivo
     const buffer = Buffer.from(await file.arrayBuffer());
-    
+
     // Para CSV, detectar automáticamente el separador (coma o punto y coma)
     let workbook: XLSX.WorkBook;
     if (fileExtension === "csv") {
@@ -106,28 +107,28 @@ export async function POST(request: NextRequest) {
     } else {
       workbook = XLSX.read(buffer, { type: "buffer" });
     }
-    
+
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    
+
     // Leer con header: 1 para obtener como array de arrays primero
     const rawData = XLSX.utils.sheet_to_json(worksheet, {
       defval: "", // Valor por defecto para celdas vacías
       raw: false, // Convertir números a strings para mejor manejo
       header: 1, // Obtener como array de arrays
     }) as any[][];
-    
+
     if (!Array.isArray(rawData) || rawData.length === 0) {
       return NextResponse.json(
         { error: "El archivo está vacío o no tiene datos válidos" },
         { status: 400 }
       );
     }
-    
+
     // La primera fila son los headers
     const headers = (rawData[0] as any[]) || [];
     const rows = rawData.slice(1) as any[][];
-    
+
     // Convertir a objetos con nombres de columnas (preservando los nombres originales con paréntesis)
     const normalizedData = rows.map((row) => {
       const obj: any = {};
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
       });
       return obj;
     });
-    
+
     // Log para debug (solo en desarrollo)
     if (process.env.NODE_ENV === "development") {
       logger.info("Importación - Headers detectados:", { headers });
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
               .replace(/\s+/g, " ") // Normalizar espacios
               .replace(/[^\w\s]/g, "") // Eliminar caracteres especiales
               .trim();
-            
+
             for (const variant of variants) {
               const normalizedVariant = variant
                 .toLowerCase()
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
                 .replace(/\s+/g, " ")
                 .replace(/[^\w\s]/g, "")
                 .trim();
-              
+
               if (normalizedKey === normalizedVariant) {
                 const value = String(row[key] || "").trim();
                 // Retornar incluso si está vacío, para que la validación lo maneje
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
               }
             }
           }
-          
+
           // Si no se encontró con normalización, buscar coincidencia exacta
           for (const variant of variants) {
             if (row[variant] !== undefined && row[variant] !== null) {
@@ -202,7 +203,7 @@ export async function POST(request: NextRequest) {
               return value;
             }
           }
-          
+
           return "";
         };
 
@@ -247,10 +248,10 @@ export async function POST(request: NextRequest) {
 
         // Log para debug (solo en desarrollo)
         if (process.env.NODE_ENV === "development" && i === 0) {
-          logger.info("Importación - Fila procesada:", { 
-            rowNumber, 
+          logger.info("Importación - Fila procesada:", {
+            rowNumber,
             rowKeys: Object.keys(row),
-            rowValues: row 
+            rowValues: row
           });
         }
 
@@ -299,7 +300,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Crear nuevo curso
           const courseCode = generateCourseCode(courseName);
-          
+
           // Verificar que el código no exista ya
           let finalCourseCode = courseCode;
           let counter = 1;
@@ -308,7 +309,7 @@ export async function POST(request: NextRequest) {
               .collection("courses")
               .doc(finalCourseCode)
               .get();
-            
+
             if (!existingCourse.exists) {
               break;
             }
@@ -332,6 +333,39 @@ export async function POST(request: NextRequest) {
             .set(newCourse);
           course = { id: finalCourseCode, ...newCourse };
           results.coursesCreated.push(courseName);
+        }
+
+        // ASEGURAR CARPETA EN DRIVE si falta (Estructura Año / Curso)
+        if (!course.driveFolderId) {
+          try {
+            const parentFolderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID;
+            if (parentFolderId) {
+              // 1. Carpeta del Año
+              const yearFolderResult = await getOrCreateFolderInAppsScriptDrive({
+                folderName: year.toString(),
+                parentFolderId,
+              });
+
+              if (yearFolderResult.ok && yearFolderResult.folderId) {
+                // 2. Carpeta del Curso
+                const courseFolderName = `${course.id} - ${course.name.trim()}`;
+                const courseFolderResult = await getOrCreateFolderInAppsScriptDrive({
+                  folderName: courseFolderName,
+                  parentFolderId: yearFolderResult.folderId,
+                });
+
+                if (courseFolderResult.ok && courseFolderResult.folderId) {
+                  // Actualizar en DB para que ya la tenga
+                  course.driveFolderId = courseFolderResult.folderId;
+                  await adminDb.collection("courses").doc(course.id).update({
+                    driveFolderId: courseFolderResult.folderId
+                  });
+                }
+              }
+            }
+          } catch (driveErr) {
+            logger.error("Error asegurando carpeta durante importación", driveErr);
+          }
         }
 
         // Calcular courseId secuencial
