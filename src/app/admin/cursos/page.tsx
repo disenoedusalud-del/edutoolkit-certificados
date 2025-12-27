@@ -53,9 +53,9 @@ export default function CoursesPage() {
 
   const filteredCourses = Array.isArray(courses)
     ? courses.filter((course) => {
-        if (filter === "all") return true;
-        return course.status === filter;
-      })
+      if (filter === "all") return true;
+      return course.status === filter;
+    })
     : [];
 
   const handleEdit = (course: Course) => {
@@ -117,13 +117,18 @@ export default function CoursesPage() {
 
   const handleDelete = async (course: Course) => {
     try {
+      console.log("[DELETE-COURSE-FRONTEND] Iniciando eliminación del curso:", course.id);
+
       // Obtener conteo de certificados
       const courseRes = await fetch(`/api/courses/${course.id}?includeCertificateCount=true`);
       let certificateCount = 0;
-      
+
       if (courseRes.ok) {
         const courseData = await courseRes.json();
         certificateCount = courseData.certificateCount || 0;
+        console.log("[DELETE-COURSE-FRONTEND] Certificados asociados:", certificateCount);
+      } else {
+        console.warn("[DELETE-COURSE-FRONTEND] No se pudo obtener el conteo de certificados:", courseRes.status);
       }
 
       // Mostrar advertencia
@@ -157,27 +162,79 @@ export default function CoursesPage() {
         }
       }
 
-      const response = await fetch(`/api/courses/${course.id}`, {
+      // Codificar el ID del curso para evitar problemas con caracteres especiales
+      const encodedCourseId = encodeURIComponent(course.id);
+      const deleteUrl = `/api/courses/${encodedCourseId}`;
+
+      console.log("[DELETE-COURSE-FRONTEND] Enviando petición DELETE a:", deleteUrl);
+      console.log("[DELETE-COURSE-FRONTEND] ID del curso (original):", course.id);
+      console.log("[DELETE-COURSE-FRONTEND] ID del curso (codificado):", encodedCourseId);
+
+      const response = await fetch(deleteUrl, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("[DELETE-COURSE-FRONTEND] Respuesta recibida:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
       });
 
       if (response.ok) {
         const data = await response.json();
-        const deletedCount = data.deletedCertificates || 0;
-        
-        if (deletedCount > 0) {
-          toast.success(`Curso eliminado. ${deletedCount} certificado(s) también fueron eliminados.`);
+        const relatedCount = data.relatedCertificates || 0;
+        const driveDeletion = data.driveDeletion;
+
+        console.log("[DELETE-COURSE-FRONTEND] ✅ Curso eliminado exitosamente:", data);
+
+        // Manejar notificación de Drive
+        if (driveDeletion) {
+          if (driveDeletion.attempted && !driveDeletion.success) {
+            toast.warning(`Curso eliminado, pero FALLÓ el borrado de la carpeta Drive: ${driveDeletion.error || "Error desconocido"}`, 8000);
+          } else if (driveDeletion.attempted && driveDeletion.success) {
+            // Opcional: toast.success("Carpeta de Drive eliminada correctamente");
+          } else if (!driveDeletion.attempted) {
+            console.log("No se intentó borrar carpeta de Drive (no había ID asociado)");
+          }
+        }
+
+        if (relatedCount > 0) {
+          toast.success(`Curso eliminado. NOTA: ${relatedCount} certificado(s) relacionados NO fueron eliminados.`, 5000);
         } else {
-          toast.success("Curso eliminado correctamente");
+          // Solo mostrar éxito si no mostramos ya un warning de Drive (para no saturar)
+          if (!driveDeletion || !driveDeletion.attempted || driveDeletion.success) {
+            toast.success("Curso eliminado correctamente");
+          }
         }
         await loadCourses();
       } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "Error al eliminar el curso");
+        let errorData;
+        try {
+          const text = await response.text();
+          console.log("[DELETE-COURSE-FRONTEND] Texto de respuesta:", text);
+          errorData = text ? JSON.parse(text) : { error: "Error desconocido" };
+        } catch (parseError) {
+          console.error("[DELETE-COURSE-FRONTEND] Error parseando respuesta:", parseError);
+          errorData = { error: `Error ${response.status}: ${response.statusText}` };
+        }
+
+        console.error("[DELETE-COURSE-FRONTEND] ❌ Error del servidor:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          url: `/api/courses/${course.id}`,
+          courseId: course.id
+        });
+
+        const errorMessage = errorData.error || `Error al eliminar el curso (${response.status})`;
+        toast.error(errorMessage);
       }
     } catch (error) {
-      console.error("Error:", error);
-      toast.error("Error al eliminar el curso");
+      console.error("[DELETE-COURSE] Error en el cliente:", error);
+      toast.error("Error al eliminar el curso. Revisa la consola para más detalles.");
     }
   };
 
@@ -232,31 +289,28 @@ export default function CoursesPage() {
       <div className="mb-6 flex gap-2">
         <button
           onClick={() => setFilter("all")}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === "all"
-              ? "bg-accent text-white border border-theme"
-              : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
-          }`}
+          className={`px-4 py-2 rounded-lg transition-colors ${filter === "all"
+            ? "bg-accent text-white border border-theme"
+            : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
+            }`}
         >
           Todos ({Array.isArray(courses) ? courses.length : 0})
         </button>
         <button
           onClick={() => setFilter("active")}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === "active"
-              ? "bg-green-600 text-white border border-theme"
-              : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
-          }`}
+          className={`px-4 py-2 rounded-lg transition-colors ${filter === "active"
+            ? "bg-green-600 text-white border border-theme"
+            : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
+            }`}
         >
           Activos ({Array.isArray(courses) ? courses.filter((c) => c.status === "active").length : 0})
         </button>
         <button
           onClick={() => setFilter("archived")}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === "archived"
-              ? "bg-theme-tertiary text-text-primary border border-theme"
-              : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
-          }`}
+          className={`px-4 py-2 rounded-lg transition-colors ${filter === "archived"
+            ? "bg-theme-tertiary text-text-primary border border-theme"
+            : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary border border-theme"
+            }`}
         >
           Archivados ({Array.isArray(courses) ? courses.filter((c) => c.status === "archived").length : 0})
         </button>
@@ -275,6 +329,7 @@ export default function CoursesPage() {
                 <th className="px-0 py-3 w-[12px]"></th>
                 <th className="px-4 py-3 text-left">Código</th>
                 <th className="px-4 py-3 text-left">Nombre del Curso</th>
+                <th className="px-4 py-3 text-left">Edición</th>
                 <th className="px-4 py-3 text-left">Tipo</th>
                 <th className="px-4 py-3 text-left">Estado</th>
                 <th className="px-4 py-3 text-left">Fecha Creación</th>
@@ -293,9 +348,20 @@ export default function CoursesPage() {
                     {course.id}
                   </td>
                   <td className="px-4 py-3 text-text-primary">
-                      {course.name}
-                      {course.edition && (
-                      <span className="ml-2 text-xs text-text-secondary">(Ed. {course.edition})</span>
+                    {course.name}
+                  </td>
+                  <td className="px-4 py-3 text-text-primary">
+                    {course.edition ? (
+                      <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                        Ed. {course.edition}
+                      </span>
+                    ) : (
+                      <span className="text-text-tertiary text-xs">—</span>
+                    )}
+                    {course.month && (
+                      <span className="ml-2 text-xs text-text-secondary">
+                        (Mes {course.month})
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -310,10 +376,10 @@ export default function CoursesPage() {
                         Activo
                       </span>
                     ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-theme-tertiary text-text-secondary rounded-full text-xs font-medium">
-                      <XCircle size={14} weight="fill" />
-                      Archivado
-                    </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-theme-tertiary text-text-secondary rounded-full text-xs font-medium">
+                        <XCircle size={14} weight="fill" />
+                        Archivado
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-text-secondary text-xs">
@@ -333,9 +399,9 @@ export default function CoursesPage() {
                       {course.status === "active" ? (
                         <button
                           onClick={() => handleArchive(course)}
-                        className="p-1.5 text-text-secondary hover:bg-theme-tertiary rounded transition-colors border border-theme"
-                        title="Archivar curso"
-                      >
+                          className="p-1.5 text-text-secondary hover:bg-theme-tertiary rounded transition-colors border border-theme"
+                          title="Archivar curso"
+                        >
                           <Archive size={18} weight="bold" />
                         </button>
                       ) : (
@@ -347,7 +413,7 @@ export default function CoursesPage() {
                           <CheckCircle size={18} weight="bold" />
                         </button>
                       )}
-                      {userRole === "MASTER_ADMIN" && (
+                      {(userRole === "ADMIN" || userRole === "MASTER_ADMIN") && (
                         <button
                           onClick={() => handleDelete(course)}
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"

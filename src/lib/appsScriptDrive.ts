@@ -52,6 +52,7 @@ export async function uploadPdfToAppsScriptDrive(args: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        action: "uploadPdf",
         folderId: args.folderId,
         fileName: args.fileName,
         base64,
@@ -246,6 +247,105 @@ export async function renameFolderInAppsScriptDrive(args: {
     return { ok: true };
   } catch (error) {
     console.error("[RENAME-FOLDER-AS] Error en fetch:", error);
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : `Error desconocido: ${String(error)}`,
+    };
+  }
+}
+
+/**
+ * Eliminar una carpeta en Google Drive usando Apps Script
+ */
+export async function deleteFolderInAppsScriptDrive(args: {
+  folderId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const url = process.env.APPS_SCRIPT_UPLOAD_URL;
+  const token = process.env.APPS_SCRIPT_UPLOAD_TOKEN;
+
+  if (!url) {
+    throw new Error("Falta APPS_SCRIPT_UPLOAD_URL en .env.local");
+  }
+  if (!token) {
+    throw new Error("Falta APPS_SCRIPT_UPLOAD_TOKEN en .env.local");
+  }
+
+  console.log("[DELETE-FOLDER-AS] 🗑️ Iniciando eliminación de carpeta...", {
+    folderId: args.folderId,
+    url: url ? "Configurada" : "NO CONFIGURADA",
+    token: token ? "Configurado" : "NO CONFIGURADO",
+  });
+
+  const requestBody = {
+    action: "deleteFolder",
+    folderId: args.folderId,
+  };
+
+  console.log("[DELETE-FOLDER-AS] 📤 Enviando petición a Apps Script:", {
+    url: url,
+    action: "deleteFolder",
+    folderId: args.folderId,
+  });
+
+  try {
+    const fetchUrl = `${url}?token=${encodeURIComponent(token)}`;
+    console.log("[DELETE-FOLDER-AS] URL completa (sin token visible):", `${url}?token=***`);
+
+    const res = await fetch(fetchUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log("[DELETE-FOLDER-AS] 📥 Respuesta recibida:", {
+      status: res.status,
+      statusText: res.statusText,
+      ok: res.ok,
+    });
+
+    const text = await res.text();
+    console.log("[DELETE-FOLDER-AS] 📄 Texto de respuesta (primeros 500 chars):", text.slice(0, 500));
+
+    let json: any = null;
+    try {
+      json = JSON.parse(text);
+      console.log("[DELETE-FOLDER-AS] ✅ JSON parseado correctamente:", json);
+    } catch (parseError) {
+      console.error("[DELETE-FOLDER-AS] ❌ Error parseando JSON:", {
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        text: text.slice(0, 500),
+      });
+      return {
+        ok: false,
+        error: `Respuesta no-JSON de Apps Script: ${text.slice(0, 200)}`,
+      };
+    }
+
+    if (!res.ok || !json?.ok) {
+      console.error("[DELETE-FOLDER-AS] ❌ Error en respuesta de Apps Script:", {
+        status: res.status,
+        statusText: res.statusText,
+        jsonOk: json?.ok,
+        error: json?.error,
+        fullResponse: json,
+      });
+      return {
+        ok: false,
+        error: json?.error || `HTTP ${res.status}: ${text.slice(0, 200)}`,
+      };
+    }
+
+    console.log("[DELETE-FOLDER-AS] ✅ Carpeta eliminada exitosamente");
+
+    return { ok: true };
+  } catch (error) {
+    console.error("[DELETE-FOLDER-AS] ❌ Excepción en fetch:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return {
       ok: false,
       error:

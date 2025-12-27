@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { Course } from "@/types/Course";
 import { requireRole } from "@/lib/auth";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rateLimit";
+import { deleteFolderInAppsScriptDrive } from "@/lib/appsScriptDrive";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log("[GET-COURSE] 🚀 Función GET llamada");
+  console.log("[GET-COURSE] URL:", request.url);
+  
   try {
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
     if (!rateLimitResult.success) {
@@ -16,12 +20,40 @@ export async function GET(
 
     await requireRole("VIEWER");
 
-    const { id } = await params;
-    const doc = await adminDb.collection("courses").doc(id).get();
-
+    const resolvedParams = await params;
+    const id = decodeURIComponent(resolvedParams.id);
+    console.log("[GET-COURSE] ID del curso obtenido:", id);
+    
+    // Intentar buscar el curso por ID del documento
+    let doc = await adminDb.collection("courses").doc(id).get();
+    
+    // Si no existe, intentar buscar por el campo "id" dentro del documento
     if (!doc.exists) {
+      console.log("[GET-COURSE] Curso no encontrado por ID de documento, buscando por campo 'id'...");
+      const coursesSnapshot = await adminDb.collection("courses")
+        .where("id", "==", id)
+        .limit(1)
+        .get();
+      
+      if (!coursesSnapshot.empty) {
+        doc = coursesSnapshot.docs[0];
+        console.log("[GET-COURSE] Curso encontrado por campo 'id', ID del documento:", doc.id);
+      }
+    }
+    
+    if (!doc.exists) {
+      console.log("[GET-COURSE] ❌ Curso no encontrado con ID:", id);
+      // Listar algunos IDs disponibles para debugging
+      const allCourses = await adminDb.collection("courses").limit(5).get();
+      const availableIds = allCourses.docs.map(d => ({ docId: d.id, courseId: d.data().id }));
+      console.log("[GET-COURSE] IDs disponibles (primeros 5):", availableIds);
+      
       return NextResponse.json(
-        { error: "Curso no encontrado" },
+        { 
+          error: "Curso no encontrado",
+          requestedId: id,
+          hint: "Verifica que el ID del curso sea correcto"
+        },
         { status: 404 }
       );
     }
@@ -74,7 +106,8 @@ export async function PUT(
     }
 
     const currentUser = await requireRole("ADMIN");
-    const { id } = await params;
+    const resolvedParams = await params;
+    const id = decodeURIComponent(resolvedParams.id);
     const body = await request.json();
 
     const docRef = adminDb.collection("courses").doc(id);
@@ -147,23 +180,64 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log("[DELETE-COURSE] 🚀 Función DELETE llamada");
+  console.log("[DELETE-COURSE] URL completa:", request.url);
+  console.log("[DELETE-COURSE] Método:", request.method);
+  console.log("[DELETE-COURSE] Headers:", Object.fromEntries(request.headers.entries()));
+  
+  let id: string | undefined;
   try {
+    console.log("[DELETE-COURSE] Resolviendo parámetros...");
+    const resolvedParams = await params;
+    id = resolvedParams.id;
+    // Decodificar el ID en caso de que esté codificado
+    id = decodeURIComponent(id);
+    console.log("[DELETE-COURSE] ID del curso obtenido (decodificado):", id);
+    
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.API);
     if (!rateLimitResult.success) {
+      console.log("[DELETE-COURSE] ❌ Rate limit excedido");
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
+    console.log("[DELETE-COURSE] Verificando permisos...");
     const currentUser = await requireRole("ADMIN");
-    const { id } = await params;
+    console.log("[DELETE-COURSE] Usuario autenticado:", currentUser.email, "Rol:", currentUser.role);
     
     console.log("[DELETE-COURSE] Intentando eliminar curso:", id);
     
-    const doc = await adminDb.collection("courses").doc(id).get();
-
+    // Intentar buscar el curso por ID del documento
+    let doc = await adminDb.collection("courses").doc(id).get();
+    
+    // Si no existe, intentar buscar por el campo "id" dentro del documento
     if (!doc.exists) {
-      console.log("[DELETE-COURSE] ❌ Curso no encontrado:", id);
+      console.log("[DELETE-COURSE] Curso no encontrado por ID de documento, buscando por campo 'id'...");
+      const coursesSnapshot = await adminDb.collection("courses")
+        .where("id", "==", id)
+        .limit(1)
+        .get();
+      
+      if (!coursesSnapshot.empty) {
+        doc = coursesSnapshot.docs[0];
+        console.log("[DELETE-COURSE] Curso encontrado por campo 'id', ID del documento:", doc.id);
+        // Actualizar el id para usar el ID del documento real
+        id = doc.id;
+      }
+    }
+    
+    if (!doc.exists) {
+      console.log("[DELETE-COURSE] ❌ Curso no encontrado con ID:", id);
+      // Listar algunos IDs disponibles para debugging
+      const allCourses = await adminDb.collection("courses").limit(5).get();
+      const availableIds = allCourses.docs.map(d => ({ docId: d.id, courseId: d.data().id }));
+      console.log("[DELETE-COURSE] IDs disponibles (primeros 5):", availableIds);
+      
       return NextResponse.json(
-        { error: "Curso no encontrado" },
+        { 
+          error: "Curso no encontrado",
+          requestedId: id,
+          hint: "Verifica que el ID del curso sea correcto"
+        },
         { status: 404 }
       );
     }
@@ -175,43 +249,116 @@ export async function DELETE(
       courseId: courseData?.id
     });
 
-    // Contar certificados asociados al curso
-    // El ID del curso puede ser "NAEF-2-2019" o "NAEF", necesitamos extraer el código base
-    const baseCode = id.split("-")[0]; // Extraer solo el código base (ej: "NAEF" de "NAEF-2-2019")
-    console.log("[DELETE-COURSE] Buscando certificados con código base:", baseCode);
+    // IMPORTANTE: NO eliminar certificados automáticamente
+    // La relación entre cursos y certificados no es directa y puede causar eliminaciones incorrectas
+    // Los certificados se relacionan con cursos a través del courseId que se genera dinámicamente
+    // Eliminar certificados aquí podría eliminar certificados de otros cursos relacionados
     
+    // Buscar certificados que podrían estar relacionados (solo para información)
+    // Usar el ID exacto del curso como prefijo, no solo el código base
+    const courseYear = courseData?.year || new Date().getFullYear();
+    const courseCode = id.split("-")[0]; // Código base del curso
+    
+    console.log("[DELETE-COURSE] Buscando certificados potencialmente relacionados:", {
+      courseId: id,
+      courseCode,
+      courseYear
+    });
+    
+    // Buscar certificados que empiecen con el código del curso y el año
+    // Esto es más específico que solo el código base
     const certificatesSnapshot = await adminDb
       .collection("certificates")
       .get();
 
+    // Filtrar certificados que coincidan con el patrón del curso específico
+    // Solo certificados que empiecen con el código del curso seguido del año
     const associatedCertificates = certificatesSnapshot.docs.filter((certDoc) => {
       const certData = certDoc.data();
       const certCourseId = certData.courseId || "";
-      // Verificar si el courseId del certificado empieza con el código base del curso
-      const matches = certCourseId.startsWith(baseCode + "-");
+      
+      // Patrón más específico: debe empezar con el código del curso seguido de guión y año
+      // Ejemplo: si curso es "NAEF" y año es 2025, buscar "NAEF-2025-"
+      const pattern = new RegExp(`^${courseCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-${courseYear}-`);
+      const matches = pattern.test(certCourseId);
+      
       if (matches) {
-        console.log("[DELETE-COURSE] Certificado asociado encontrado:", certCourseId);
+        console.log("[DELETE-COURSE] Certificado potencialmente relacionado encontrado:", {
+          certId: certDoc.id,
+          certCourseId,
+          courseId: id
+        });
       }
       return matches;
     });
 
     const certificateCount = associatedCertificates.length;
+    
+    console.log("[DELETE-COURSE] ⚠️ ADVERTENCIA: Se encontraron", certificateCount, 
+      "certificado(s) que podrían estar relacionados. NO se eliminarán automáticamente por seguridad.");
 
-    // Eliminar todos los certificados asociados
+    // NO eliminar certificados automáticamente
+    // Esto se desactivó porque la lógica anterior eliminaba certificados de otros cursos
+    // Si necesitas eliminar certificados, hazlo manualmente desde la interfaz de certificados
     if (certificateCount > 0) {
-      console.log(`[DELETE-COURSE] Eliminando ${certificateCount} certificados asociados al curso ${id}`);
-      
-      const batch = adminDb.batch();
-      associatedCertificates.forEach((certDoc) => {
-        batch.delete(certDoc.ref);
-      });
-      await batch.commit();
-      
-      console.log(`[DELETE-COURSE] ✅ ${certificateCount} certificados eliminados`);
+      console.log(`[DELETE-COURSE] ⚠️ Se encontraron ${certificateCount} certificado(s) potencialmente relacionados, pero NO se eliminarán automáticamente.`);
+      console.log(`[DELETE-COURSE] Si necesitas eliminar estos certificados, hazlo manualmente desde la interfaz de administración de certificados.`);
     }
 
     // Obtener datos del curso antes de eliminar para el historial
     const courseName = courseData?.name || id;
+    const driveFolderId = courseData?.driveFolderId;
+
+    console.log(`[DELETE-COURSE] 📁 Información de carpeta Drive:`, {
+      driveFolderId: driveFolderId || "NO HAY",
+      courseName: courseName,
+      courseId: id
+    });
+
+    // Resultados de la eliminación de Drive para incluir en la respuesta
+    let driveDeletionResult = {
+      attempted: false,
+      success: false,
+      folderId: driveFolderId || null,
+      error: null as string | null
+    };
+
+    // Eliminar la carpeta de Google Drive si existe
+    if (driveFolderId) {
+      driveDeletionResult.attempted = true;
+      console.log(`[DELETE-COURSE] 🗑️ Intentando eliminar carpeta de Drive: ${driveFolderId}`);
+      try {
+        const deleteResult = await deleteFolderInAppsScriptDrive({
+          folderId: driveFolderId,
+        });
+        
+        console.log(`[DELETE-COURSE] 📋 Resultado de eliminación:`, deleteResult);
+        
+        if (deleteResult.ok) {
+          driveDeletionResult.success = true;
+          console.log(`[DELETE-COURSE] ✅ Carpeta de Drive eliminada correctamente: ${driveFolderId}`);
+        } else {
+          driveDeletionResult.success = false;
+          driveDeletionResult.error = deleteResult.error || "Error desconocido";
+          console.error(`[DELETE-COURSE] ❌ Error eliminando carpeta de Drive:`, {
+            folderId: driveFolderId,
+            error: deleteResult.error
+          });
+          // No fallar la eliminación del curso si falla la eliminación de la carpeta
+        }
+      } catch (driveError) {
+        driveDeletionResult.success = false;
+        driveDeletionResult.error = driveError instanceof Error ? driveError.message : String(driveError);
+        console.error(`[DELETE-COURSE] ❌ Excepción al intentar eliminar carpeta de Drive:`, {
+          folderId: driveFolderId,
+          error: driveDeletionResult.error,
+          stack: driveError instanceof Error ? driveError.stack : undefined
+        });
+        // No fallar la eliminación del curso si falla la eliminación de la carpeta
+      }
+    } else {
+      console.log(`[DELETE-COURSE] ⚠️ No hay carpeta de Drive asociada al curso (driveFolderId es null/undefined)`);
+    }
 
     // Eliminar el curso
     await adminDb.collection("courses").doc(id).delete();
@@ -230,6 +377,7 @@ export async function DELETE(
         deletedCertificates: certificateCount,
         courseType: courseData?.courseType,
         year: courseData?.year,
+        driveFolderDeletion: driveDeletionResult
       },
     });
 
@@ -237,7 +385,11 @@ export async function DELETE(
       { 
         success: true, 
         message: "Curso eliminado correctamente",
-        deletedCertificates: certificateCount
+        relatedCertificates: certificateCount,
+        driveDeletion: driveDeletionResult,
+        note: certificateCount > 0 
+          ? `Se encontraron ${certificateCount} certificado(s) relacionados que NO fueron eliminados. Elimínalos manualmente si es necesario.`
+          : undefined
       },
       {
         headers: {
@@ -248,12 +400,14 @@ export async function DELETE(
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHORIZED") {
+        console.log("[DELETE-COURSE] ❌ No autenticado");
         return NextResponse.json(
           { error: "No autenticado" },
           { status: 401 }
         );
       }
       if (error.message === "FORBIDDEN") {
+        console.log("[DELETE-COURSE] ❌ Permisos insuficientes");
         return NextResponse.json(
           { error: "No tienes permisos para eliminar cursos. Solo ADMIN puede eliminar cursos." },
           { status: 403 }
@@ -261,9 +415,19 @@ export async function DELETE(
       }
     }
 
-    console.error("[COURSE-DELETE] Error eliminando curso:", error);
+    // Log detallado del error
+    console.error("[DELETE-COURSE] ❌ Error eliminando curso:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      courseId: id || "unknown",
+    });
+    
+    const errorMessage = error instanceof Error 
+      ? `Error al eliminar el curso: ${error.message}`
+      : "Error al eliminar el curso";
+    
     return NextResponse.json(
-      { error: "Error al eliminar el curso" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -29,7 +29,6 @@ import {
 import { toast } from "@/lib/toast";
 import { LoadingSpinner, LoadingSkeleton } from "./LoadingSpinner";
 import { useConfirm } from "@/contexts/ConfirmContext";
-import CertificateForm from "./CertificateForm";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -53,8 +52,8 @@ const statusColors: Record<string, string> = {
 // Función helper para obtener el nombre del mes
 const getMonthName = (monthNum: number | null | undefined): string => {
   if (!monthNum || monthNum < 1 || monthNum > 12) return "";
-  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   return months[monthNum - 1];
 };
 
@@ -66,7 +65,12 @@ const statusLabels: Record<string, string> = {
   anulado: "Anulado",
 };
 
-const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
+interface CertificateListProps {
+  onAddCertificate?: (courseId?: string, courseName?: string) => void;
+}
+
+const CertificateList = forwardRef<CertificateListHandle, CertificateListProps>((props, ref) => {
+  const { onAddCertificate } = props;
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,26 +96,14 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   const [quickViewCert, setQuickViewCert] = useState<Certificate | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "grouped" | "grid">("grouped");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [selectedGroupForModal, setSelectedGroupForModal] = useState<{groupKey: string, certs: Certificate[]} | null>(null);
+  const [selectedGroupForModal, setSelectedGroupForModal] = useState<{ groupKey: string, certs: Certificate[] } | null>(null);
   const [groupSearchTerms, setGroupSearchTerms] = useState<Record<string, string>>({});
   const [quickEditData, setQuickEditData] = useState<{
     deliveryStatus: string;
     deliveryDate: string;
     deliveredTo: string;
-    physicalLocation: string;
-    folioCode: string;
   } | null>(null);
   const [quickEditLoading, setQuickEditLoading] = useState(false);
-  const [showAddCertificateForm, setShowAddCertificateForm] = useState(false);
-  const [initialCourseData, setInitialCourseData] = useState<{
-    courseId: string;
-    courseName: string;
-    courseType: string;
-    year: number;
-    month?: number | null;
-    edition?: number | null;
-    origin?: string;
-  } | null>(null);
   const router = useRouter();
 
   // Detectar si hay filtros activos
@@ -122,44 +114,14 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   const loadCertificates = async (page: number = 1) => {
     try {
       setLoading(true);
-      
-      // Para la vista agrupada o cuadrícula, siempre cargar TODOS los certificados
-      // para poder agruparlos correctamente por edición
-      if (viewMode === "grouped" || viewMode === "grid") {
-        setUsingBackendPagination(false);
-        console.log("[CertificateList] Cargando todos los certificados para vista agrupada/cuadrícula");
-        const res = await fetch("/api/certificates?limit=10000"); // Cargar todos (límite alto)
-        const data = await res.json();
-        
-        console.log("[CertificateList] Respuesta de API:", {
-          isArray: Array.isArray(data),
-          hasData: !!data.data,
-          dataLength: Array.isArray(data) ? data.length : (data.data?.length || 0),
-          hasError: !!data.error
-        });
-        
-        if (Array.isArray(data)) {
-          // Formato antiguo: array directo
-          console.log(`[CertificateList] Certificados cargados (array directo): ${data.length}`);
-          setCerts(data);
-        } else if (data.error) {
-          console.error("Error from API:", data.error);
-          setCerts([]);
-        } else if (data.data && Array.isArray(data.data)) {
-          // Formato nuevo con paginación
-          console.log(`[CertificateList] Certificados cargados (con paginación): ${data.data.length}`);
-          setCerts(data.data);
-        } else {
-          console.warn("[CertificateList] Formato de respuesta desconocido:", data);
-          setCerts([]);
-        }
-        setPagination(null);
-      } else if (!hasActiveFilters) {
-        // Vista lista sin filtros: usar paginación del backend
+
+      // Si no hay filtros activos, usar paginación del backend
+      if (!hasActiveFilters) {
+        // Usar paginación del backend
         setUsingBackendPagination(true);
         const res = await fetch(`/api/certificates?page=${page}&limit=${ITEMS_PER_PAGE}`);
         const data = await res.json();
-        
+
         if (data.error) {
           console.error("Error from API:", data.error);
           setCerts([]);
@@ -176,9 +138,9 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
       } else {
         // Hay filtros activos, cargar TODOS los certificados (sin paginación) para filtrar en memoria
         setUsingBackendPagination(false);
-        const res = await fetch("/api/certificates?limit=10000"); // Cargar todos (límite alto)
+        const res = await fetch("/api/certificates"); // Sin parámetros = todos los certificados
         const data = await res.json();
-        
+
         if (Array.isArray(data)) {
           // Formato antiguo: array directo
           setCerts(data);
@@ -187,6 +149,9 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
           setCerts([]);
         } else if (data.data && Array.isArray(data.data)) {
           // Formato nuevo con paginación, pero necesitamos todos
+          // Si hay paginación, necesitamos hacer múltiples requests o cargar todos de otra forma
+          // Por ahora, cargamos solo la primera página y mostramos advertencia
+          console.warn("Filtros activos pero API devolvió paginación. Cargando solo primera página.");
           setCerts(data.data);
         } else {
           setCerts([]);
@@ -213,7 +178,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   useEffect(() => {
     loadCertificates(currentPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, hasActiveFilters, viewMode]);
+  }, [currentPage, hasActiveFilters]);
 
   // Filtrar y ordenar certificados
   const filteredCerts = useMemo(() => {
@@ -221,7 +186,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     if (!Array.isArray(certs)) {
       return [];
     }
-    
+
     let filtered = certs.filter((cert) => {
       // Búsqueda por nombre, curso, código del curso (tag) o ID del certificado
       const searchLower = searchTerm.toLowerCase();
@@ -269,39 +234,18 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
     return filtered;
   }, [certs, searchTerm, statusFilter, yearFilter, sortField, sortDirection]);
 
-  // Agrupar certificados por curso, edición y año
+  // Agrupar certificados por curso y año
   const groupedCerts = useMemo(() => {
     const groups: Record<string, Certificate[]> = {};
     filteredCerts.forEach((cert) => {
       const courseCode = cert.courseId ? cert.courseId.split("-")[0] : "SIN-CODIGO";
-      let groupKey: string;
-
-      // Usar el prefijo del courseId (código + edición + año) como clave de carpeta,
-      // para que TODOS los certificados con el mismo ID base caigan en la misma carpeta,
-      // aunque cambie ligeramente el nombre del curso u otros campos.
-      if (cert.courseId) {
-        const parts = cert.courseId.split("-");
-        // Formatos esperados:
-        // - CODIGO-AÑO-NN        (3 partes)
-        // - CODIGO-EDICION-AÑO-NN (4 partes)
-        if (parts.length >= 3) {
-          // Tomamos todo menos el último segmento (el correlativo NN)
-          groupKey = parts.slice(0, parts.length - 1).join("-");
-        } else {
-          // Fallback por si llega un formato raro
-          groupKey = `${courseCode}-${cert.year}`;
-        }
-      } else {
-        // Si no hay courseId, agrupar solo por código y año
-        groupKey = `${courseCode}-${cert.year}`;
-      }
-      
+      const groupKey = `${courseCode}-${cert.courseName}-${cert.year}`;
       if (!groups[groupKey]) {
         groups[groupKey] = [];
       }
       groups[groupKey].push(cert);
     });
-    
+
     // Ordenar certificados dentro de cada grupo por courseId
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => {
@@ -310,7 +254,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
         return aId.localeCompare(bId);
       });
     });
-    
+
     return groups;
   }, [filteredCerts]);
 
@@ -348,16 +292,16 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
       toast.error("No hay certificados seleccionados");
       return;
     }
-    
-    const selectedCerts = filteredCerts.filter((cert) => 
+
+    const selectedCerts = filteredCerts.filter((cert) =>
       cert.id && selectedIds.has(cert.id)
     );
-    
+
     if (selectedCerts.length === 0) {
       toast.error("No se encontraron certificados seleccionados");
       return;
     }
-    
+
     const csv = exportToCSV(selectedCerts);
     const filename = `certificados_seleccionados_${new Date().toISOString().split("T")[0]}.csv`;
     downloadCSV(csv, filename);
@@ -369,7 +313,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
       toast.error("No hay certificados para exportar");
       return;
     }
-    
+
     const csv = exportToCSV(filteredCerts);
     const filename = `certificados_${new Date().toISOString().split("T")[0]}.csv`;
     downloadCSV(csv, filename);
@@ -402,16 +346,16 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
   };
 
   // Paginación: usar backend si no hay filtros, sino usar memoria
-  const totalPages = usingBackendPagination && pagination 
-    ? pagination.totalPages 
+  const totalPages = usingBackendPagination && pagination
+    ? pagination.totalPages
     : Math.ceil(filteredCerts.length / ITEMS_PER_PAGE);
-  
+
   const paginatedCerts = usingBackendPagination
     ? filteredCerts // Cuando usamos backend, filteredCerts ya está paginado
     : (() => {
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        return filteredCerts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-      })();
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      return filteredCerts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    })();
 
   // Obtener años únicos para el filtro
   const uniqueYears = useMemo(() => {
@@ -635,11 +579,10 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
           <div className="flex border border-theme rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode("list")}
-              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 ${
-                viewMode === "list"
-                  ? "bg-blue-600 text-white"
-                  : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
-              }`}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 ${viewMode === "list"
+                ? "bg-blue-600 text-white"
+                : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
+                }`}
               title="Vista de lista"
             >
               <ArrowsVertical size={18} />
@@ -647,11 +590,10 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
             </button>
             <button
               onClick={() => setViewMode("grouped")}
-              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 border-l border-theme ${
-                viewMode === "grouped"
-                  ? "bg-blue-600 text-white"
-                  : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
-              }`}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 border-l border-theme ${viewMode === "grouped"
+                ? "bg-blue-600 text-white"
+                : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
+                }`}
               title="Vista agrupada"
             >
               <Folder size={18} />
@@ -659,11 +601,10 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 border-l border-theme ${
-                viewMode === "grid"
-                  ? "bg-blue-600 text-white"
-                  : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
-              }`}
+              className={`px-3 py-2 text-sm transition-colors flex items-center gap-2 border-l border-theme ${viewMode === "grid"
+                ? "bg-blue-600 text-white"
+                : "bg-theme-secondary text-text-primary hover:bg-theme-tertiary"
+                }`}
               title="Vista de cuadrícula"
             >
               <FolderOpen size={18} />
@@ -771,12 +712,12 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
               const year = groupCerts[0].year;
               const month = groupCerts[0].month;
               const isExpanded = expandedGroups.has(groupKey);
-              
+
               return (
                 <div key={groupKey} className="bg-theme-secondary border border-theme rounded-lg overflow-hidden">
-                  <button
+                  <div
                     onClick={() => toggleGroup(groupKey)}
-                    className="w-full px-4 py-3 bg-theme-secondary hover:bg-theme-tertiary transition-colors flex items-center justify-between text-left relative border border-theme"
+                    className="w-full px-4 py-3 bg-theme-secondary hover:bg-theme-tertiary transition-colors flex items-center justify-between text-left relative border border-theme cursor-pointer"
                   >
                     {/* Barra izquierda de color - solo visible en neo-brutalism */}
                     <div className="absolute left-0 top-0 bottom-0 w-[10px] barra-indicador-grupo" />
@@ -796,6 +737,41 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Encontramos el ID del curso real para pasarlo
+                          // Usamos el primer certificado del grupo para obtener el courseId base
+                          const baseCourseId = groupCerts[0].courseId ? groupCerts[0].courseId.split("-").slice(0, groupCerts[0].courseId.split("-").length - 1).join("-") : "";
+
+                          // Intentamos encontrar el ID original del curso si es posible, 
+                          // pero como aquí solo tenemos certificados, pasamos el ID del curso del certificado
+                          // que usualmente es PREFIJO-AÑO(-EDICION)
+
+                          // Una mejor aproximación es usar el courseId del primer certificado, 
+                          // ya que el formulario sabrá buscar el curso correspondiente
+                          if (onAddCertificate && groupCerts.length > 0) {
+                            // El ID del curso en la base de datos suele ser PREFIJO-AÑO(-EDICION)
+                            // Intentamos reconstruirlo desde el certificado
+                            const certCourseId = groupCerts[0].courseId;
+                            // El certificado tiene ID tipo: NAEF-2025-001
+                            // El curso tiene ID tipo: NAEF-2025
+                            if (certCourseId) {
+                              const parts = certCourseId.split("-");
+                              // Si tiene 3 partes (PREFIJO-AÑO-SEC), el curso es PREFIJO-AÑO
+                              // Si tiene 4 partes (PREFIJO-AÑO-ED-SEC), el curso es PREFIJO-AÑO-ED
+                              if (parts.length >= 3) {
+                                const potentialCourseId = parts.slice(0, parts.length - 1).join("-");
+                                onAddCertificate(potentialCourseId, courseName);
+                              }
+                            }
+                          }
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors border border-transparent hover:border-blue-200"
+                        title="Agregar certificado a este curso"
+                      >
+                        <Plus size={18} weight="bold" />
+                      </button>
                       <span className="text-xs font-medium text-text-secondary bg-theme-secondary px-2 py-1 rounded border border-theme">
                         {groupCerts.length}
                       </span>
@@ -805,12 +781,12 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                         <CaretRight size={18} className="text-text-secondary" />
                       )}
                     </div>
-                  </button>
+                  </div>
                   {isExpanded && (
                     <div className="border-t border-theme">
-                      {/* Búsqueda dentro de la carpeta y botón agregar */}
-                      <div className="p-3 bg-theme-tertiary border-b border-theme flex items-center gap-2">
-                        <div className="relative flex-1">
+                      {/* Búsqueda dentro de la carpeta */}
+                      <div className="p-3 bg-theme-tertiary border-b border-theme">
+                        <div className="relative">
                           <MagnifyingGlass size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary" />
                           <input
                             type="text"
@@ -826,47 +802,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                             className="w-full pl-10 pr-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent text-sm bg-theme-secondary text-text-primary"
                           />
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const firstCert = groupCerts[0];
-                            // Extraer edición del courseId si existe (formato: CODIGO-EDICION-AÑO-NUMERO)
-                            let edition: number | null = null;
-                            if (firstCert.courseId) {
-                              const parts = firstCert.courseId.split("-");
-                              console.log("[CertificateList] Extrayendo edición de courseId:", {
-                                courseId: firstCert.courseId,
-                                parts,
-                                partsLength: parts.length
-                              });
-                              // Si tiene 4 partes: CODIGO-EDICION-AÑO-NUMERO
-                              // Si tiene 3 partes: CODIGO-AÑO-NUMERO (sin edición)
-                              if (parts.length === 4) {
-                                const editionNum = parseInt(parts[1], 10);
-                                if (!isNaN(editionNum)) {
-                                  edition = editionNum;
-                                  console.log("[CertificateList] Edición extraída:", edition);
-                                }
-                              } else {
-                                console.log("[CertificateList] No se encontró edición (formato sin edición)");
-                              }
-                            }
-                            setInitialCourseData({
-                              courseId: courseCode,
-                              courseName: firstCert.courseName || "",
-                              courseType: firstCert.courseType || "Curso",
-                              year: firstCert.year,
-                              month: firstCert.month || null,
-                              edition: edition,
-                              origin: firstCert.origin || "nuevo",
-                            });
-                            setShowAddCertificateForm(true);
-                          }}
-                          className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium flex items-center gap-2 whitespace-nowrap"
-                        >
-                          <Plus size={18} weight="bold" />
-                          Agregar Certificado
-                        </button>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
@@ -886,16 +821,16 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                               const groupSearchTerm = (groupSearchTerms[groupKey] || "").toLowerCase();
                               const filteredGroupCerts = groupSearchTerm
                                 ? groupCerts.filter((c) => {
-                                    const searchLower = groupSearchTerm;
-                                    return (
-                                      c.fullName.toLowerCase().includes(searchLower) ||
-                                      c.courseId?.toLowerCase().includes(searchLower) ||
-                                      c.email?.toLowerCase().includes(searchLower) ||
-                                      c.phone?.toLowerCase().includes(searchLower)
-                                    );
-                                  })
+                                  const searchLower = groupSearchTerm;
+                                  return (
+                                    c.fullName.toLowerCase().includes(searchLower) ||
+                                    c.courseId?.toLowerCase().includes(searchLower) ||
+                                    c.email?.toLowerCase().includes(searchLower) ||
+                                    c.phone?.toLowerCase().includes(searchLower)
+                                  );
+                                })
                                 : groupCerts;
-                              
+
                               if (filteredGroupCerts.length === 0) {
                                 return (
                                   <tr>
@@ -905,79 +840,76 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                                   </tr>
                                 );
                               }
-                              
+
                               return filteredGroupCerts.map((c) => (
-                              <tr
-                                key={c.id}
-                                className="hover:bg-theme-tertiary transition-colors cursor-pointer"
-                                onClick={(e) => {
-                                  if ((e.target as HTMLElement).closest('input[type="checkbox"]') || 
+                                <tr
+                                  key={c.id}
+                                  className="hover:bg-theme-tertiary transition-colors cursor-pointer"
+                                  onClick={(e) => {
+                                    if ((e.target as HTMLElement).closest('input[type="checkbox"]') ||
                                       (e.target as HTMLElement).closest('button') ||
                                       (e.target as HTMLElement).closest('input[type="text"]')) {
-                                    return;
-                                  }
-                                  setQuickViewCert(c);
-                                  setQuickEditData({
-                                    deliveryStatus: c.deliveryStatus || "en_archivo",
-                                    deliveryDate: c.deliveryDate ? new Date(c.deliveryDate).toISOString().split("T")[0] : "",
-                                    deliveredTo: c.deliveredTo || "",
-                                    physicalLocation: c.physicalLocation || "",
-                                    folioCode: c.folioCode || "",
-                                  });
-                                }}
-                              >
-                                <td
-                                  className="px-4 py-2"
-                                  onClick={(e) => c.id && toggleSelect(c.id, e)}
+                                      return;
+                                    }
+                                    setQuickViewCert(c);
+                                    setQuickEditData({
+                                      deliveryStatus: c.deliveryStatus || "en_archivo",
+                                      deliveryDate: c.deliveryDate ? new Date(c.deliveryDate).toISOString().split("T")[0] : "",
+                                      deliveredTo: c.deliveredTo || "",
+                                    });
+                                  }}
                                 >
-                                  {selectedIds.has(c.id!) ? (
-                                    <CheckSquare size={20} className="text-blue-600 cursor-pointer" weight="fill" />
-                                  ) : (
-                                    <Square size={20} className="text-text-tertiary cursor-pointer" />
-                                  )}
-                                </td>
-                                <td className="px-4 py-2 font-medium text-text-primary">
-                                  {c.fullName}
-                                </td>
-                                <td className="px-4 py-2 text-text-primary font-mono text-xs">
-                                  {c.courseId}
-                                </td>
-                                <td className="px-4 py-2">
-                                  <span
-                                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                      statusColors[c.deliveryStatus || "en_archivo"] ||
-                                      "bg-gray-100 text-gray-700"
-                                    }`}
+                                  <td
+                                    className="px-4 py-2"
+                                    onClick={(e) => c.id && toggleSelect(c.id, e)}
                                   >
-                                    {statusLabels[c.deliveryStatus || "en_archivo"] ||
-                                      c.deliveryStatus ||
-                                      "—"}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-2 w-12">
-                                  <div className="relative">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (openMenuId === c.id) {
-                                          setOpenMenuId(null);
-                                          setMenuPosition(null);
-                                        } else {
-                                          const rect = e.currentTarget.getBoundingClientRect();
-                                          setMenuPosition({
-                                            top: rect.bottom + 4,
-                                            left: rect.right - 180,
-                                          });
-                                          setOpenMenuId(c.id || null);
-                                        }
-                                      }}
-                                      className="p-1 hover:bg-theme-tertiary rounded transition-colors"
+                                    {selectedIds.has(c.id!) ? (
+                                      <CheckSquare size={20} className="text-blue-600 cursor-pointer" weight="fill" />
+                                    ) : (
+                                      <Square size={20} className="text-text-tertiary cursor-pointer" />
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 font-medium text-text-primary">
+                                    {c.fullName}
+                                  </td>
+                                  <td className="px-4 py-2 text-text-primary font-mono text-xs">
+                                    {c.courseId}
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <span
+                                      className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[c.deliveryStatus || "en_archivo"] ||
+                                        "bg-gray-100 text-gray-700"
+                                        }`}
                                     >
-                                      <DotsThreeVertical size={18} className="text-text-secondary" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
+                                      {statusLabels[c.deliveryStatus || "en_archivo"] ||
+                                        c.deliveryStatus ||
+                                        "—"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 w-12">
+                                    <div className="relative">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (openMenuId === c.id) {
+                                            setOpenMenuId(null);
+                                            setMenuPosition(null);
+                                          } else {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setMenuPosition({
+                                              top: rect.bottom + 4,
+                                              left: rect.right - 180,
+                                            });
+                                            setOpenMenuId(c.id || null);
+                                          }
+                                        }}
+                                        className="p-1 hover:bg-theme-tertiary rounded transition-colors"
+                                      >
+                                        <DotsThreeVertical size={18} className="text-text-secondary" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
                               ));
                             })()}
                           </tbody>
@@ -989,14 +921,14 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                             const groupSearchTerm = (groupSearchTerms[groupKey] || "").toLowerCase();
                             const filtered = groupSearchTerm
                               ? groupCerts.filter((c) => {
-                                  const searchLower = groupSearchTerm;
-                                  return (
-                                    c.fullName.toLowerCase().includes(searchLower) ||
-                                    c.courseId?.toLowerCase().includes(searchLower) ||
-                                    c.email?.toLowerCase().includes(searchLower) ||
-                                    c.phone?.toLowerCase().includes(searchLower)
-                                  );
-                                })
+                                const searchLower = groupSearchTerm;
+                                return (
+                                  c.fullName.toLowerCase().includes(searchLower) ||
+                                  c.courseId?.toLowerCase().includes(searchLower) ||
+                                  c.email?.toLowerCase().includes(searchLower) ||
+                                  c.phone?.toLowerCase().includes(searchLower)
+                                );
+                              })
                               : groupCerts;
                             return filtered.length;
                           })()} de {groupCerts.length} certificado{groupCerts.length !== 1 ? "s" : ""}
@@ -1023,7 +955,7 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
               const courseName = groupCerts[0].courseName;
               const year = groupCerts[0].year;
               const month = groupCerts[0].month;
-              
+
               return (
                 <button
                   key={groupKey}
@@ -1131,8 +1063,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                     className="hover:bg-theme-tertiary transition-colors relative cursor-pointer"
                     onClick={(e) => {
                       // No abrir si se hace clic en el checkbox o en el menú de tres puntos
-                      if ((e.target as HTMLElement).closest('input[type="checkbox"]') || 
-                          (e.target as HTMLElement).closest('button')) {
+                      if ((e.target as HTMLElement).closest('input[type="checkbox"]') ||
+                        (e.target as HTMLElement).closest('button')) {
                         return;
                       }
                       setQuickViewCert(c);
@@ -1140,8 +1072,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                         deliveryStatus: c.deliveryStatus || "en_archivo",
                         deliveryDate: c.deliveryDate ? new Date(c.deliveryDate).toISOString().split("T")[0] : "",
                         deliveredTo: c.deliveredTo || "",
-                        physicalLocation: c.physicalLocation || "",
-                        folioCode: c.folioCode || "",
                       });
                     }}
                   >
@@ -1178,10 +1108,9 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                       className="px-4 py-2"
                     >
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          statusColors[c.deliveryStatus || "en_archivo"] ||
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[c.deliveryStatus || "en_archivo"] ||
                           "bg-gray-100 text-gray-700"
-                        }`}
+                          }`}
                       >
                         {statusLabels[c.deliveryStatus || "en_archivo"] ||
                           c.deliveryStatus ||
@@ -1247,14 +1176,14 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
       {/* Menú desplegable fuera del contenedor con scroll - Funciona para ambas vistas */}
       {openMenuId && menuPosition && (
         <>
-          <div 
-            className="fixed inset-0 z-[90]" 
+          <div
+            className="fixed inset-0 z-[90]"
             onClick={() => {
               setOpenMenuId(null);
               setMenuPosition(null);
             }}
           />
-          <div 
+          <div
             className="fixed bg-theme-secondary border border-theme rounded-lg shadow-xl z-[200] min-w-[180px]"
             style={{
               top: `${menuPosition.top}px`,
@@ -1275,8 +1204,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                         deliveryStatus: cert.deliveryStatus || "en_archivo",
                         deliveryDate: cert.deliveryDate ? new Date(cert.deliveryDate).toISOString().split("T")[0] : "",
                         deliveredTo: cert.deliveredTo || "",
-                        physicalLocation: cert.physicalLocation || "",
-                        folioCode: cert.folioCode || "",
                       });
                       setOpenMenuId(null);
                       setMenuPosition(null);
@@ -1443,22 +1370,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                     <p className="text-text-primary text-sm">{quickViewCert.phone}</p>
                   </div>
                 )}
-                {quickViewCert.physicalLocation && (
-                  <div>
-                    <label className="block text-xs text-text-secondary uppercase mb-1">
-                      Ubicación Física
-                    </label>
-                    <p className="text-text-primary text-sm">{quickViewCert.physicalLocation}</p>
-                  </div>
-                )}
-                {quickViewCert.folioCode && (
-                  <div>
-                    <label className="block text-xs text-text-secondary uppercase mb-1">
-                      Código de Folio
-                    </label>
-                    <p className="text-text-primary font-mono text-sm">{quickViewCert.folioCode}</p>
-                  </div>
-                )}
                 {quickViewCert.driveFileId && (
                   <div className="md:col-span-2">
                     <label className="block text-xs text-text-secondary uppercase mb-2">
@@ -1551,40 +1462,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                       className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Ubicación Física
-                    </label>
-                    <input
-                      type="text"
-                      value={quickEditData.physicalLocation}
-                      onChange={(e) =>
-                        setQuickEditData({
-                          ...quickEditData,
-                          physicalLocation: e.target.value,
-                        })
-                      }
-                      placeholder="Ej: Archivo A, Estante 3, etc."
-                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">
-                      Código de Folio
-                    </label>
-                    <input
-                      type="text"
-                      value={quickEditData.folioCode}
-                      onChange={(e) =>
-                        setQuickEditData({
-                          ...quickEditData,
-                          folioCode: e.target.value,
-                        })
-                      }
-                      placeholder="Ej: FOL-2025-001"
-                      className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary font-mono"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -1612,8 +1489,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                           deliveryStatus: quickEditData.deliveryStatus,
                           deliveryDate: quickEditData.deliveryDate || null,
                           deliveredTo: quickEditData.deliveredTo || null,
-                          physicalLocation: quickEditData.physicalLocation || null,
-                          folioCode: quickEditData.folioCode || null,
                         }),
                       });
 
@@ -1670,56 +1545,12 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const firstCert = selectedGroupForModal.certs[0];
-                    const courseCode = firstCert.courseId?.split("-")[0] || "";
-                    // Extraer edición del courseId si existe (formato: CODIGO-EDICION-AÑO-NUMERO)
-                    let edition: number | null = null;
-                    if (firstCert.courseId) {
-                      const parts = firstCert.courseId.split("-");
-                      console.log("[CertificateList] Extrayendo edición de courseId (modal):", {
-                        courseId: firstCert.courseId,
-                        parts,
-                        partsLength: parts.length
-                      });
-                      // Si tiene 4 partes: CODIGO-EDICION-AÑO-NUMERO
-                      // Si tiene 3 partes: CODIGO-AÑO-NUMERO (sin edición)
-                      if (parts.length === 4) {
-                        const editionNum = parseInt(parts[1], 10);
-                        if (!isNaN(editionNum)) {
-                          edition = editionNum;
-                          console.log("[CertificateList] Edición extraída (modal):", edition);
-                        }
-                      } else {
-                        console.log("[CertificateList] No se encontró edición (formato sin edición)");
-                      }
-                    }
-                    setInitialCourseData({
-                      courseId: courseCode,
-                      courseName: firstCert.courseName || "",
-                      courseType: firstCert.courseType || "Curso",
-                      year: firstCert.year,
-                      month: firstCert.month || null,
-                      edition: edition,
-                      origin: firstCert.origin || "nuevo",
-                    });
-                    setShowAddCertificateForm(true);
-                  }}
-                  className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                  <Plus size={18} weight="bold" />
-                  Agregar Certificado
-                </button>
-                <button
-                  onClick={() => setSelectedGroupForModal(null)}
-                  className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
-                >
-                  <X size={20} weight="bold" className="text-text-secondary" />
-                </button>
-              </div>
+              <button
+                onClick={() => setSelectedGroupForModal(null)}
+                className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
+              >
+                <X size={20} weight="bold" className="text-text-secondary" />
+              </button>
             </div>
 
             {/* Contenido del Modal - Tabla de certificados */}
@@ -1801,10 +1632,8 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                                     setQuickViewCert(cert);
                                     setQuickEditData({
                                       deliveryStatus: cert.deliveryStatus || "en_archivo",
-                                      deliveryDate: cert.deliveryDate ? new Date(cert.deliveryDate).toISOString().split("T")[0] : "",
+                                      deliveryDate: cert.deliveryDate || "",
                                       deliveredTo: cert.deliveredTo || "",
-                                      physicalLocation: cert.physicalLocation || "",
-                                      folioCode: cert.folioCode || "",
                                     });
                                     setOpenMenuId(null);
                                   }}
@@ -1862,43 +1691,6 @@ const CertificateList = forwardRef<CertificateListHandle>((props, ref) => {
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Agregar Certificado */}
-      {showAddCertificateForm && initialCourseData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-theme-secondary rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-theme">
-            <div className="sticky top-0 bg-theme-secondary border-b border-theme px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-text-primary">
-                Agregar Nuevo Certificado
-              </h2>
-              <button
-                onClick={() => {
-                  setShowAddCertificateForm(false);
-                  setInitialCourseData(null);
-                }}
-                className="p-1 hover:bg-theme-tertiary rounded transition-colors"
-              >
-                <X size={24} className="text-text-secondary" />
-              </button>
-            </div>
-            <div className="p-6">
-              <CertificateForm
-                initialCourseData={initialCourseData}
-                onCancel={() => {
-                  setShowAddCertificateForm(false);
-                  setInitialCourseData(null);
-                }}
-                onSuccess={async () => {
-                  await loadCertificates();
-                  setShowAddCertificateForm(false);
-                  setInitialCourseData(null);
-                  toast.success("Certificado creado correctamente");
-                }}
-              />
             </div>
           </div>
         </div>

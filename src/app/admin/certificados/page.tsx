@@ -17,6 +17,14 @@ export default function Page() {
   const [showImport, setShowImport] = useState(false);
   const [showCourseExport, setShowCourseExport] = useState(false);
   const certificateListRef = useRef<CertificateListHandle>(null);
+  const [initialCourseId, setInitialCourseId] = useState<string | undefined>(undefined);
+  const [initialCourseName, setInitialCourseName] = useState<string | undefined>(undefined);
+
+  const handleAddCertificate = (courseId?: string, courseName?: string) => {
+    setInitialCourseId(courseId);
+    setInitialCourseName(courseName);
+    setShowForm(true);
+  };
 
   return (
     <main className="min-h-screen bg-theme-primary p-8">
@@ -60,7 +68,7 @@ export default function Page() {
               {showStats ? "Ocultar Estadísticas" : "Ver Estadísticas"}
             </button>
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => handleAddCertificate()}
               className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
             >
               <Plus size={18} weight="bold" />
@@ -74,14 +82,26 @@ export default function Page() {
         <div className="bg-theme-secondary rounded-xl shadow p-6 border border-theme">
           <div className="mb-4">
             <button
-              onClick={() => setShowForm(false)}
+              onClick={() => {
+                setShowForm(false);
+                setInitialCourseId(undefined);
+                setInitialCourseName(undefined);
+              }}
               className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
             >
               <ArrowLeft size={20} weight="bold" />
               <span>Volver a la lista</span>
             </button>
           </div>
-          <CertificateForm onCancel={() => setShowForm(false)} />
+          <CertificateForm
+            onCancel={() => {
+              setShowForm(false);
+              setInitialCourseId(undefined);
+              setInitialCourseName(undefined);
+            }}
+            initialCourseId={initialCourseId}
+            initialCourseName={initialCourseName}
+          />
         </div>
       ) : (
         <div className="space-y-6">
@@ -100,7 +120,10 @@ export default function Page() {
             />
           )}
           <div className="bg-theme-secondary rounded-xl shadow p-4 border border-theme">
-            <CertificateList ref={certificateListRef} />
+            <CertificateList
+              ref={certificateListRef}
+              onAddCertificate={handleAddCertificate}
+            />
           </div>
         </div>
       )}
