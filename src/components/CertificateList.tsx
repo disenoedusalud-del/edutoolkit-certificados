@@ -238,8 +238,26 @@ const CertificateList = forwardRef<CertificateListHandle, CertificateListProps>(
   const groupedCerts = useMemo(() => {
     const groups: Record<string, Certificate[]> = {};
     filteredCerts.forEach((cert) => {
-      const courseCode = cert.courseId ? cert.courseId.split("-")[0] : "SIN-CODIGO";
-      const groupKey = `${courseCode}-${cert.courseName}-${cert.year}`;
+      // FIX: Agrupar por el prefijo completo del curso (todo menos el número de secuencia final)
+      // esto corrige el problema donde cursos como "NAEF-2019-1" y "NAEF-2019-2" se agrupaban juntos.
+      let derivedCourseId = "SIN-CODIGO";
+      if (cert.courseId) {
+        if (cert.courseId.includes("-")) {
+          const parts = cert.courseId.split("-");
+          // Asumimos que la última parte es la secuencia. Tomamos todo lo anterior.
+          if (parts.length > 1) {
+            derivedCourseId = parts.slice(0, parts.length - 1).join("-");
+          } else {
+            derivedCourseId = cert.courseId;
+          }
+        } else {
+          derivedCourseId = cert.courseId;
+        }
+      }
+
+      // Usar derivedCourseId como clave única para separar carpetas diferentes
+      const groupKey = `${derivedCourseId}`;
+
       if (!groups[groupKey]) {
         groups[groupKey] = [];
       }
@@ -707,7 +725,7 @@ const CertificateList = forwardRef<CertificateListHandle, CertificateListProps>(
           {Object.entries(groupedCerts)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([groupKey, groupCerts]) => {
-              const courseCode = groupCerts[0].courseId ? groupCerts[0].courseId.split("-")[0] : "SIN-CODIGO";
+              const courseCode = groupKey; // Usar la clave de grupo que ya es el ID derivado correcto
               const courseName = groupCerts[0].courseName;
               const year = groupCerts[0].year;
               const month = groupCerts[0].month;
