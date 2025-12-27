@@ -1,12 +1,11 @@
-
 import { NextRequest, NextResponse } from "next/server";
-import { uploadCertificateToDrive } from "@/lib/googleDrive";
+import { uploadPdfToAppsScriptDrive } from "@/lib/appsScriptDrive";
 import { requireRole } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
     try {
         // Verificar permisos y obtener usuario
-        const user = await requireRole("EDITOR");
+        await requireRole("EDITOR");
 
         const formData = await request.formData();
         const file = formData.get("file") as File;
@@ -27,23 +26,32 @@ export async function POST(request: NextRequest) {
         // Determinar nombre del archivo
         const finalFileName = fileName || file.name;
 
-        // Subir a Drive y compartir con el usuario que sube
-        const result = await uploadCertificateToDrive(
-            buffer,
-            finalFileName,
-            folderId || undefined,
-            user.email
-        );
+        // Si no hay folderId, no podemos subir con Apps Script (requiere folderId)
+        if (!folderId) {
+            return NextResponse.json(
+                { error: "No se especificó una carpeta de destino válida (folderId)" },
+                { status: 400 }
+            );
+        }
 
-        if (!result) {
-            throw new Error("Error desconocido al subir el archivo");
+        console.log("[API-UPLOAD] Subiendo vía Apps Script a carpeta:", folderId);
+
+        // Subir a Drive vía Apps Script
+        const result = await uploadPdfToAppsScriptDrive({
+            pdfBuffer: buffer,
+            fileName: finalFileName,
+            folderId: folderId
+        });
+
+        if (!result.ok) {
+            throw new Error(result.error || "Error desconocido al subir el archivo mediante Apps Script");
         }
 
         return NextResponse.json({
             success: true,
             fileId: result.fileId,
             webViewLink: result.webViewLink,
-            name: result.name
+            name: result.name || finalFileName
         });
 
     } catch (error: any) {

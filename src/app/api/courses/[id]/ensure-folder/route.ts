@@ -19,8 +19,23 @@ export async function POST(
         // Solo EDITOR o superior puede gatillar esto
         await requireRole("EDITOR");
 
-        const docRef = adminDb.collection("courses").doc(id);
-        const doc = await docRef.get();
+        let docRef = adminDb.collection("courses").doc(id);
+        let doc = await docRef.get();
+
+        // Si no existe, intentar buscar por el campo "id" dentro del documento
+        if (!doc.exists) {
+            console.log(`[ENSURE-FOLDER] Curso no encontrado por ID de documento ${id}, buscando por campo 'id'...`);
+            const coursesSnapshot = await adminDb.collection("courses")
+                .where("id", "==", id)
+                .limit(1)
+                .get();
+
+            if (!coursesSnapshot.empty) {
+                doc = coursesSnapshot.docs[0];
+                docRef = doc.ref; // Actualizar docRef para el update posterior
+                console.log(`[ENSURE-FOLDER] Curso encontrado por campo 'id', ID del documento: ${doc.id}`);
+            }
+        }
 
         if (!doc.exists) {
             return NextResponse.json({ error: "Curso no encontrado" }, { status: 404 });
@@ -62,15 +77,15 @@ export async function POST(
 
         const yearFolderId = yearFolderResult.folderId;
 
-        // 2. Crear carpeta del CURSO dentro del año
+        // 2. Obtener o crear carpeta del CURSO dentro del año
         const courseFolderName = `${courseCode} - ${name.trim()}`;
-        const courseFolderResult = await createFolderInAppsScriptDrive({
+        const courseFolderResult = await getOrCreateFolderInAppsScriptDrive({
             folderName: courseFolderName,
             parentFolderId: yearFolderId,
         });
 
         if (!courseFolderResult.ok || !courseFolderResult.folderId) {
-            throw new Error(`Error creando carpeta del curso: ${courseFolderResult.error}`);
+            throw new Error(`Error obteniendo/creando carpeta del curso: ${courseFolderResult.error}`);
         }
 
         const driveFolderId = courseFolderResult.folderId;

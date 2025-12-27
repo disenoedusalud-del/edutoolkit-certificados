@@ -374,16 +374,16 @@ export async function POST(request: NextRequest) {
             parentFolderId: yearFolderId,
           });
 
-          const courseFolderResult = await createFolderInAppsScriptDrive({
+          const courseFolderResult = await getOrCreateFolderInAppsScriptDrive({
             folderName: courseFolderName,
             parentFolderId: yearFolderId,
           });
 
           if (courseFolderResult.ok && courseFolderResult.folderId) {
             driveFolderId = courseFolderResult.folderId;
-            console.log("[CREATE-COURSE] ✅ Carpeta del curso creada:", driveFolderId);
+            console.log("[CREATE-COURSE] ✅ Carpeta del curso obtenida/creada:", driveFolderId);
           } else {
-            console.error("[CREATE-COURSE] ⚠️ Error creando carpeta del curso:", courseFolderResult.error);
+            console.error("[CREATE-COURSE] ⚠️ Error obteniendo/creando carpeta del curso:", courseFolderResult.error);
             // No fallar la creación del curso si falla la carpeta, solo loguear
           }
         }
