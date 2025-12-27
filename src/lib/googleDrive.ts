@@ -113,14 +113,14 @@ async function verifyFolderAccess(drive: any, folderId: string): Promise<boolean
       fileId: folderId,
       fields: "id, name, mimeType, parents",
     });
-    
+
     const file = response.data;
     console.log("[GOOGLE-DRIVE] ✅ Carpeta encontrada:", {
       id: file.id,
       name: file.name,
       mimeType: file.mimeType,
     });
-    
+
     // Verificar que sea una carpeta
     if (file.mimeType !== "application/vnd.google-apps.folder") {
       throw new Error(
@@ -128,7 +128,7 @@ async function verifyFolderAccess(drive: any, folderId: string): Promise<boolean
         `Necesitas el ID de la carpeta, no de un archivo.`
       );
     }
-    
+
     return true;
   } catch (error: any) {
     console.error("[GOOGLE-DRIVE] ❌ Error verificando acceso a carpeta:", {
@@ -136,7 +136,7 @@ async function verifyFolderAccess(drive: any, folderId: string): Promise<boolean
       message: error?.message,
       response: error?.response?.data,
     });
-    
+
     if (error?.code === 404) {
       throw new Error(
         `La carpeta con ID "${folderId}" no existe o no está compartida con el Service Account.\n\n` +
@@ -181,13 +181,15 @@ async function verifyFolderAccess(drive: any, folderId: string): Promise<boolean
 export async function uploadCertificateToDrive(
   pdfBuffer: Buffer,
   fileName: string,
-  folderId?: string
+  folderId?: string,
+  shareWithEmail?: string // Nuevo parámetro opcional
 ): Promise<DriveFileInfo | null> {
   try {
     console.log("[GOOGLE-DRIVE] Iniciando subida de archivo:", {
       fileName,
       fileSize: pdfBuffer.length,
       folderId: folderId || "raíz del Service Account",
+      shareWithEmail
     });
 
     const drive = await getDriveClient();
@@ -214,9 +216,8 @@ export async function uploadCertificateToDrive(
     }
 
     // Subir el archivo
-    // Convertir Buffer a Stream (googleapis requiere un stream)
     const stream = Readable.from(pdfBuffer);
-    
+
     console.log("[GOOGLE-DRIVE] Llamando a drive.files.create...");
     const response = await drive.files.create({
       requestBody: fileMetadata,
@@ -238,14 +239,27 @@ export async function uploadCertificateToDrive(
       throw new Error("No se pudo obtener el ID del archivo subido");
     }
 
-    // Hacer el archivo accesible públicamente (opcional, comentado por seguridad)
-    // await drive.permissions.create({
-    //   fileId: file.id,
-    //   requestBody: {
-    //     role: "reader",
-    //     type: "anyone",
-    //   },
-    // });
+    // COMPARTIR ARCHIVO: Si se proporcionó un email, compartir el archivo explícitamente
+    // Esto es crucial porque los archivos subidos por Service Account no son visibles
+    // por defecto para el usuario, a menos que estén en una carpeta compartida correctamente.
+    // Al compartir explícitamente, aseguramos que el usuario pueda verlo.
+    if (shareWithEmail) {
+      try {
+        console.log(`[GOOGLE-DRIVE] Compartiendo archivo con ${shareWithEmail}...`);
+        await drive.permissions.create({
+          fileId: file.id,
+          requestBody: {
+            role: "writer", // Dar permisos de edición para que puedan moverlo/borrarlo
+            type: "user",
+            emailAddress: shareWithEmail
+          },
+        });
+        console.log("[GOOGLE-DRIVE] ✅ Archivo compartido exitosamente");
+      } catch (permError) {
+        console.warn("[GOOGLE-DRIVE] ⚠️ No se pudo compartir el archivo automáticamente:", permError);
+        // No lanzamos error para no interrumpir el flujo principal, pero logueamos
+      }
+    }
 
     const result = {
       fileId: file.id,
@@ -263,7 +277,7 @@ export async function uploadCertificateToDrive(
     console.error("[GOOGLE-DRIVE] Error message:", error?.message);
     console.error("[GOOGLE-DRIVE] Error code:", error?.code);
     console.error("[GOOGLE-DRIVE] Error details:", JSON.stringify(error, null, 2));
-    
+
     // Proporcionar mensaje de error más específico
     if (error?.code === 404) {
       throw new Error("La carpeta especificada no existe o no tienes acceso a ella");
@@ -287,7 +301,7 @@ export async function uploadCertificateToDrive(
     if (error?.message?.includes("GOOGLE_DRIVE_SERVICE_ACCOUNT")) {
       throw error; // Ya tiene un mensaje claro
     }
-    
+
     throw new Error(
       `Error subiendo archivo a Google Drive: ${error?.message || String(error)}`
     );

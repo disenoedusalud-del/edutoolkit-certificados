@@ -5,8 +5,8 @@ import { requireRole } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
     try {
-        // Verificar permisos
-        await requireRole("EDITOR");
+        // Verificar permisos y obtener usuario
+        const user = await requireRole("EDITOR");
 
         const formData = await request.formData();
         const file = formData.get("file") as File;
@@ -27,11 +27,12 @@ export async function POST(request: NextRequest) {
         // Determinar nombre del archivo
         const finalFileName = fileName || file.name;
 
-        // Subir a Drive
+        // Subir a Drive y compartir con el usuario que sube
         const result = await uploadCertificateToDrive(
             buffer,
             finalFileName,
-            folderId || undefined
+            folderId || undefined,
+            user.email
         );
 
         if (!result) {
