@@ -7,6 +7,9 @@ export interface Certificate {
   courseType: string;
   year: number;
   month?: number | null; // mes del curso (1-12, opcional, heredado del curso)
+  edition?: number | null; // edición del curso (opcional, heredado del curso)
+
+  identification?: string | null; // DNI, Pasaporte, etc.
 
   origin: "historico" | "nuevo";
 
@@ -18,11 +21,11 @@ export interface Certificate {
   driveWebViewLink?: string | null;
 
   deliveryStatus:
-    | "en_archivo"
-    | "listo_para_entrega"
-    | "entregado"
-    | "digital_enviado"
-    | "anulado";
+  | "en_archivo"
+  | "listo_para_entrega"
+  | "entregado"
+  | "digital_enviado"
+  | "anulado";
 
   deliveryDate: string | null;
   deliveredTo: string | null;

@@ -202,7 +202,10 @@ export default function CertificateForm({
     const loadCourses = async () => {
       try {
         setLoadingCourses(true);
-        const res = await fetch("/api/courses?status=active");
+        // Si tenemos un initialCourseId, cargamos todos los cursos (activos y archivados)
+        // para asegurar que podemos encontrar el curso correspondiente aunque esté archivado.
+        const url = initialCourseId ? "/api/courses" : "/api/courses?status=active";
+        const res = await fetch(url);
 
         // La API puede devolver un array directo o un objeto con paginación
         const data = await res.json();
@@ -238,17 +241,35 @@ export default function CertificateForm({
           }
         } else if (initialCourseId && coursesArray.length > 0) {
           // Caso 2: Creando nuevo certificado desde un curso específico (botón "+")
+          console.log("Buscando curso coincidente para:", { initialCourseId, initialCourseName });
+
           // Intentar buscar por ID exacto primero
           let matchingCourse = coursesArray.find((c: Course) => c.id === initialCourseId);
 
-          // Si no se encuentra, intentar buscar por coincidencia parcial (por si el ID viene como prefijo)
+          // Si no se encuentra, intentar buscar por coincidencia parcial de ID
           if (!matchingCourse) {
             matchingCourse = coursesArray.find((c: Course) =>
               initialCourseId.startsWith(c.id) || c.id.startsWith(initialCourseId)
             );
           }
 
+          // Si aún no se encuentra, intentar buscar por nombre exacto
+          if (!matchingCourse && initialCourseName) {
+            matchingCourse = coursesArray.find((c: Course) =>
+              c.name.toLowerCase() === initialCourseName.toLowerCase()
+            );
+          }
+
+          // Último recurso: buscar por prefijo del ID (ej: buscar "NAEF" en "NAEF-1-2019")
+          if (!matchingCourse) {
+            const prefix = initialCourseId.split('-')[0];
+            matchingCourse = coursesArray.find((c: Course) =>
+              c.id === prefix || c.id.startsWith(prefix)
+            );
+          }
+
           if (matchingCourse) {
+            console.log("Curso encontrado:", matchingCourse);
             const courseYear = matchingCourse.year || new Date().getFullYear();
             const courseEdition = matchingCourse.edition || null;
 
@@ -267,8 +288,8 @@ export default function CertificateForm({
             }));
           } else {
             // Si no se encuentra el curso, mostrar un warning pero permitir continuar
-            console.warn("No se encontró el curso con ID:", initialCourseId);
-            toast.warning(`No se encontró el curso "${initialCourseId}". Por favor, selecciona un curso manualmente.`);
+            console.warn("No se encontró el curso con ID:", initialCourseId, "o nombre:", initialCourseName);
+            toast.warning(`No se encontró el curso "${initialCourseId}". Por favor, selecciónalo manualmente del listado.`);
           }
         }
       } catch (error) {
@@ -797,7 +818,7 @@ export default function CertificateForm({
                       </option>
                       {Array.isArray(courses) && courses.length > 0 && courses.map((course) => (
                         <option key={course.id} value={course.id}>
-                          {course.name} ({course.id})
+                          {course.name} ({course.id}){course.status === 'archived' ? ' [ARCHIVADO]' : ''}
                         </option>
                       ))}
                     </select>

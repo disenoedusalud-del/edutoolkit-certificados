@@ -975,36 +975,61 @@ const CertificateList = forwardRef<CertificateListHandle, CertificateListProps>(
               const month = groupCerts[0].month;
 
               return (
-                <button
+                <div
                   key={groupKey}
-                  onClick={() => openGroupModal(groupKey)}
-                  className="bg-theme-secondary border-2 border-theme rounded-lg p-4 hover:border-accent hover:bg-theme-tertiary transition-all text-left group"
+                  className="bg-theme-secondary border-2 border-theme rounded-lg p-4 hover:border-accent hover:bg-theme-tertiary transition-all text-left group relative"
                 >
-                  <div className="flex items-start gap-3 mb-3">
-                    <FolderOpen size={32} className="text-blue-600 group-hover:text-accent transition-colors" weight="fill" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-text-primary truncate">
-                        {courseCode}
-                      </div>
-                      <div className="text-xs text-text-secondary truncate">
-                        {courseName}
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => openGroupModal(groupKey)}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <FolderOpen size={32} className="text-blue-600 group-hover:text-accent transition-colors" weight="fill" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-text-primary truncate">
+                          {courseCode}
+                        </div>
+                        <div className="text-xs text-text-secondary truncate">
+                          {courseName}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    {month && (
+                    <div className="space-y-1">
+                      {month && (
+                        <div className="text-xs text-text-secondary">
+                          Mes: <span className="font-medium text-text-primary">{getMonthName(month)}</span>
+                        </div>
+                      )}
                       <div className="text-xs text-text-secondary">
-                        Mes: <span className="font-medium text-text-primary">{getMonthName(month)}</span>
+                        Año: <span className="font-medium text-text-primary">{year}</span>
                       </div>
-                    )}
-                    <div className="text-xs text-text-secondary">
-                      Año: <span className="font-medium text-text-primary">{year}</span>
-                    </div>
-                    <div className="text-xs text-text-secondary">
-                      Certificados: <span className="font-medium text-text-primary">{groupCerts.length}</span>
+                      <div className="text-xs text-text-secondary">
+                        Certificados: <span className="font-medium text-text-primary">{groupCerts.length}</span>
+                      </div>
                     </div>
                   </div>
-                </button>
+
+                  {/* Botón flotante para agregar certificado */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onAddCertificate && groupCerts.length > 0) {
+                        const certCourseId = groupCerts[0].courseId;
+                        if (certCourseId) {
+                          const parts = certCourseId.split("-");
+                          if (parts.length >= 3) {
+                            const potentialCourseId = parts.slice(0, parts.length - 1).join("-");
+                            onAddCertificate(potentialCourseId, courseName);
+                          }
+                        }
+                      }
+                    }}
+                    className="absolute bottom-4 right-4 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors transform hover:scale-110 active:scale-95 z-10"
+                    title="Agregar certificado a este curso"
+                  >
+                    <Plus size={20} weight="bold" />
+                  </button>
+                </div>
               );
             })}
           {Object.keys(groupedCerts).length === 0 && (
@@ -1552,23 +1577,48 @@ const CertificateList = forwardRef<CertificateListHandle, CertificateListProps>(
           <div className="bg-theme-secondary border border-theme rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Header del Modal */}
             <div className="flex items-center justify-between p-6 border-b border-theme">
-              <div className="flex items-center gap-3">
-                <FolderOpen size={24} weight="bold" className="text-accent" />
-                <div>
-                  <h2 className="text-xl font-bold text-text-primary">
-                    {selectedGroupForModal.certs[0].courseId?.split("-")[0]} - {selectedGroupForModal.certs[0].courseName}
-                  </h2>
-                  <p className="text-sm text-text-secondary">
-                    {selectedGroupForModal.certs[0].month ? `${getMonthName(selectedGroupForModal.certs[0].month)} ` : ""}Año {selectedGroupForModal.certs[0].year} • {selectedGroupForModal.certs.length} certificado{selectedGroupForModal.certs.length !== 1 ? "s" : ""}
-                  </p>
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <FolderOpen size={24} weight="bold" className="text-accent" />
+                  <div>
+                    <h2 className="text-xl font-bold text-text-primary">
+                      {selectedGroupForModal.certs[0].courseId?.split("-")[0]} - {selectedGroupForModal.certs[0].courseName}
+                    </h2>
+                    <p className="text-sm text-text-secondary">
+                      {selectedGroupForModal.certs[0].month ? `${getMonthName(selectedGroupForModal.certs[0].month)} ` : ""}Año {selectedGroupForModal.certs[0].year} • {selectedGroupForModal.certs.length} certificado{selectedGroupForModal.certs.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (onAddCertificate && selectedGroupForModal.certs.length > 0) {
+                        const certCourseId = selectedGroupForModal.certs[0].courseId;
+                        const courseName = selectedGroupForModal.certs[0].courseName;
+                        if (certCourseId) {
+                          const parts = certCourseId.split("-");
+                          if (parts.length >= 3) {
+                            const potentialCourseId = parts.slice(0, parts.length - 1).join("-");
+                            onAddCertificate(potentialCourseId, courseName);
+                            setSelectedGroupForModal(null); // Cerrar modal para mostrar el form
+                          }
+                        }
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm shadow-sm"
+                  >
+                    <Plus size={18} weight="bold" />
+                    Agregar nuevo
+                  </button>
+                  <button
+                    onClick={() => setSelectedGroupForModal(null)}
+                    className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
+                  >
+                    <X size={20} weight="bold" className="text-text-secondary" />
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedGroupForModal(null)}
-                className="p-2 hover:bg-theme-tertiary rounded-lg transition-colors"
-              >
-                <X size={20} weight="bold" className="text-text-secondary" />
-              </button>
             </div>
 
             {/* Contenido del Modal - Tabla de certificados */}

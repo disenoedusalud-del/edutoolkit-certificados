@@ -24,9 +24,12 @@ function generateCourseCode(courseName: string): string {
 // Función auxiliar para calcular el siguiente courseId
 async function calculateNextCourseId(
   courseCode: string,
-  year: number
+  year: number,
+  edition?: number | null
 ): Promise<string> {
-  const prefix = `${courseCode}-${year}-`;
+  // El formato base es CODE-AÑO- o CODE-EDICION-AÑO-
+  const prefix = edition ? `${courseCode}-${edition}-${year}-` : `${courseCode}-${year}-`;
+
   const snapshot = await adminDb
     .collection("certificates")
     .where("courseId", ">=", prefix)
@@ -41,7 +44,8 @@ async function calculateNextCourseId(
 
   const lastCourseId = snapshot.docs[0].data().courseId as string;
   const parts = lastCourseId.split("-");
-  const lastNumber = parseInt(parts[2] || "0", 10);
+  const lastPart = parts[parts.length - 1]; // El último segmento siempre es el número
+  const lastNumber = parseInt(lastPart || "0", 10);
   const nextNumber = lastNumber + 1;
   return `${prefix}${String(nextNumber).padStart(2, "0")}`;
 }
@@ -246,6 +250,38 @@ export async function POST(request: NextRequest) {
           "course_type",
         ]) || "Curso";
 
+        const monthStr = findColumn([
+          "Mes",
+          "mes",
+          "Month",
+          "month",
+        ]);
+        const month = monthStr ? parseInt(monthStr, 10) : null;
+
+        const editionStr = findColumn([
+          "Edición",
+          "edición",
+          "Edicion",
+          "edicion",
+          "Edition",
+          "edition",
+        ]);
+        const edition = editionStr ? parseInt(editionStr, 10) : null;
+
+        const identification = findColumn([
+          "Identificación",
+          "identificación",
+          "Identificacion",
+          "identificacion",
+          "DNI",
+          "Dni",
+          "Pasaporte",
+          "pasaporte",
+          "ID",
+          "Identification",
+          "identification",
+        ]) || null;
+
         // Log para debug (solo en desarrollo)
         if (process.env.NODE_ENV === "development" && i === 0) {
           logger.info("Importación - Fila procesada:", {
@@ -321,6 +357,8 @@ export async function POST(request: NextRequest) {
             name: courseName.trim(),
             courseType: (courseType as Course["courseType"]) || "Curso",
             year: year,
+            month: month,
+            edition: edition,
             origin: "nuevo",
             status: "active",
             createdAt: new Date().toISOString(),
@@ -369,7 +407,25 @@ export async function POST(request: NextRequest) {
         }
 
         // Calcular courseId secuencial
-        const finalCourseId = await calculateNextCourseId(course.id, year);
+        const finalCourseId = await calculateNextCourseId(course.id, year, edition || course.edition);
+
+        const physicalLocation = findColumn([
+          "Ubicación Física",
+          "ubicacion_fisica",
+          "Ubicacion Fisica",
+          "Ubicación",
+          "Physical Location",
+          "location",
+        ]) || null;
+
+        const folioCode = findColumn([
+          "Folio",
+          "folio",
+          "Código de Folio",
+          "Codigo de Folio",
+          "Folio Code",
+          "folio_code",
+        ]) || null;
 
         // Normalizar campos opcionales
         const email = findColumn([
@@ -418,7 +474,9 @@ export async function POST(request: NextRequest) {
           courseId: finalCourseId,
           courseType: course.courseType,
           year: year,
-          month: course.month || null, // Copiar el mes del curso
+          month: month || course.month || null,
+          edition: edition || course.edition || null,
+          identification: identification,
           origin: origin,
           email: email ? email.trim().toLowerCase() : null,
           phone: phone ? phone.trim() : null,
@@ -427,8 +485,8 @@ export async function POST(request: NextRequest) {
           deliveryStatus: deliveryStatus,
           deliveryDate: null,
           deliveredTo: null,
-          physicalLocation: null,
-          folioCode: null,
+          physicalLocation: physicalLocation,
+          folioCode: folioCode,
           emailSent: false,
           whatsappSent: false,
           marketingConsent: false,

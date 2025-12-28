@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileXls, CheckCircle, XCircle, Download, X } from "phosphor-react";
+import { Upload, FileXls, CheckCircle, XCircle, Download, X, BookOpen } from "phosphor-react";
 import { toast } from "@/lib/toast";
 
 interface ImportResults {
@@ -52,7 +52,7 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
       }
 
       setResults(data.results);
-      
+
       // Mostrar mensaje de éxito con detalles
       if (data.results.errors.length > 0) {
         toast.success(
@@ -73,11 +73,11 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
     }
   };
 
-  const downloadTemplate = () => {
-    // Descargar la plantilla desde la carpeta public
+  const downloadTemplate = (format: 'xlsx' | 'csv') => {
+    const filename = format === 'xlsx' ? 'plantilla_certificados.xlsx' : 'plantilla_certificados.csv';
     const link = document.createElement("a");
-    link.href = "/templates/plantilla_importacion_certificados.csv";
-    link.download = "plantilla_importacion_certificados.csv";
+    link.href = `/templates/${filename}`;
+    link.download = filename;
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -105,7 +105,7 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-2">
-            Seleccionar archivo
+            Seleccionar archivo (.xlsx o .csv)
           </label>
           <div className="flex gap-2">
             <input
@@ -142,13 +142,20 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <button
-            onClick={downloadTemplate}
-            className="text-sm text-accent hover:text-accent-hover flex items-center gap-1"
+            onClick={() => downloadTemplate('xlsx')}
+            className="text-sm font-semibold text-green-600 hover:text-green-700 flex items-center gap-1 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100 transition-colors"
+          >
+            <Download size={16} weight="bold" />
+            Descargar Plantilla Excel (.xlsx)
+          </button>
+          <button
+            onClick={() => downloadTemplate('csv')}
+            className="text-sm text-text-secondary hover:text-text-primary flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-theme-tertiary transition-colors"
           >
             <Download size={16} />
-            Descargar plantilla CSV
+            Versión CSV
           </button>
         </div>
 
@@ -186,36 +193,82 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
           </div>
         )}
 
-        <div className="mt-4 p-3 bg-theme-tertiary rounded border border-theme">
-          <p className="text-xs text-text-secondary mb-2">
-            <strong>Formato requerido:</strong> El archivo debe tener estas columnas:
+        <div className="mt-6">
+          <h3 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
+            <BookOpen size={18} />
+            Estructura Recomendada del Archivo
+          </h3>
+          <div className="overflow-x-auto border border-theme rounded-lg">
+            <table className="min-w-full text-[11px] bg-theme-tertiary">
+              <thead>
+                <tr className="bg-theme-secondary text-text-secondary border-b border-theme">
+                  <th className="px-3 py-2 text-left font-bold">Columna</th>
+                  <th className="px-3 py-2 text-left font-bold">Estado</th>
+                  <th className="px-3 py-2 text-left font-bold">Descripción / Valores</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-theme">
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold text-blue-600">Nombre Completo</td>
+                  <td className="px-3 py-2"><span className="text-red-500 font-bold text-[10px] uppercase">Requerido</span></td>
+                  <td className="px-3 py-2">Nombre completo del participante</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold text-blue-600">Nombre del Curso</td>
+                  <td className="px-3 py-2"><span className="text-red-500 font-bold text-[10px] uppercase">Requerido</span></td>
+                  <td className="px-3 py-2">Nombre exacto del curso (ej: Nutrición y Deporte)</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold text-blue-600">Año</td>
+                  <td className="px-3 py-2"><span className="text-red-500 font-bold text-[10px] uppercase">Requerido</span></td>
+                  <td className="px-3 py-2">Número de 4 dígitos (ej: 2025)</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Tipo de Curso</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">Curso, Diplomado, Webinar, Taller, Seminario</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Mes</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">Número del 1 al 12 (para agrupar por mes)</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Edición</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">Número correlativo si el curso se repite</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Identificación</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">DNI, RTN, Pasaporte, etc.</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Email</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">Correo electrónico para envíos masivos</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Teléfono</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">Número de WhatsApp (ej: 50499001122)</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Ubicación Física</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">Ej: Tomo 1, Caja 24, Fila B</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Estado</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">en_archivo, entregado, digital_enviado</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[10px] text-text-tertiary italic">
+            * El sistema ignorará mayúsculas/minúsculas y espacios extras en los encabezados.
           </p>
-          <ul className="text-xs text-text-secondary list-disc list-inside space-y-1">
-            <li>
-              <strong>Nombre Completo</strong> (requerido) - Nombre del participante
-            </li>
-            <li>
-              <strong>Nombre del Curso</strong> (requerido) - Si el curso no existe, se creará automáticamente
-            </li>
-            <li>
-              <strong>Tipo de Curso</strong> (requerido si es nuevo) - Curso, Diplomado, Webinar, Taller, Seminario
-            </li>
-            <li>
-              <strong>Año</strong> (requerido) - Año del certificado (2000-2100)
-            </li>
-            <li>
-              <strong>Email</strong> (opcional) - Email del participante
-            </li>
-            <li>
-              <strong>Teléfono</strong> (opcional) - Teléfono del participante
-            </li>
-            <li>
-              <strong>Origen</strong> (opcional) - "nuevo" o "historico" (default: "nuevo")
-            </li>
-            <li>
-              <strong>Estado</strong> (opcional) - Estado de entrega (default: "en_archivo")
-            </li>
-          </ul>
         </div>
       </div>
     </div>
