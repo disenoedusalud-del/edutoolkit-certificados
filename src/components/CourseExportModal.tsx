@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Folder, Download } from "phosphor-react";
+import { X, Folder, Download, MagnifyingGlass } from "phosphor-react";
 import { Certificate } from "@/types/Certificate";
 import { exportToCSV, downloadCSV } from "@/lib/exportUtils";
 import { toast } from "@/lib/toast";
@@ -42,9 +42,25 @@ export default function CourseExportModal({
     onClose();
   };
 
-  // Filtrar grupos vacíos, ya que no se pueden exportar y causan error al leer metadatos
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filtrar grupos vacíos Y aplicar filtro de búsqueda
   const groups = Object.keys(groupedCerts)
-    .filter((key) => groupedCerts[key].length > 0)
+    .filter((key) => {
+      const hasCerts = groupedCerts[key].length > 0;
+      if (!hasCerts) return false;
+
+      const certs = groupedCerts[key];
+      const firstCert = certs[0];
+      const courseCode = firstCert.courseId?.split("-")[0] || "SIN-CODIGO";
+      const courseName = firstCert.courseName || "Sin nombre";
+
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        courseCode.toLowerCase().includes(searchLower) ||
+        courseName.toLowerCase().includes(searchLower)
+      );
+    })
     .sort();
 
   return (
@@ -64,6 +80,20 @@ export default function CourseExportModal({
           >
             <X size={20} weight="bold" className="text-text-secondary" />
           </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="px-6 py-4 border-b border-theme bg-theme-tertiary">
+          <div className="relative">
+            <MagnifyingGlass size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary" />
+            <input
+              type="text"
+              placeholder="Buscar curso por nombre o código..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-theme-secondary border border-theme rounded-lg text-sm focus:ring-2 focus:ring-accent focus:border-accent text-text-primary"
+            />
+          </div>
         </div>
 
         {/* Content */}
@@ -87,8 +117,8 @@ export default function CourseExportModal({
                     key={groupKey}
                     onClick={() => setSelectedGroup(groupKey)}
                     className={`w-full p-4 rounded-lg border-2 transition-all text-left ${selectedGroup === groupKey
-                        ? "border-accent bg-accent/10"
-                        : "border-theme bg-theme-tertiary hover:bg-theme-secondary"
+                      ? "border-accent bg-accent/10"
+                      : "border-theme bg-theme-tertiary hover:bg-theme-secondary"
                       }`}
                   >
                     <div className="flex items-center justify-between">

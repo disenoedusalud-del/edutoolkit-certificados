@@ -236,6 +236,12 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
               <label className="text-xs text-text-secondary uppercase">Nombre Completo</label>
               <p className="text-text-primary font-medium">{certificate.fullName}</p>
             </div>
+            {certificate.identification && (
+              <div>
+                <label className="text-xs text-text-secondary uppercase">DNI / Identificación</label>
+                <p className="text-text-primary font-mono">{certificate.identification}</p>
+              </div>
+            )}
             <div>
               <label className="text-xs text-text-secondary uppercase">Email</label>
               <p className="text-text-primary">
