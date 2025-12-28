@@ -257,39 +257,26 @@ export async function DELETE(
     // Buscar certificados que podrían estar relacionados (solo para información)
     // Usar el ID exacto del curso como prefijo, no solo el código base
     const courseYear = courseData?.year || new Date().getFullYear();
-    const courseCode = id.split("-")[0]; // Código base del curso
+    // Lógica Agresiva: Buscar certificados por ID exacto, por prefijo o por Nombre+Año
+    const certificatesSnapshot = await adminDb.collection("certificates").get();
 
-    console.log("[DELETE-COURSE] Buscando certificados potencialmente relacionados:", {
-      courseId: id,
-      courseCode,
-      courseYear
-    });
-
-    // Buscar certificados que empiecen con el código del curso y el año
-    // Esto es más específico que solo el código base
-    const certificatesSnapshot = await adminDb
-      .collection("certificates")
-      .get();
-
-    // Filtrar certificados que coincidan con el patrón del curso específico
-    // Solo certificados que empiecen con el código del curso seguido del año
     const associatedCertificates = certificatesSnapshot.docs.filter((certDoc) => {
       const certData = certDoc.data();
-      const certCourseId = certData.courseId || "";
+      const certCourseId = (certData.courseId || "").toString();
+      const certCourseName = (certData.courseName || "").toString().trim().toLowerCase();
+      const certYear = Number(certData.year);
 
-      // Patrón más específico: debe empezar con el código del curso seguido de guión y año
-      // Ejemplo: si curso es "NAEF" y año es 2025, buscar "NAEF-2025-"
-      const pattern = new RegExp(`^${courseCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-${courseYear}-`);
-      const matches = pattern.test(certCourseId);
+      const targetId = (id || "").toString(); // ID del documento
+      const targetName = (courseData?.name || "").toString().trim().toLowerCase();
+      const targetYear = Number(courseData?.year);
 
-      if (matches) {
-        console.log("[DELETE-COURSE] Certificado potencialmente relacionado encontrado:", {
-          certId: certDoc.id,
-          certCourseId,
-          courseId: id
-        });
-      }
-      return matches;
+      // 1. Coincidencia por ID (Exacto o Prefijo)
+      const matchesId = certCourseId === targetId || certCourseId.startsWith(targetId + "-");
+
+      // 2. Coincidencia por Nombre y Año (Fallback crucial)
+      const matchesNameAndYear = targetName !== "" && certCourseName === targetName && certYear === targetYear;
+
+      return matchesId || matchesNameAndYear;
     });
 
     const certificateCount = associatedCertificates.length;
