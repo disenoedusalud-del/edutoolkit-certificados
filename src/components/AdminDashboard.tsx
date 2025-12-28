@@ -8,7 +8,7 @@ import {
     Gear,
     Bug
 } from 'phosphor-react';
-import type { AuthUser } from '@/lib/auth';
+import type { AuthUser, UserRole } from '@/lib/auth';
 
 interface AdminDashboardProps {
     user: AuthUser | null;
@@ -24,6 +24,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
             href: '/admin/certificados',
             color: 'text-blue-500',
             bgColor: 'bg-blue-500/10',
+            requiredRole: 'VIEWER' as UserRole,
         },
         {
             title: 'Cursos',
@@ -32,6 +33,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
             href: '/admin/cursos',
             color: 'text-green-500',
             bgColor: 'bg-green-500/10',
+            requiredRole: 'VIEWER' as UserRole,
         },
         {
             title: 'Roles y Permisos',
@@ -40,7 +42,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
             href: '/admin/roles',
             color: 'text-purple-500',
             bgColor: 'bg-purple-500/10',
-            restricted: true,
+            requiredRole: 'MASTER_ADMIN' as UserRole,
         },
         {
             title: 'Ajustes',
@@ -49,6 +51,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
             href: '/admin/ajustes',
             color: 'text-gray-500',
             bgColor: 'bg-gray-500/10',
+            requiredRole: 'ADMIN' as UserRole,
         },
         {
             title: 'Debug & Sistema',
@@ -57,9 +60,22 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
             href: '/admin/debug',
             color: 'text-orange-500',
             bgColor: 'bg-orange-500/10',
-            restricted: true,
+            requiredRole: 'MASTER_ADMIN' as UserRole,
         }
     ];
+
+    const roleHierarchy: Record<UserRole, number> = {
+        VIEWER: 1,
+        EDITOR: 2,
+        ADMIN: 3,
+        MASTER_ADMIN: 4,
+    };
+
+    const userRoleValue = roleHierarchy[user?.role || 'VIEWER'];
+
+    const filteredMenuItems = menuItems.filter(item => {
+        return userRoleValue >= roleHierarchy[item.requiredRole];
+    });
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -73,7 +89,7 @@ export function AdminDashboard({ user }: AdminDashboardProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {menuItems.map((item) => {
+                {filteredMenuItems.map((item) => {
                     const Icon = item.icon;
 
                     return (

@@ -21,14 +21,23 @@ function generateCourseCode(courseName: string): string {
   return courseName.substring(0, 4).toUpperCase().replace(/\s/g, "");
 }
 
-// Función auxiliar para calcular el siguiente courseId
-async function calculateNextCourseId(
-  courseCode: string,
+// Función auxiliar para calcular el siguiente ID de certificado
+async function calculateNextCertificateId(
+  courseCode: string, // El ID del curso (ej: LM-2025-1 o LM)
   year: number,
   edition?: number | null
 ): Promise<string> {
-  // El formato base es CODE-AÑO- o CODE-EDICION-AÑO-
-  const prefix = edition ? `${courseCode}-${edition}-${year}-` : `${courseCode}-${year}-`;
+  // LIMPIEZA PROACTIVA: Si el courseCode ya contiene el año o la edición, no los repetimos
+  // Esto previene errores si el course.id ya es "LM-2025-1"
+  let basePrefix = courseCode;
+
+  // Si el prefijo ya termina en un número que parece una secuencia (ej: LM-2025-01), 
+  // lo limpiamos para recalculalo
+  if (basePrefix.match(/-\d{2}$/)) {
+    basePrefix = basePrefix.substring(0, basePrefix.length - 3);
+  }
+
+  const prefix = basePrefix.endsWith("-") ? basePrefix : `${basePrefix}-`;
 
   const snapshot = await adminDb
     .collection("certificates")
@@ -44,9 +53,9 @@ async function calculateNextCourseId(
 
   const lastCourseId = snapshot.docs[0].data().courseId as string;
   const parts = lastCourseId.split("-");
-  const lastPart = parts[parts.length - 1]; // El último segmento siempre es el número
+  const lastPart = parts[parts.length - 1]; // El último segmento es el número correlativo
   const lastNumber = parseInt(lastPart || "0", 10);
-  const nextNumber = lastNumber + 1;
+  const nextNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
   return `${prefix}${String(nextNumber).padStart(2, "0")}`;
 }
 
@@ -145,7 +154,12 @@ export async function POST(request: NextRequest) {
       return obj;
     });
 
-    // Log para debug (solo en desarrollo)
+    // Log crítico para depuración (siempre visible en el servidor)
+    console.log("[DEBUG-IMPORT-FILE] Headers detectados:", headers);
+    if (normalizedData.length > 0) {
+      console.log("[DEBUG-IMPORT-FILE] Primera fila parseada:", normalizedData[0]);
+    }
+
     if (process.env.NODE_ENV === "development") {
       logger.info("Importación - Headers detectados:", { headers });
       if (normalizedData.length > 0) {
@@ -221,6 +235,16 @@ export async function POST(request: NextRequest) {
           "full_name",
         ]);
 
+        const courseIdFromExcel = findColumn([
+          "ID del Curso",
+          "ID Curso",
+          "Código del Curso",
+          "Codigo del Curso",
+          "Course ID",
+          "course_id",
+          "id_curso",
+        ]);
+
         const courseName = findColumn([
           "Nombre del Curso",
           "nombre_del_curso",
@@ -282,12 +306,15 @@ export async function POST(request: NextRequest) {
           "identification",
         ]) || null;
 
-        // Log para debug (solo en desarrollo)
+
+
         if (process.env.NODE_ENV === "development" && i === 0) {
           logger.info("Importación - Fila procesada:", {
             rowNumber,
-            rowKeys: Object.keys(row),
-            rowValues: row
+            fullName,
+            courseIdFromExcel,
+            courseName,
+            year
           });
         }
 
@@ -300,78 +327,154 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        if (!courseName || courseName.trim() === "") {
-          // Mostrar información de debug útil
-          const availableColumns = Object.keys(row).join(", ");
-          const rowValues = Object.values(row).join(", ");
-          results.errors.push({
-            row: rowNumber,
-            error: `Falta el campo requerido: 'Nombre del Curso'. Columnas encontradas en esta fila: [${availableColumns}]. Valores: [${rowValues}]`,
-            data: row,
-          });
-          continue;
-        }
-
-        if (isNaN(year) || year < 2000 || year > 2100) {
-          results.errors.push({
-            row: rowNumber,
-            error: `Año inválido: '${yearStr}'. Debe ser un número entre 2000 y 2100`,
-          });
-          continue;
-        }
-
         // Buscar o crear curso
         let course: Course | null = null;
-        const coursesSnapshot = await adminDb
-          .collection("courses")
-          .where("name", "==", courseName.trim())
-          .where("year", "==", year)
-          .limit(1)
-          .get();
 
-        if (!coursesSnapshot.empty) {
-          // Curso existe
-          const courseDoc = coursesSnapshot.docs[0];
-          course = { id: courseDoc.id, ...courseDoc.data() } as Course;
-        } else {
-          // Crear nuevo curso
-          const courseCode = generateCourseCode(courseName);
+        if (courseIdFromExcel) {
+          // PRIORIDAD 1: Buscar por ID exacto de curso (ID del documento)
+          const searchId = courseIdFromExcel.trim();
 
-          // Verificar que el código no exista ya
-          let finalCourseCode = courseCode;
-          let counter = 1;
-          while (true) {
-            const existingCourse = await adminDb
-              .collection("courses")
-              .doc(finalCourseCode)
+
+          let courseDoc = await adminDb.collection("courses").doc(searchId).get();
+
+          if (courseDoc.exists) {
+            course = { id: courseDoc.id, ...courseDoc.data() } as Course;
+          } else {
+            // PRIORIDAD 1.5: Buscar por el campo "id" dentro de la colección
+            const courseQuery = await adminDb.collection("courses")
+              .where("id", "==", searchId)
+              .limit(1)
               .get();
 
-            if (!existingCourse.exists) {
-              break;
+            if (!courseQuery.empty) {
+              const matchedDoc = courseQuery.docs[0];
+              course = { id: matchedDoc.id, ...matchedDoc.data() } as Course;
+            } else {
+              // PRIORIDAD 1.9: Búsqueda manual "fuzzy" (mayúsculas/minúsculas y permutaciones)
+              // Listamos todos por seguridad (asumiendo que no hay miles de cursos)
+              const allCoursesSnapshot = await adminDb.collection("courses").get();
+              const searchIdLower = searchId.toLowerCase();
+              const searchParts = searchIdLower.split("-");
+
+              const fuzzyMatch = allCoursesSnapshot.docs.find(d => {
+                const data = d.data();
+                const docIdLower = d.id.toLowerCase();
+                const fieldIdLower = data.id ? String(data.id).toLowerCase() : "";
+
+                // 1. Coincidencia exacta (ignorando case)
+                if (docIdLower === searchIdLower || fieldIdLower === searchIdLower) return true;
+
+                // 2. Detectar permutación de Año y Edición (ej: LM-1-2025 vs LM-2025-1)
+                if (searchParts.length >= 3) {
+                  const initials = searchParts[0];
+                  const p2 = searchParts[1];
+                  const p3 = searchParts[2];
+
+                  // Comprobar contra DocID
+                  const docParts = docIdLower.split("-");
+                  if (docParts.length >= 3 && docParts[0] === initials) {
+                    if (docParts[1] === p3 && docParts[2] === p2) return true;
+                  }
+
+                  // Comprobar contra FieldID
+                  const fieldParts = fieldIdLower.split("-");
+                  if (fieldParts.length >= 3 && fieldParts[0] === initials) {
+                    if (fieldParts[1] === p3 && fieldParts[2] === p2) return true;
+                  }
+                }
+
+                // 3. Fallback: si solo tiene 2 partes pero coincide en lo básico
+                if (searchParts.length === 2 && (docIdLower.startsWith(searchIdLower) || fieldIdLower.startsWith(searchIdLower))) {
+                  return true;
+                }
+
+                return false;
+              });
+
+              if (fuzzyMatch) {
+                course = { id: fuzzyMatch.id, ...fuzzyMatch.data() } as Course;
+              } else {
+
+                results.errors.push({
+                  row: rowNumber,
+                  error: `No se encontró el curso con ID: '${searchId}'. Verifica que el código coincida exactamente con el que aparece en la administración de cursos.`,
+                });
+                continue;
+              }
             }
-            finalCourseCode = `${courseCode}${counter}`;
-            counter++;
+          }
+        } else {
+          // PRIORIDAD 2: Fallback a búsqueda por nombre y año
+          if (!courseName || courseName.trim() === "") {
+            results.errors.push({
+              row: rowNumber,
+              error: "Falta el 'ID del Curso' o el 'Nombre del Curso' para identificar a qué curso pertenece este certificado.",
+            });
+            continue;
           }
 
-          const newCourse: Omit<Course, "id"> = {
-            name: courseName.trim(),
-            courseType: (courseType as Course["courseType"]) || "Curso",
-            year: year,
-            month: month,
-            edition: edition,
-            origin: "nuevo",
-            status: "active",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
+          if (isNaN(year) || year < 2000 || year > 2100) {
+            results.errors.push({
+              row: rowNumber,
+              error: `Año inválido: '${yearStr}'. Requerido si no proporcionas el 'ID del Curso'.`,
+            });
+            continue;
+          }
 
-          await adminDb
+          const normalizedImportCourseName = courseName.trim().toLowerCase();
+          const coursesSnapshot = await adminDb
             .collection("courses")
-            .doc(finalCourseCode)
-            .set(newCourse);
-          course = { id: finalCourseCode, ...newCourse };
-          results.coursesCreated.push(courseName);
+            .where("year", "==", year)
+            .get();
+
+          const matchingCourseDoc = coursesSnapshot.docs.find(doc =>
+            doc.data().name.trim().toLowerCase() === normalizedImportCourseName
+          );
+
+          if (matchingCourseDoc) {
+            const courseData = matchingCourseDoc.data();
+            course = { id: matchingCourseDoc.id, ...courseData } as Course;
+          } else {
+            // Crear nuevo curso
+            const initials = generateCourseCode(courseName);
+            let courseCodeBase = edition ? `${initials}-${edition}-${year}` : `${initials}-${year}`;
+            let finalCourseCode = courseCodeBase;
+            let counter = 1;
+            while (true) {
+              const existingCourse = await adminDb.collection("courses").doc(finalCourseCode).get();
+              if (!existingCourse.exists) break;
+              finalCourseCode = `${courseCodeBase}-${counter}`;
+              counter++;
+            }
+
+            const newCourse: Course = {
+              id: finalCourseCode, // Guardar el ID también como campo para búsquedas
+              name: courseName.trim(),
+              courseType: (courseType as Course["courseType"]) || "Curso",
+              year: year,
+              month: month,
+              edition: edition,
+              origin: "nuevo",
+              status: "active",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+
+            await adminDb
+              .collection("courses")
+              .doc(finalCourseCode)
+              .set(newCourse);
+            course = newCourse;
+            results.coursesCreated.push(courseName);
+          }
         }
+
+        // Variables finales extraídas del curso (DB o recién creado)
+        const certYear = course.year;
+        const certMonth = month || course.month || null;
+        const certEdition = edition || course.edition || null;
+        const certCourseName = course.name;
+        const certCourseType = course.courseType;
 
         // ASEGURAR CARPETA EN DRIVE si falta (Estructura Año / Curso)
         if (!course.driveFolderId) {
@@ -406,8 +509,8 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Calcular courseId secuencial
-        const finalCourseId = await calculateNextCourseId(course.id, year, edition || course.edition);
+        // Calcular ID de certificado secuencial usando el ID del curso como base
+        const finalCourseId = await calculateNextCertificateId(course.id, certYear, certEdition);
 
         const physicalLocation = findColumn([
           "Ubicación Física",
@@ -444,12 +547,13 @@ export async function POST(request: NextRequest) {
           "phone",
         ]) || null;
 
-        const origin = (findColumn([
+        const rawOrigin = findColumn([
           "Origen",
           "origen",
           "Origin",
           "origin",
-        ]) || "nuevo") as "nuevo" | "historico";
+        ]).toLowerCase();
+        const origin = (rawOrigin === "historico" ? "historico" : "nuevo") as "nuevo" | "historico";
 
         const contactSource = (findColumn([
           "Fuente de Contacto",
@@ -467,21 +571,29 @@ export async function POST(request: NextRequest) {
           "estado_de_entrega",
         ]) || "en_archivo") as Certificate["deliveryStatus"];
 
-        // Crear certificado
+        // VERIFICAR SI EL CERTIFICADO YA EXISTE (para evitar duplicados al re-importar)
+        const certsSnapshot = await adminDb
+          .collection("certificates")
+          .where("fullName", "==", fullName.trim())
+          .where("courseName", "==", certCourseName)
+          .where("year", "==", certYear)
+          .limit(1)
+          .get();
+
         const certificateData: Omit<Certificate, "id"> = {
           fullName: fullName.trim(),
-          courseName: course.name,
+          courseName: certCourseName,
           courseId: finalCourseId,
-          courseType: course.courseType,
-          year: year,
-          month: month || course.month || null,
-          edition: edition || course.edition || null,
+          courseType: certCourseType,
+          year: certYear,
+          month: certMonth,
+          edition: certEdition,
           identification: identification,
           origin: origin,
           email: email ? email.trim().toLowerCase() : null,
           phone: phone ? phone.trim() : null,
           contactSource: contactSource,
-          driveFileId: null,
+          driveFileId: null, // No sobrescribir si ya existe (ver abajo)
           deliveryStatus: deliveryStatus,
           deliveryDate: null,
           deliveredTo: null,
@@ -494,7 +606,20 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         };
 
-        await adminDb.collection("certificates").add(certificateData);
+        if (!certsSnapshot.empty) {
+          // Existe: Actualizar (pero preservar campos críticos como driveFileId si ya tiene uno)
+          const existingCert = certsSnapshot.docs[0];
+          const existingData = existingCert.data() as Certificate;
+
+          // Preservar archivos y estados si ya estaban
+          if (existingData.driveFileId) certificateData.driveFileId = existingData.driveFileId;
+          certificateData.createdAt = existingData.createdAt || certificateData.createdAt;
+
+          await adminDb.collection("certificates").doc(existingCert.id).update(certificateData);
+        } else {
+          // No existe: Crear nuevo
+          await adminDb.collection("certificates").add(certificateData);
+        }
         results.success++;
       } catch (error: any) {
         logger.error("Error procesando fila de importación", {

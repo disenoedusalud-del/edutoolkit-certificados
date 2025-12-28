@@ -47,10 +47,21 @@ export async function GET(request: NextRequest) {
       edition
     });
 
-    // Construir el prefijo para buscar certificados
-    const prefix = edition 
-      ? `${courseCode}-${edition}-${year}-`
-      : `${courseCode}-${year}-`;
+    // Construir el prefijo para buscar certificados de forma inteligente
+    // Si courseCode ya parece un ID completo (ej: LM-2025-1), no añadimos más partes
+    let basePrefix = courseCode;
+    const yearStr = year.toString();
+    const hasYear = courseCode.includes(`-${yearStr}`);
+    const hasEdition = editionParam ? courseCode.includes(`-${editionParam}-`) || courseCode.endsWith(`-${editionParam}`) : true;
+
+    if (!hasYear) {
+      basePrefix = edition ? `${courseCode}-${edition}-${year}` : `${courseCode}-${year}`;
+    } else if (editionParam && !hasEdition) {
+      // Si tiene año pero falta la edición (poco común), la insertamos antes del año
+      basePrefix = courseCode.replace(`-${yearStr}`, `-${editionParam}-${yearStr}`);
+    }
+
+    const prefix = `${basePrefix}-`;
 
     console.log("[next-sequence] Prefijo de búsqueda:", prefix);
 
@@ -63,13 +74,9 @@ export async function GET(request: NextRequest) {
 
     console.log("[next-sequence] Certificados encontrados:", certificatesSnapshot.docs.length);
 
-    // Escapar caracteres especiales para regex
-    const escapedCourseCode = courseCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-    // Patrón regex para extraer el número secuencial
-    const pattern = edition
-      ? new RegExp(`^${escapedCourseCode}-${edition}-${year}-(\\d+)$`)
-      : new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`);
+    // Patrón regex para extraer el número secuencial basado en el prefijo generado
+    const escapedBasePrefix = basePrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`^${escapedBasePrefix}-(\\d+)$`);
 
     // Extraer todos los números existentes
     const existingNumbers = certificatesSnapshot.docs
@@ -97,10 +104,8 @@ export async function GET(request: NextRequest) {
       nextNumber
     });
 
-    // Construir el formattedId
-    const formattedId = edition
-      ? `${courseCode}-${edition}-${year}-${nextNumber.toString().padStart(2, "0")}`
-      : `${courseCode}-${year}-${nextNumber.toString().padStart(2, "0")}`;
+    // Construir el formattedId usando el basePrefix ya calculado
+    const formattedId = `${basePrefix}-${nextNumber.toString().padStart(2, "0")}`;
 
     console.log("[next-sequence] ID generado:", formattedId);
 

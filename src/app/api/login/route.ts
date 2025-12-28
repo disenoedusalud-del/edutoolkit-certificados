@@ -8,14 +8,15 @@ import { logger } from "@/lib/logger";
 export const runtime = "nodejs";
 
 const COOKIE_NAME = "edutoolkit_session";
-// 5 días en segundos (para createSessionCookie)
-const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 5;
+// 14 días en segundos (máximo permitido por Firebase session cookies)
+const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 14;
+const SESSION_EXPIRES_IN_MS = SESSION_EXPIRES_IN_SECONDS * 1000;
 
 export async function POST(request: NextRequest) {
   try {
     // 1. Rate limiting estricto para login (prevenir fuerza bruta)
     const rateLimitResult = await rateLimit(request, RATE_LIMITS.AUTH);
-    
+
     // 2. Validar entrada (necesitamos el token para verificar si es MASTER_ADMIN)
     const { idToken } = await request.json();
 
@@ -44,14 +45,14 @@ export async function POST(request: NextRequest) {
       const forwarded = request.headers.get("x-forwarded-for");
       const realIP = request.headers.get("x-real-ip");
       const requestIP = forwarded?.split(",")[0].trim() || realIP || "unknown";
-      
+
       // Resetear el rate limit para esta IP
       await resetRateLimitForIP(requestIP);
-      logger.info("Rate limit reseteado automáticamente para MASTER_ADMIN", { 
-        email: userEmail, 
-        ip: requestIP 
+      logger.info("Rate limit reseteado automáticamente para MASTER_ADMIN", {
+        email: userEmail,
+        ip: requestIP
       });
-      
+
       // Continuar con el login (no retornar error de rate limit)
     } else if (!rateLimitResult.success) {
       // Si no es MASTER_ADMIN y el rate limit falló, retornar error
@@ -69,9 +70,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Crear cookie de sesión con Firebase Admin
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_EXPIRES_IN_SECONDS,
+      expiresIn: SESSION_EXPIRES_IN_MS,
     });
 
     const response = NextResponse.json(

@@ -38,9 +38,36 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const entityType = searchParams.get("entityType") as "adminUser" | "course" | "certificate" | null;
 
-    // 4. Obtener historial de Firestore (colección unificada)
+    // 4. Limpieza automática de registros antiguos (> 30 días)
+    // Se ejecuta de fondo para no retrasar la respuesta
+    const cleanupOldHistory = async () => {
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const isoDate = thirtyDaysAgo.toISOString();
+
+        const oldLogsQuery = await adminDb.collection("systemHistory")
+          .where("timestamp", "<", isoDate)
+          .limit(100)
+          .get();
+
+        if (!oldLogsQuery.empty) {
+          const batch = adminDb.batch();
+          oldLogsQuery.docs.forEach((doc) => batch.delete(doc.ref));
+          await batch.commit();
+          console.log(`[CLEANUP] Se eliminaron ${oldLogsQuery.size} registros antiguos del historial.`);
+        }
+      } catch (err) {
+        console.error("[CLEANUP] Error limpiando historial antiguo:", err);
+      }
+    };
+
+    // Lanzar limpieza sin esperar a que termine
+    cleanupOldHistory();
+
+    // 5. Obtener historial de Firestore (colección unificada)
     const historyRef = adminDb.collection("systemHistory");
-    
+
     // Obtener todos los registros ordenados (sin filtro para evitar necesidad de índice compuesto)
     // Filtrar por entityType en memoria si se especifica
     const snapshot = await historyRef

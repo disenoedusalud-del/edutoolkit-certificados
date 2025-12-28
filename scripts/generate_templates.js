@@ -4,11 +4,7 @@ const path = require('path');
 
 const headers = [
     "Nombre Completo",
-    "Nombre del Curso",
-    "Año",
-    "Tipo de Curso",
-    "Mes",
-    "Edición",
+    "ID del Curso",
     "Identificación",
     "Email",
     "Teléfono",
@@ -19,8 +15,8 @@ const headers = [
 
 const data = [
     headers,
-    ["Juan Pérez", "Nutrición y Deporte", 2025, "Curso", 3, 1, "0801-1990-12345", "juan@ejemplo.com", "50499887766", "Tomo 1 Caja 5", "en_archivo", "nuevo"],
-    ["María García", "Diplomado en Salud", 2024, "Diplomado", 6, 2, "", "maria@ejemplo.com", "50488776655", "", "entregado", "historico"]
+    ["Juan Pérez", "NUT-1-2025", "0801-1990-12345", "juan@ejemplo.com", "50499887766", "Tomo 1 Caja 5", "en_archivo", "nuevo"],
+    ["María García", "SALUD-2024", "", "maria@ejemplo.com", "50488776655", "", "entregado", "historico"]
 ];
 
 const targetDir = path.join(__dirname, '..', 'public', 'templates');

@@ -143,6 +143,11 @@ export function validateCertificate(data: unknown): ValidationResult {
     errors.push("El formato del email no es válido");
   }
 
+  // Validar identificación si está presente
+  if (cert.identification && typeof cert.identification === "string" && cert.identification.length > 100) {
+    errors.push("La identificación no puede exceder los 100 caracteres");
+  }
+
   // Validar teléfono si está presente
   if (cert.phone && !validatePhone(cert.phone)) {
     errors.push("El formato del teléfono no es válido");

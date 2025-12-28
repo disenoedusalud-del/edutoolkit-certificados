@@ -138,6 +138,7 @@ export default function CertificateForm({
     year: certificate?.year || new Date().getFullYear(), // Se obtendrá del curso seleccionado
     month: certificate?.month || null, // Se obtendrá del curso seleccionado
     origin: certificate?.origin || "nuevo", // Se obtendrá del curso seleccionado
+    identification: certificate?.identification || "",
     email: certificate?.email || "",
     phone: certificate?.phone || "",
     contactSource: certificate?.contactSource || "ninguno",
@@ -175,8 +176,8 @@ export default function CertificateForm({
   };
 
   const generateCourseId = async (courseId: string, year: number, edition: number | null = null): Promise<string> => {
-    // Extraer solo el prefijo base del curso (sin año ni edición)
-    const courseCode = extractCoursePrefix(courseId);
+    // Usar el ID del curso directamente como prefijo
+    const courseCode = courseId;
 
     // Obtener el siguiente número secuencial del servidor
     try {
@@ -188,13 +189,13 @@ export default function CertificateForm({
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
-        return data.formattedId || (edition ? `${courseCode}-${edition}-${year}-01` : `${courseCode}-${year}-01`);
+        return data.formattedId || `${courseCode}-01`;
       }
     } catch (error) {
       console.error("Error obteniendo siguiente número secuencial:", error);
     }
-    // Fallback: usar 01 si hay error
-    return edition ? `${courseCode}-${edition}-${year}-01` : `${courseCode}-${year}-01`;
+    // Fallback: usar 01 si hay error. No re-añadimos año/edición porque courseCode ya los tiene.
+    return `${courseCode}-01`;
   };
 
   // Cargar cursos activos
@@ -546,6 +547,7 @@ export default function CertificateForm({
         origin: finalOrigin === "historico" ? "historico" : "nuevo",
         // Solo enviar campos de entrega si se está editando un certificado existente
         deliveryDate: certificate ? processOptionalField(formData.deliveryDate) : null,
+        identification: processOptionalField(formData.identification),
         email: processOptionalField(formData.email),
         phone: processOptionalField(formData.phone),
         driveFileId: processedDriveFileId,
@@ -742,6 +744,20 @@ export default function CertificateForm({
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
+                  className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Identificación (DNI/Pasaporte)
+                </label>
+                <input
+                  type="text"
+                  value={formData.identification}
+                  onChange={(e) =>
+                    setFormData({ ...formData, identification: e.target.value })
+                  }
+                  placeholder="Ej: 12.345.678"
                   className="w-full px-3 py-2 border border-theme rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-theme-secondary text-text-primary"
                 />
               </div>

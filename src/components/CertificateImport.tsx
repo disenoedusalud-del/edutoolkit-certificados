@@ -214,29 +214,9 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
                   <td className="px-3 py-2">Nombre completo del participante</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2 font-mono font-bold text-blue-600">Nombre del Curso</td>
+                  <td className="px-3 py-2 font-mono font-bold text-blue-600">ID del Curso</td>
                   <td className="px-3 py-2"><span className="text-red-500 font-bold text-[10px] uppercase">Requerido</span></td>
-                  <td className="px-3 py-2">Nombre exacto del curso (ej: Nutrición y Deporte)</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2 font-mono font-bold text-blue-600">Año</td>
-                  <td className="px-3 py-2"><span className="text-red-500 font-bold text-[10px] uppercase">Requerido</span></td>
-                  <td className="px-3 py-2">Número de 4 dígitos (ej: 2025)</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2 font-mono font-bold">Tipo de Curso</td>
-                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
-                  <td className="px-3 py-2">Curso, Diplomado, Webinar, Taller, Seminario</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2 font-mono font-bold">Mes</td>
-                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
-                  <td className="px-3 py-2">Número del 1 al 12 (para agrupar por mes)</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2 font-mono font-bold">Edición</td>
-                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
-                  <td className="px-3 py-2">Número correlativo si el curso se repite</td>
+                  <td className="px-3 py-2">Código único del curso (ej: LM-1-2025). Lo encuentras en Administración de Cursos.</td>
                 </tr>
                 <tr>
                   <td className="px-3 py-2 font-mono font-bold">Identificación</td>
@@ -262,6 +242,11 @@ export default function CertificateImport({ onClose }: CertificateImportProps) {
                   <td className="px-3 py-2 font-mono font-bold">Estado</td>
                   <td className="px-3 py-2 text-text-tertiary">Opcional</td>
                   <td className="px-3 py-2">en_archivo, entregado, digital_enviado</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono font-bold">Origen</td>
+                  <td className="px-3 py-2 text-text-tertiary">Opcional</td>
+                  <td className="px-3 py-2">nuevo, historico</td>
                 </tr>
               </tbody>
             </table>

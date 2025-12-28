@@ -101,8 +101,8 @@ export async function DELETE(request: NextRequest) {
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    // 2. Verificar permisos (MASTER_ADMIN puede eliminar masivamente)
-    await requireRole("MASTER_ADMIN");
+    // 2. Verificar permisos (EDITOR o superior puede eliminar masivamente)
+    const user = await requireRole("EDITOR");
 
     // 3. Validar entrada
     const body = await request.json();
@@ -121,6 +121,24 @@ export async function DELETE(request: NextRequest) {
     });
 
     await batch.commit();
+
+    // 4. Registrar en el historial
+    try {
+      await adminDb.collection("systemHistory").add({
+        action: "deleted",
+        entityType: "certificate",
+        entityId: "bulk",
+        entityName: `${ids.length} certificados (Masivo)`,
+        performedBy: user.email,
+        timestamp: new Date().toISOString(),
+        details: {
+          count: ids.length,
+          ids: ids.slice(0, 50) // Guardar solo los primeros 50 para no exceder límites
+        }
+      });
+    } catch (logError) {
+      console.error("Error logging bulk deletion to history:", logError);
+    }
 
     return NextResponse.json(
       {

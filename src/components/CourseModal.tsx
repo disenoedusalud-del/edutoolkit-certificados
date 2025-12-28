@@ -74,13 +74,17 @@ export default function CourseModal({
 
     let newId = "";
     if (initials.length > 0) {
-      newId = `${initials}-${year}`;
+      if (edition) {
+        newId = `${initials}-${edition}-${year}`;
+      } else {
+        newId = `${initials}-${year}`;
+      }
     } else if (name.length > 0) {
-      newId = `${name.charAt(0).toUpperCase()}-${year}`;
-    }
-
-    if (edition && newId) {
-      newId += `-${edition}`;
+      if (edition) {
+        newId = `${name.charAt(0).toUpperCase()}-${edition}-${year}`;
+      } else {
+        newId = `${name.charAt(0).toUpperCase()}-${year}`;
+      }
     }
 
     return newId;

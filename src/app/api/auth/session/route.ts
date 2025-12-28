@@ -6,8 +6,9 @@ export const runtime = "nodejs";
 
 
 const COOKIE_NAME = "edutoolkit_session";
-// 7 días en segundos (para createSessionCookie)
-const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;
+// 14 días en segundos
+const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 14;
+const SESSION_EXPIRES_IN_MS = SESSION_EXPIRES_IN_SECONDS * 1000;
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,10 +29,10 @@ export async function POST(request: NextRequest) {
     // Crear cookie de sesión con Firebase Admin (session cookie, no idToken)
     // createSessionCookie espera milisegundos
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
-      expiresIn: SESSION_EXPIRES_IN_SECONDS * 1000,
+      expiresIn: SESSION_EXPIRES_IN_MS,
     });
 
-    console.log("[AUTH][SESSION][POST] ✅ Session cookie creada exitosamente, expira en 7 días");
+    console.log("[AUTH][SESSION][POST] ✅ Session cookie creada exitosamente, expira en 14 días");
 
     const response = NextResponse.json({ ok: true });
 

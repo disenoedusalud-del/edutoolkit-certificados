@@ -110,6 +110,7 @@ export async function PUT(
       origin: body.origin || "nuevo",
       deliveryStatus: body.deliveryStatus || "en_archivo",
       contactSource: body.contactSource || "ninguno",
+      identification: processField(body.identification),
       email: processField(body.email),
       phone: processField(body.phone),
       driveFileId: processField(body.driveFileId),
@@ -178,8 +179,8 @@ export async function DELETE(
       return rateLimitResponse(rateLimitResult.resetTime);
     }
 
-    // 2. Verificar permisos (MASTER_ADMIN puede eliminar)
-    await requireRole("MASTER_ADMIN");
+    // 2. Verificar permisos (MASTER_ADMIN y EDITOR pueden eliminar)
+    const user = await requireRole("EDITOR");
 
     // 3. Eliminar certificado
     const { id } = await params;
@@ -192,7 +193,26 @@ export async function DELETE(
       );
     }
 
+    const certData = doc.data();
     await adminDb.collection("certificates").doc(id).delete();
+
+    // 4. Registrar en el historial
+    try {
+      await adminDb.collection("systemHistory").add({
+        action: "deleted",
+        entityType: "certificate",
+        entityId: id,
+        entityName: `${certData?.fullName} (${certData?.courseId})`,
+        performedBy: user.email,
+        timestamp: new Date().toISOString(),
+        details: {
+          courseName: certData?.courseName,
+          year: certData?.year
+        }
+      });
+    } catch (logError) {
+      console.error("Error logging deletion to history:", logError);
+    }
 
     return NextResponse.json(
       { success: true, message: "Certificado eliminado" },

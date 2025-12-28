@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import CertificateList from "@/components/CertificateList";
 import CertificateForm from "@/components/CertificateForm";
 import CertificateStats from "@/components/CertificateStats";
 import CertificateImport from "@/components/CertificateImport";
 import ImportExportMenu from "@/components/ImportExportMenu";
 import CourseExportModal from "@/components/CourseExportModal";
-import { ChartBar, Plus, BookOpen, ArrowLeft } from "phosphor-react";
+import { ChartBar, Plus, BookOpen, ArrowLeft, Download } from "phosphor-react";
 import Link from "next/link";
 import type { CertificateListHandle } from "@/components/CertificateList";
 
@@ -19,6 +19,22 @@ export default function Page() {
   const certificateListRef = useRef<CertificateListHandle>(null);
   const [initialCourseId, setInitialCourseId] = useState<string | undefined>(undefined);
   const [initialCourseName, setInitialCourseName] = useState<string | undefined>(undefined);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUserRole(data.role || null);
+        }
+      } catch (error) {
+        console.error("Error loading user role:", error);
+      }
+    };
+    loadUserRole();
+  }, []);
 
   const handleAddCertificate = (courseId?: string, courseName?: string) => {
     setInitialCourseId(courseId);
@@ -34,25 +50,38 @@ export default function Page() {
         </h1>
         {!showForm && (
           <div className="flex gap-2 items-center">
-            <ImportExportMenu
-              onImportClick={() => {
-                setShowImport(!showImport);
-                if (showImport) {
-                  setShowStats(false);
-                }
-              }}
-              onExportSelected={() => {
-                certificateListRef.current?.exportSelected();
-              }}
-              onExportAll={() => {
-                certificateListRef.current?.exportAll();
-              }}
-              onExportByCourse={() => {
-                setShowCourseExport(true);
-              }}
-              getSelectedCount={() => certificateListRef.current?.selectedCount || 0}
-              getHasSelected={() => certificateListRef.current?.hasSelected || false}
-            />
+            {userRole !== "VIEWER" && (
+              <ImportExportMenu
+                onImportClick={() => {
+                  setShowImport(!showImport);
+                  if (showImport) {
+                    setShowStats(false);
+                  }
+                }}
+                onExportSelected={() => {
+                  certificateListRef.current?.exportSelected();
+                }}
+                onExportAll={() => {
+                  certificateListRef.current?.exportAll();
+                }}
+                onExportByCourse={() => {
+                  setShowCourseExport(true);
+                }}
+                getSelectedCount={() => certificateListRef.current?.selectedCount || 0}
+                getHasSelected={() => certificateListRef.current?.hasSelected || false}
+              />
+            )}
+            {userRole === "VIEWER" && (
+              <button
+                onClick={() => {
+                  certificateListRef.current?.exportAll();
+                }}
+                className="px-4 py-2 bg-theme-secondary text-text-primary rounded-lg hover:bg-theme-tertiary transition-colors flex items-center gap-2 border border-theme"
+              >
+                <Download size={18} weight="bold" />
+                Exportar Todo
+              </button>
+            )}
             <Link
               href="/admin/cursos"
               className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
@@ -67,13 +96,15 @@ export default function Page() {
               <ChartBar size={18} weight="bold" />
               {showStats ? "Ocultar Estadísticas" : "Ver Estadísticas"}
             </button>
-            <button
-              onClick={() => handleAddCertificate()}
-              className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
-            >
-              <Plus size={18} weight="bold" />
-              Nuevo Certificado
-            </button>
+            {userRole !== "VIEWER" && (
+              <button
+                onClick={() => handleAddCertificate()}
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2 border border-theme btn-primary"
+              >
+                <Plus size={18} weight="bold" />
+                Nuevo Certificado
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -123,6 +154,7 @@ export default function Page() {
             <CertificateList
               ref={certificateListRef}
               onAddCertificate={handleAddCertificate}
+              userRole={userRole}
             />
           </div>
         </div>

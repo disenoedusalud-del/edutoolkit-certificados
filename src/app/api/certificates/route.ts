@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
       emailSent = false,
       whatsappSent = false,
       marketingConsent = false,
+      identification = null,
     } = body;
 
     // Normalizar nombre: Trim y Title Case
@@ -201,65 +202,49 @@ export async function POST(request: NextRequest) {
     // Ejecutar lógica crítica dentro de una transacción para evitar duplicados y condiciones de carrera
     const result = await adminDb.runTransaction(async (transaction) => {
       let finalCourseId = courseId.trim();
-      const courseIdPattern = /^(.+)-(\d{4})-(\d+)$/;
-      const match = finalCourseId.match(courseIdPattern);
 
-      // Si el courseId tiene formato de secuencia (ej: CURSO-2023-01), recalculamos la secuencia
-      // para asegurar que sea correcta y única
-      if (match) {
-        const [, courseCode, courseYear,] = match;
-        const courseYearNum = parseInt(courseYear);
+      // Intentamos determinar el prefijo del curso (todo antes del número secuencial final)
+      // Si el ID termina en un número (ej: LM-2025-01), extraemos el prefijo LM-2025
+      const parts = finalCourseId.split("-");
+      if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) {
+        const prefix = parts.slice(0, parts.length - 1).join("-") + "-";
 
-        // Solo recalcular si el año coincide con el año del certificado
-        if (courseYearNum === year) {
-          const prefix = `${courseCode}-${year}-`;
+        // 1. Buscamos certificados del mismo curso (por prefijo)
+        const certificatesQuery = adminDb
+          .collection("certificates")
+          .where("courseId", ">=", prefix)
+          .where("courseId", "<", prefix + "\uf8ff");
 
-          // 1. Buscamos certificados del mismo curso (por prefijo)
-          const certificatesQuery = adminDb
-            .collection("certificates")
-            .where("courseId", ">=", prefix)
-            .where("courseId", "<", prefix + "\uf8ff");
+        const certificatesSnapshot = await transaction.get(certificatesQuery);
 
-          const certificatesSnapshot = await transaction.get(certificatesQuery);
+        // 2. VERIFICACIÓN DE DUPLICADOS:
+        // Chequear si ya existe un certificado para esta persona en este curso
+        const duplicateCert = certificatesSnapshot.docs.find(doc => {
+          const data = doc.data();
+          return data.fullName.toLowerCase() === normalizedFullName.toLowerCase();
+        });
 
-          // 2. VERIFICACIÓN DE DUPLICADOS:
-          // Chequear si ya existe un certificado para esta persona en este curso
-          // Filtramos en memoria es eficiente porque un curso no tendrá millones de alumnos
-          const duplicateCert = certificatesSnapshot.docs.find(doc => {
-            const data = doc.data();
-            return data.fullName.toLowerCase() === normalizedFullName.toLowerCase();
-          });
-
-          if (duplicateCert) {
-            throw new Error(`DUPLICATE: Ya existe un certificado para "${normalizedFullName}" en este curso (ID: ${duplicateCert.id})`);
-          }
-
-          const escapedCourseCode = courseCode.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          );
-
-          // 3. Calcular siguiente número de secuencia
-          const existingNumbers = certificatesSnapshot.docs
-            .map((doc) => {
-              const data = doc.data() as any;
-              const certCourseId = data.courseId || "";
-              const certMatch = certCourseId.match(
-                new RegExp(`^${escapedCourseCode}-${year}-(\\d+)$`)
-              );
-              return certMatch ? parseInt(certMatch[1]) : 0;
-            })
-            .filter((num) => num > 0);
-
-          const maxNumber =
-            existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-          const nextNumber = maxNumber + 1;
-
-          finalCourseId = `${courseCode}-${year}-${nextNumber
-            .toString()
-            .padStart(2, "0")}`;
+        if (duplicateCert) {
+          throw new Error(`DUPLICATE: Ya existe un certificado para "${normalizedFullName}" en este curso (ID: ${duplicateCert.id})`);
         }
+
+        // 3. Calcular siguiente número de secuencia
+        const existingNumbers = certificatesSnapshot.docs
+          .map((doc) => {
+            const data = doc.data() as any;
+            const certCourseId = data.courseId || "";
+            const certParts = certCourseId.split("-");
+            const lastPart = certParts[certParts.length - 1];
+            return /^\d+$/.test(lastPart) ? parseInt(lastPart) : 0;
+          })
+          .filter((num) => num > 0);
+
+        const maxNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+        const nextNumber = maxNumber + 1;
+
+        finalCourseId = `${parts.slice(0, parts.length - 1).join("-")}-${nextNumber.toString().padStart(2, "0")}`;
       } else {
+        // ... rest of the logic for non-sequential IDs ...
         // Si el courseId NO tiene formato de secuencia (ej: es un código manual o nuevo),
         // Aún así deberíamos verificar duplicados por nombre + courseId exacto
         const duplicatesQuery = adminDb.collection("certificates")
@@ -292,6 +277,7 @@ export async function POST(request: NextRequest) {
         emailSent: Boolean(emailSent),
         whatsappSent: Boolean(whatsappSent),
         marketingConsent: Boolean(marketingConsent),
+        identification: identification ? String(identification).trim() : null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
