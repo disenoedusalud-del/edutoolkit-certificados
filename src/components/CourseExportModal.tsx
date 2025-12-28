@@ -42,7 +42,10 @@ export default function CourseExportModal({
     onClose();
   };
 
-  const groups = Object.keys(groupedCerts).sort();
+  // Filtrar grupos vacíos, ya que no se pueden exportar y causan error al leer metadatos
+  const groups = Object.keys(groupedCerts)
+    .filter((key) => groupedCerts[key].length > 0)
+    .sort();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -83,11 +86,10 @@ export default function CourseExportModal({
                   <button
                     key={groupKey}
                     onClick={() => setSelectedGroup(groupKey)}
-                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
-                      selectedGroup === groupKey
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${selectedGroup === groupKey
                         ? "border-accent bg-accent/10"
                         : "border-theme bg-theme-tertiary hover:bg-theme-secondary"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
