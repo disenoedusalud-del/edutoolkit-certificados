@@ -405,15 +405,48 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
               {certificate.driveFileId ? (
                 <>
                   <div className="flex gap-2 mb-2">
-                    <a
-                      href={certificate.driveWebViewLink || `https://drive.google.com/file/d/${certificate.driveFileId}/view`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors flex items-center gap-1"
-                    >
-                      <File size={14} weight="bold" />
-                      Ver en Drive
-                    </a>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {certificate.driveWebViewLink && (
+                        <a
+                          href={certificate.driveWebViewLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors inline-flex items-center gap-1"
+                        >
+                          <File size={14} weight="bold" />
+                          Ver en Drive
+                        </a>
+                      )}
+                      <button
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: "Quitar vínculo de Drive",
+                            message: "¿Estás seguro de quitar el vínculo de Drive? Esto no borra el archivo en Google, solo limpia el registro en la plataforma.",
+                            confirmText: "Sí, desvincular",
+                            cancelText: "Cancelar",
+                            variant: "danger"
+                          });
+                          if (!isConfirmed) return;
+                          try {
+                            const res = await fetch(`/api/certificates/${id}/upload`, { method: "DELETE" });
+                            if (res.ok) {
+                              toast.success("Vínculo eliminado");
+                              loadCertificate();
+                            } else {
+                              const errorData = await res.json();
+                              toast.error(errorData.error || "Error al desvincular");
+                            }
+                          } catch (e) {
+                            console.error("Error al desvincular:", e);
+                            toast.error("Error de red al desvincular");
+                          }
+                        }}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Quitar vínculo de Drive"
+                      >
+                        <Trash size={16} />
+                      </button>
+                    </div>
                     <a
                       href={`https://drive.google.com/uc?export=download&id=${certificate.driveFileId}`}
                       target="_blank"
@@ -469,21 +502,29 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                         body: formData,
                       });
 
-                      const data = await response.json();
+                      let data;
+                      try {
+                        data = await response.json();
+                      } catch (parseError) {
+                        console.error("Error parseando respuesta JSON:", parseError);
+                        toast.error(`Error del servidor (${response.status}). Revisa la consola.`);
+                        setUploading(false);
+                        return;
+                      }
 
                       if (response.ok && data.ok !== false) {
                         toast.success("PDF subido exitosamente a Google Drive");
                         await loadCertificate(); // Recargar el certificado
                       } else {
-                        toast.error(data.error || "Error al subir el archivo");
+                        toast.error(data.error || data.details || "Error al subir el archivo");
                       }
                     } catch (err) {
                       console.error("Error uploading file:", err);
-                      toast.error("Error al subir el archivo");
+                      toast.error("Error de red al subir el archivo");
                     } finally {
                       setUploading(false);
                       // Limpiar el input
-                      e.target.value = "";
+                      if (e.target) e.target.value = "";
                     }
                   }}
                 />

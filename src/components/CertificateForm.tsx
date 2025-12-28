@@ -50,11 +50,11 @@ export default function CertificateForm({
       const uploadData = new FormData();
       uploadData.append("file", file);
 
-      // Determinar nombre del archivo
-      // Idealmente: {ID_CURSO}-{NOMBRE}.pdf para mantener orden
-      const filename = formData.courseId
-        ? `${formData.courseId}_${formData.fullName.replace(/\s+/g, "_")}.pdf`
-        : file.name;
+      // Determinar nombre del archivo oficial (Ej: NAEF-2019_Juan_Perez.pdf)
+      const baseCode = formData.courseId ? formData.courseId.split('-')[0] : "CURSO";
+      const year = formData.year || new Date().getFullYear();
+      const cleanName = formData.fullName.trim().replace(/\s+/g, "_");
+      const filename = `${baseCode}-${year}_${cleanName}.pdf`;
 
       uploadData.append("fileName", filename);
 

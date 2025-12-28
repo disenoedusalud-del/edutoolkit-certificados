@@ -38,49 +38,47 @@ function normalizeBase64(b64: string) {
 function getAdmin(): App {
   if (adminApp) return adminApp;
 
-  // Si ya existe nuestro app nombrado, úselo (evita colisiones con getApps()[0])
   try {
     adminApp = getApp(ADMIN_APP_NAME);
     return adminApp;
-  } catch {}
+  } catch (e) { }
 
-  const b64raw = process.env.FIREBASE_ADMIN_SA_BASE64;
+  try {
+    const b64raw = process.env.FIREBASE_ADMIN_SA_BASE64;
+    if (b64raw) {
+      console.log("[FIREBASE-ADMIN] intentando inicializar vía BASE64...");
+      const b64 = normalizeBase64(b64raw);
+      let jsonStr = Buffer.from(b64, "base64").toString("utf-8");
+      jsonStr = jsonStr.replace(/^\uFEFF/, "").replace(/\u0000/g, "").trim();
 
-  console.log("[FIREBASE-ADMIN] hasBase64:", !!b64raw);
+      const sa = JSON.parse(jsonStr);
+      const projectId = sa.project_id || sa.projectId;
+      const clientEmail = sa.client_email || sa.clientEmail;
+      const privateKey = normalizePrivateKey(sa.private_key || sa.privateKey || "");
 
-  if (b64raw) {
-    const b64 = normalizeBase64(b64raw);
+      if (!projectId || !clientEmail || !privateKey) {
+        throw new Error("Faltan campos en el JSON del Service Account");
+      }
 
-    let jsonStr = Buffer.from(b64, "base64").toString("utf-8");
-    jsonStr = jsonStr.replace(/^\uFEFF/, "").replace(/\u0000/g, "").trim();
+      adminApp = initializeApp(
+        {
+          credential: cert({ projectId, clientEmail, privateKey } as any),
+          projectId,
+        },
+        ADMIN_APP_NAME
+      );
+      console.log("[FIREBASE-ADMIN] ✅ Inicializado vía BASE64");
+      return adminApp;
+    }
 
-    const sa = JSON.parse(jsonStr);
-
-    // Soportar snake_case y camelCase
-    const projectId = sa.project_id || sa.projectId;
-    const clientEmail = sa.client_email || sa.clientEmail;
-    const privateKey = normalizePrivateKey(sa.private_key || sa.privateKey || "");
-
-    // ✅ LOG CLAVE: confirma qué Service Account está usando Vercel
-    console.log("[FIREBASE-ADMIN] sa email:", clientEmail);
-
-    const pkLooksOk =
-      privateKey.includes("-----BEGIN PRIVATE KEY-----") &&
-      privateKey.includes("-----END PRIVATE KEY-----");
-
-    // Logs seguros
-    console.log("[FIREBASE-ADMIN] projectId ok:", !!projectId);
-    console.log("[FIREBASE-ADMIN] email ok:", !!clientEmail);
-    console.log("[FIREBASE-ADMIN] pk header ok:", pkLooksOk, "len:", privateKey.length);
+    // Fallback a vars individuales
+    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+    const privateKey = normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY || "");
 
     if (!projectId || !clientEmail || !privateKey) {
-      throw new Error("FIREBASE_ADMIN_SA_BASE64 inválido: faltan projectId/clientEmail/privateKey");
+      throw new Error("Faltan variables de entorno para Firebase Admin");
     }
-    if (!pkLooksOk || privateKey.length < 1000) {
-      throw new Error("Private key inválida (formato PEM incorrecto o truncado)");
-    }
-
-    console.log("[FIREBASE-ADMIN] ✅ usando base64");
 
     adminApp = initializeApp(
       {
@@ -89,35 +87,12 @@ function getAdmin(): App {
       },
       ADMIN_APP_NAME
     );
-
+    console.log("[FIREBASE-ADMIN] ✅ Inicializado vía vars individuales");
     return adminApp;
+  } catch (err: any) {
+    console.error("[FIREBASE-ADMIN] ❌ ERROR CRÍTICO:", err.message);
+    throw err;
   }
-
-  // Fallback a vars individuales
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey = normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY || "");
-
-  // ✅ LOG CLAVE también en fallback
-  console.log("[FIREBASE-ADMIN] sa email:", clientEmail);
-
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      "Faltan variables de Firebase Admin. Configure FIREBASE_ADMIN_SA_BASE64 o (FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY)."
-    );
-  }
-
-  console.log("[FIREBASE-ADMIN] ⚠️ usando vars individuales");
-
-  adminApp = initializeApp(
-    {
-      credential: cert({ projectId, clientEmail, privateKey } as any),
-      projectId,
-    },
-    ADMIN_APP_NAME
-  );
-
-  return adminApp;
 }
 
 let _adminDb: Firestore | null = null;

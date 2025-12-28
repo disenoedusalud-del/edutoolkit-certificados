@@ -1,12 +1,12 @@
-
+// src/app/api/courses/[id]/ensure-folder/route.ts
 import { adminDb } from "@/lib/firebaseAdmin";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
-import { getOrCreateFolderInAppsScriptDrive, createFolderInAppsScriptDrive } from "@/lib/appsScriptDrive";
+import { getOrCreateFolderInAppsScriptDrive } from "@/lib/appsScriptDrive";
 
 /**
  * Asegura que un curso tenga su carpeta correspondiente en Google Drive.
- * Si no la tiene, la crea (Año / Curso) y actualiza el curso en la DB.
+ * Prioriza encontrar la carpeta existente para evitar duplicados.
  */
 export async function POST(
     request: NextRequest,
@@ -16,15 +16,13 @@ export async function POST(
         const resolvedParams = await params;
         const id = decodeURIComponent(resolvedParams.id);
 
-        // Solo EDITOR o superior puede gatillar esto
         await requireRole("EDITOR");
 
         let docRef = adminDb.collection("courses").doc(id);
         let doc = await docRef.get();
 
-        // Si no existe, intentar buscar por el campo "id" dentro del documento
+        // Buscar por campo 'id' si por ID de documento no aparece
         if (!doc.exists) {
-            console.log(`[ENSURE-FOLDER] Curso no encontrado por ID de documento ${id}, buscando por campo 'id'...`);
             const coursesSnapshot = await adminDb.collection("courses")
                 .where("id", "==", id)
                 .limit(1)
@@ -32,8 +30,7 @@ export async function POST(
 
             if (!coursesSnapshot.empty) {
                 doc = coursesSnapshot.docs[0];
-                docRef = doc.ref; // Actualizar docRef para el update posterior
-                console.log(`[ENSURE-FOLDER] Curso encontrado por campo 'id', ID del documento: ${doc.id}`);
+                docRef = doc.ref;
             }
         }
 
@@ -43,70 +40,68 @@ export async function POST(
 
         const courseData = doc.data();
 
-        // Si ya tiene carpeta, retornar el ID directamente
+        // PRIORIDAD 1: Si ya está guardado el ID de la carpeta, lo devolvemos de inmediato
         if (courseData?.driveFolderId) {
+            console.log(`[ENSURE-FOLDER] ✅ Carpeta ya vinculada en DB: ${courseData.driveFolderId}`);
             return NextResponse.json({
                 folderId: courseData.driveFolderId,
                 existing: true
             });
         }
 
-        // Si no tiene carpeta, crear la estructura Año / Curso
-        const parentFolderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID;
-        if (!parentFolderId) {
-            return NextResponse.json({
-                error: "La configuración del sistema (DRIVE_CERTIFICATES_FOLDER_ID) falta"
-            }, { status: 500 });
+        // SI NO TIENE CARPETA VINCULADA:
+        const rootFolderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID;
+        if (!rootFolderId) {
+            throw new Error("Configuración DRIVE_CERTIFICATES_FOLDER_ID ausente");
         }
 
         const year = courseData?.year || new Date().getFullYear();
-        const name = courseData?.name || "Sin nombre";
-        const courseCode = courseData?.id || id; // Usamos el código guardado o el ID del doc
+        const name = courseData?.name || "Curso";
+        const courseCode = courseData?.id || id;
 
-        console.log(`[ENSURE-FOLDER] Creando carpeta para curso ${id}: ${courseCode} - ${name} (${year})`);
+        console.log(`[ENSURE-FOLDER] 🔍 Buscando/Asegurando carpeta: ${courseCode} - ${name} (${year})`);
 
-        // 1. Obtener o crear carpeta del AÑO
-        const yearFolderResult = await getOrCreateFolderInAppsScriptDrive({
+        // Estructura Año / Curso
+        // Step 1: Carpeta del Año
+        const yearFolderRes = await getOrCreateFolderInAppsScriptDrive({
             folderName: year.toString(),
-            parentFolderId,
+            parentFolderId: rootFolderId,
         });
 
-        if (!yearFolderResult.ok || !yearFolderResult.folderId) {
-            throw new Error(`Error con carpeta del año: ${yearFolderResult.error}`);
+        if (!yearFolderRes.ok || !yearFolderRes.folderId) {
+            throw new Error(`Fallo con carpeta del año: ${yearFolderRes.error}`);
         }
 
-        const yearFolderId = yearFolderResult.folderId;
-
-        // 2. Obtener o crear carpeta del CURSO dentro del año
+        // Step 2: Carpeta del Curso (Formato consistente: ID - NOMBRE)
         const courseFolderName = `${courseCode} - ${name.trim()}`;
-        const courseFolderResult = await getOrCreateFolderInAppsScriptDrive({
+        const courseFolderRes = await getOrCreateFolderInAppsScriptDrive({
             folderName: courseFolderName,
-            parentFolderId: yearFolderId,
+            parentFolderId: yearFolderRes.folderId,
         });
 
-        if (!courseFolderResult.ok || !courseFolderResult.folderId) {
-            throw new Error(`Error obteniendo/creando carpeta del curso: ${courseFolderResult.error}`);
+        if (!courseFolderRes.ok || !courseFolderRes.folderId) {
+            throw new Error(`Fallo con carpeta del curso: ${courseFolderRes.error}`);
         }
 
-        const driveFolderId = courseFolderResult.folderId;
+        const driveFolderId = courseFolderRes.folderId;
 
-        // 3. Actualizar el curso en la base de datos
+        // Guardar en DB para evitar repetir este proceso
         await docRef.update({
             driveFolderId,
             updatedAt: new Date().toISOString(),
         });
 
-        console.log(`[ENSURE-FOLDER] ✅ Carpeta creada y vinculada: ${driveFolderId}`);
+        console.log(`[ENSURE-FOLDER] ✅ Carpeta localizada/creada: ${driveFolderId}`);
 
         return NextResponse.json({
             folderId: driveFolderId,
-            created: true
+            created: courseFolderRes.created
         });
 
     } catch (error: any) {
-        console.error("[ENSURE-FOLDER] Error:", error);
+        console.error("[ENSURE-FOLDER] ❌ ERROR:", error.message);
         return NextResponse.json(
-            { error: "Error al asegurar carpeta en Drive: " + (error.message || String(error)) },
+            { error: "Error al asegurar carpeta: " + error.message },
             { status: 500 }
         );
     }
