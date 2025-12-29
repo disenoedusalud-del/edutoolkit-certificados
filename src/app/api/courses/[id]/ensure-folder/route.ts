@@ -40,8 +40,12 @@ export async function POST(
 
         const courseData = doc.data();
 
-        // PRIORIDAD 1: Si ya está guardado el ID de la carpeta, lo devolvemos de inmediato
-        if (courseData?.driveFolderId) {
+        const rootFolderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID;
+        if (!rootFolderId) {
+            throw new Error("Configuración DRIVE_CERTIFICATES_FOLDER_ID ausente");
+        }
+
+        if (courseData?.driveFolderId && courseData.driveFolderId !== rootFolderId) {
             console.log(`[ENSURE-FOLDER] ✅ Carpeta ya vinculada en DB: ${courseData.driveFolderId}`);
             return NextResponse.json({
                 folderId: courseData.driveFolderId,
@@ -49,11 +53,12 @@ export async function POST(
             });
         }
 
-        // SI NO TIENE CARPETA VINCULADA:
-        const rootFolderId = process.env.DRIVE_CERTIFICATES_FOLDER_ID;
-        if (!rootFolderId) {
-            throw new Error("Configuración DRIVE_CERTIFICATES_FOLDER_ID ausente");
+        if (courseData?.driveFolderId === rootFolderId) {
+            console.warn(`[ENSURE-FOLDER] ⚠️ Curso ${id} tenía vinculada la carpeta RAÍZ (${rootFolderId}). Re-generando estructura...`);
         }
+
+        // SI NO TIENE CARPETA VINCULADA O ES INCORRECTA:
+
 
         const year = courseData?.year || new Date().getFullYear();
         const name = courseData?.name || "Curso";

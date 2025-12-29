@@ -68,23 +68,33 @@ export default function CertificateForm({
       const selectedCourse = courses.find(c => c.id === formData.selectedCourseId);
 
       if (selectedCourse) {
-        if (selectedCourse.driveFolderId) {
-          targetFolderId = selectedCourse.driveFolderId;
-        } else {
-          // Si el curso no tiene carpeta, intentar crearla automáticamente
-          try {
-            console.log("[UPLOAD] Curso sin carpeta, intentando crearla...");
-            const ensureRes = await fetch(`/api/courses/${encodeURIComponent(selectedCourse.id)}/ensure-folder`, { method: "POST" });
-            const ensureData = await ensureRes.json();
+        // En lugar de confiar ciegamente en el driveFolderId cacheado en el cliente,
+        // siempre llamamos a ensure-folder para verificar que sea correcto (y no la carpeta raíz por error)
+        try {
+          console.log("[UPLOAD] Verificando carpeta del curso en el servidor...");
+          const ensureRes = await fetch(`/api/courses/${encodeURIComponent(selectedCourse.id)}/ensure-folder`, { method: "POST" });
+          const ensureData = await ensureRes.json();
 
-            if (ensureRes.ok && ensureData.folderId) {
-              targetFolderId = ensureData.folderId;
-              // Actualizar el estado local de cursos para que la próxima vez ya la tenga
-              setCourses(prev => prev.map(c => c.id === selectedCourse.id ? { ...c, driveFolderId: ensureData.folderId } : c));
-              console.log("[UPLOAD] Carpeta creada y vinculada:", targetFolderId);
+          if (ensureRes.ok && ensureData.folderId) {
+            targetFolderId = ensureData.folderId;
+            console.log("[UPLOAD] Carpeta confirmada/corregida:", targetFolderId);
+
+            // Actualizar estado local por si acaso
+            if (selectedCourse.driveFolderId !== targetFolderId) {
+              setCourses(prev => prev.map(c => c.id === selectedCourse.id ? { ...c, driveFolderId: targetFolderId } : c));
             }
-          } catch (ensureErr) {
-            console.error("[UPLOAD] Error intentando asegurar carpeta:", ensureErr);
+          } else {
+            // Fallback si la API falla pero tenemos un ID local (aunque podría ser el incorrecto, es mejor que nada)
+            if (selectedCourse.driveFolderId) {
+              targetFolderId = selectedCourse.driveFolderId;
+              console.warn("[UPLOAD] API ensure-folder falló, usando ID local:", targetFolderId);
+            }
+          }
+        } catch (ensureErr) {
+          console.error("[UPLOAD] Error verificando carpeta:", ensureErr);
+          // Fallback final
+          if (selectedCourse.driveFolderId) {
+            targetFolderId = selectedCourse.driveFolderId;
           }
         }
       }

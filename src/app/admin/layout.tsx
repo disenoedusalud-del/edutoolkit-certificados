@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ThemeSettingsButton } from "@/components/ThemeSettingsButton";
 import { AdminSettingsButton } from "@/components/AdminSettingsButton";
+import { AdminLogo } from "@/components/AdminLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,12 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-lg font-semibold text-text-primary">
-                Panel de Administración
-              </h1>
+              <div className="flex items-center">
+                <AdminLogo />
+                <h1 className="text-lg font-semibold text-text-primary">
+                  Panel de Administración
+                </h1>
+              </div>
               <span className="text-sm text-text-secondary">
                 {user.email}
               </span>

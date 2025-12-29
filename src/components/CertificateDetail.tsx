@@ -426,11 +426,11 @@ export default function CertificateDetail({ id }: CertificateDetailProps) {
                       <button
                         onClick={async () => {
                           const isConfirmed = await confirm({
-                            title: "Quitar vínculo de Drive",
-                            message: "¿Estás seguro de quitar el vínculo de Drive? Esto no borra el archivo en Google, solo limpia el registro en la plataforma.",
+                            title: "Desvincular archivo de Drive",
+                            message: "IMPORTANTE: Esta acción solo quita el enlace en la plataforma. \n\nEl archivo PDF original PERMANECERÁ en Google Drive y NO será eliminado. \n\n¿Estás seguro de continuar?",
                             confirmText: "Sí, desvincular",
                             cancelText: "Cancelar",
-                            variant: "danger"
+                            variant: "warning"
                           });
                           if (!isConfirmed) return;
                           try {

@@ -1,16 +1,20 @@
 // src/app/login/page.tsx
 "use client";
 
+import { useTheme } from "@/contexts/ThemeContext";
+
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebaseClient";
 import { Gear, Eye, EyeSlash } from "phosphor-react";
 import ThemeSelector from "@/components/ThemeSelector";
+import Image from "next/image";
 
 type Mode = "login" | "register";
 
 export default function LoginPage() {
+  const { theme } = useTheme();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +44,7 @@ export default function LoginPage() {
         if (!res.ok) {
           throw new Error(
             data?.error ??
-              "No se pudo crear la cuenta. Verifica que el correo esté autorizado.",
+            "No se pudo crear la cuenta. Verifica que el correo esté autorizado.",
           );
         }
       }
@@ -77,12 +81,12 @@ export default function LoginPage() {
     } catch (err: unknown) {
       // Manejo específico de errores de Firebase Auth
       const error = err as { code?: string; message?: string };
-      
+
       // Solo loguear errores que no sean de credenciales inválidas (ya se manejan)
       if (error?.code !== "auth/invalid-credential") {
         console.error("[LOGIN]", err);
       }
-      
+
       // Si recibimos auth/invalid-credential, necesitamos verificar si el usuario existe
       // para distinguir entre "usuario no existe" y "contraseña incorrecta"
       if (error?.code === "auth/invalid-credential") {
@@ -94,7 +98,7 @@ export default function LoginPage() {
             body: JSON.stringify({ email }),
           });
           const checkData = await checkRes.json();
-          
+
           if (checkData.exists === true) {
             setError("Contraseña incorrecta. ¿Olvidaste tu contraseña?");
           } else {
@@ -145,6 +149,38 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md space-y-6 rounded-xl bg-theme-secondary p-6 shadow-md border border-theme">
+
+        {/* Logo EduSalud */}
+        <div className="flex justify-center pb-2">
+          {(theme === "dark" || theme === "tokyo-night" || theme === "neo-brutalism-dark") ? (
+            <div
+              className="w-[200px] h-[200px]"
+              style={{
+                backgroundColor: 'var(--text-primary)',
+                maskImage: 'url(/images/logo_edusalud-blanco.svg?v=3)',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center',
+                maskSize: 'contain',
+                WebkitMaskImage: 'url(/images/logo_edusalud-blanco.svg?v=3)',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                WebkitMaskSize: 'contain'
+              }}
+              role="img"
+              aria-label="Logo EduSalud"
+            />
+          ) : (
+            <Image
+              src="/images/logo_edusalud-color.svg?v=3"
+              alt="Logo EduSalud"
+              width={200}
+              height={80}
+              className="object-contain h-auto"
+              priority
+            />
+          )}
+        </div>
+
         <div className="space-y-1 text-center">
           <h1 className="text-lg font-semibold text-text-primary">
             {title} · Panel de certificados
@@ -159,22 +195,20 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setMode("login")}
-            className={`flex-1 px-3 py-2 border-r border-theme ${
-              mode === "login"
-                ? "bg-theme-secondary font-semibold text-text-primary"
-                : "text-text-secondary hover:bg-theme-secondary"
-            }`}
+            className={`flex-1 px-3 py-2 border-r border-theme ${mode === "login"
+              ? "bg-theme-secondary font-semibold text-text-primary"
+              : "text-text-secondary hover:bg-theme-secondary"
+              }`}
           >
             Iniciar sesión
           </button>
           <button
             type="button"
             onClick={() => setMode("register")}
-            className={`flex-1 px-3 py-2 ${
-              mode === "register"
-                ? "bg-theme-secondary font-semibold text-text-primary"
-                : "text-text-secondary hover:bg-theme-secondary"
-            }`}
+            className={`flex-1 px-3 py-2 ${mode === "register"
+              ? "bg-theme-secondary font-semibold text-text-primary"
+              : "text-text-secondary hover:bg-theme-secondary"
+              }`}
           >
             Crear cuenta
           </button>
@@ -245,8 +279,8 @@ export default function LoginPage() {
                 ? "Ingresando..."
                 : "Creando cuenta..."
               : mode === "login"
-              ? "Entrar"
-              : "Crear cuenta y entrar"}
+                ? "Entrar"
+                : "Crear cuenta y entrar"}
           </button>
 
           {mode === "login" && (
