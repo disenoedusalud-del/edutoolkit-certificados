@@ -26,35 +26,14 @@ export function AdminLogo() {
         return <div className="w-8 h-8" />;
     }
 
-    if (isDark) {
-        return (
-            <div
-                className="w-8 h-8 mr-3 flex-shrink-0"
-                style={{
-                    backgroundColor: 'var(--text-primary)',
-                    maskImage: `url(${whiteIcon})`,
-                    maskRepeat: 'no-repeat',
-                    maskPosition: 'center',
-                    maskSize: 'contain',
-                    WebkitMaskImage: `url(${whiteIcon})`,
-                    WebkitMaskRepeat: 'no-repeat',
-                    WebkitMaskPosition: 'center',
-                    WebkitMaskSize: 'contain'
-                }}
-                aria-label="Isotipo EduSalud"
-            />
-        );
-    }
-
     return (
-        <div className="relative w-8 h-8 mr-3 flex-shrink-0">
-            <Image
-                src={colorIcon}
-                alt="Isotipo EduSalud"
-                fill
-                className="object-contain"
-                priority
-            />
+        <div className="flex items-center gap-2 mr-3 flex-shrink-0">
+            <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center shadow-sm">
+                <span className="text-white font-black text-sm italic">ET</span>
+            </div>
+            <span className="text-lg font-black tracking-tighter text-text-primary border-b-2 border-red-600/30">
+                EduToolkit
+            </span>
         </div>
     );
 }

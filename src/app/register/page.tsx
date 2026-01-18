@@ -88,7 +88,7 @@ export default function RegisterPage() {
           Crear cuenta · Panel de certificados
         </h1>
         <p className="mb-4 text-sm text-text-secondary">
-          Solo personal autorizado de EduSalud puede acceder.
+          Solo personal autorizado puede acceder.
         </p>
 
         {error && (

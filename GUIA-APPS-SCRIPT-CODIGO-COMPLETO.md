@@ -1,6 +1,6 @@
 # 📜 Código Completo de Apps Script para Google Drive
 
-Este documento contiene el código completo del Apps Script que debes usar en tu proyecto de Google Apps Script para manejar todas las operaciones de Drive.
+Este documento contiene el código completo del Apps Script que debes usar en tu proyecto de Google Apps Script para manejar todas las operaciones de Drive 
 
 ## ⚠️ IMPORTANTE: Compatibilidad con Apps Script
 

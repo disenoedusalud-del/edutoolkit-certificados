@@ -124,8 +124,7 @@ export default function AdminRolesClient({ currentUserEmail }: Props) {
       <section className="space-y-3 rounded-md border border-theme p-4 bg-theme-secondary">
         <h2 className="text-sm font-semibold text-text-primary">Agregar o actualizar usuario</h2>
         <p className="text-xs text-text-secondary">
-          Recuerde: solo se recomienda agregar correos institucionales
-          relacionados con EduSalud.
+          Recuerde: solo se recomienda agregar correos institucionales.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">

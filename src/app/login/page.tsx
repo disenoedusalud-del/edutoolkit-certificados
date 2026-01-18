@@ -150,35 +150,19 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md space-y-6 rounded-xl bg-theme-secondary p-6 shadow-md border border-theme">
 
-        {/* Logo EduSalud */}
-        <div className="flex justify-center pb-2">
-          {(theme === "dark" || theme === "tokyo-night" || theme === "neo-brutalism-dark") ? (
-            <div
-              className="w-[200px] h-[200px]"
-              style={{
-                backgroundColor: 'var(--text-primary)',
-                maskImage: 'url(/images/logo_edusalud-blanco.svg?v=3)',
-                maskRepeat: 'no-repeat',
-                maskPosition: 'center',
-                maskSize: 'contain',
-                WebkitMaskImage: 'url(/images/logo_edusalud-blanco.svg?v=3)',
-                WebkitMaskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                WebkitMaskSize: 'contain'
-              }}
-              role="img"
-              aria-label="Logo EduSalud"
-            />
-          ) : (
-            <Image
-              src="/images/logo_edusalud-color.svg?v=3"
-              alt="Logo EduSalud"
-              width={200}
-              height={80}
-              className="object-contain h-auto"
-              priority
-            />
-          )}
+        {/* Logo EduToolkit */}
+        <div className="flex flex-col items-center justify-center mb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/20">
+              <span className="text-white font-black text-xl italic">ET</span>
+            </div>
+            <span className="text-3xl font-black tracking-tighter text-text-primary decoration-red-600 decoration-4">
+              EduToolkit
+            </span>
+          </div>
+          <span className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.3em] bg-theme-tertiary px-2 py-0.5 rounded">
+            Panel de Certificados
+          </span>
         </div>
 
         <div className="space-y-1 text-center">
@@ -186,7 +170,7 @@ export default function LoginPage() {
             {title} · Panel de certificados
           </h1>
           <p className="text-xs text-text-secondary">
-            Solo personal autorizado de EduSalud puede acceder.
+            Solo personal autorizado puede acceder.
           </p>
         </div>
 
