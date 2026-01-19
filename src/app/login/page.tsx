@@ -287,6 +287,10 @@ export default function LoginPage() {
           </p>
         )}
       </div>
+
+      <footer className="absolute bottom-4 w-full text-center text-[10px] text-text-secondary opacity-60">
+        © 2026. Desarrollado por: Lic. Daniel Alberto Zavala Hernández
+      </footer>
     </div>
   );
 }
